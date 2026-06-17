@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import NovoImovelForm from './NovoImovelForm'
+import ImovelCard from './ImovelCard'
 
 export default async function EmpresaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -54,20 +55,14 @@ export default async function EmpresaPage({ params }: { params: Promise<{ id: st
           const statusLabel = !pag ? 'Sem registro' : pag.status === 'pago' ? 'Pago' : pag.status === 'atrasado' ? 'Atrasado' : 'Pendente'
 
           return (
-            <Link key={imovel.id} href={`/empresas/${id}/imoveis/${imovel.id}`}
-              className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-5 py-4 hover:border-blue-300 hover:shadow-sm transition-all">
-              <div>
-                <p className="font-medium text-gray-900">{imovel.endereco}</p>
-                <p className="text-sm text-gray-500 mt-0.5">{inquilino?.nome ?? 'Sem inquilino'}</p>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className="text-sm font-medium text-gray-700">
-                  R$ {(imovel.valor_aluguel ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </span>
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusColor}`}>{statusLabel}</span>
-                <span className="text-gray-400">›</span>
-              </div>
-            </Link>
+            <ImovelCard
+              key={imovel.id}
+              imovel={imovel}
+              inquilinoNome={inquilino?.nome ?? null}
+              statusColor={statusColor}
+              statusLabel={statusLabel}
+              empresaId={id}
+            />
           )
         })}
 

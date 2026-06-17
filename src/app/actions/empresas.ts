@@ -21,6 +21,24 @@ export async function criarImovel(formData: FormData) {
   revalidatePath(`/empresas/${empresa_id}`)
 }
 
+export async function apagarImovel(imovelId: string, empresaId: string) {
+  const supabase = await createClient()
+  await supabase.from('pagamentos').delete().eq('imovel_id', imovelId)
+  await supabase.from('inquilinos').delete().eq('imovel_id', imovelId)
+  await supabase.from('imoveis').delete().eq('id', imovelId)
+  revalidatePath(`/empresas/${empresaId}`)
+}
+
+export async function editarImovel(formData: FormData) {
+  const supabase = await createClient()
+  const id = formData.get('id') as string
+  const empresa_id = formData.get('empresa_id') as string
+  const endereco = formData.get('endereco') as string
+  const valor_aluguel = parseFloat(formData.get('valor_aluguel') as string)
+  await supabase.from('imoveis').update({ endereco, valor_aluguel }).eq('id', id)
+  revalidatePath(`/empresas/${empresa_id}`)
+}
+
 export async function salvarInquilino(formData: FormData) {
   const supabase = await createClient()
   const imovel_id = formData.get('imovel_id') as string
