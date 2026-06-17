@@ -1,0 +1,87 @@
+import { createClient } from '@/lib/supabase/server'
+import { notFound } from 'next/navigation'
+import Link from 'next/link'
+import NovoImovelForm from './NovoImovelForm'
+
+export default async function EmpresaPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const supabase = await createClient()
+
+  const { data: empresa } = await supabase.from('empresas').select('*').eq('id', id).single()
+  if (!empresa) notFound()
+
+  const { data: imoveis } = await supabase
+    .from('imoveis')
+    .select('id, endereco, valor_aluguel, ativo, inquilinos(nome)')
+    .eq('empresa_id', id)
+    .order('endereco')
+
+  const mesAtual = new Date().getMonth() + 1
+  const anoAtual = new Date().getFullYear()
+  const ids = (imoveis ?? []).map(i => i.id)
+
+  const { data: pagamentos } = ids.length > 0 ? await supabase
+    .from('pagamentos')
+    .select('imovel_id, status, valor_original, valor_pago')
+    .in('imovel_id', ids)
+    .eq('mes', mesAtual)
+    .eq('ano', anoAtual) : { data: [] }
+
+  const pagMap = Object.fromEntries((pagamentos ?? []).map(p => [p.imovel_id, p]))
+
+  const nomeMes = new Date(anoAtual, mesAtual - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+        <Link href="/" className="hover:text-blue-600">Empresas</Link>
+        <span>/</span>
+        <span className="text-gray-900 font-medium">{empresa.nome}</span>
+      </div>
+
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">{empresa.nome}</h2>
+          <p className="text-sm text-gray-500 capitalize mt-0.5">Imóveis — {nomeMes}</p>
+        </div>
+      </div>
+
+      <div className="space-y-3 mb-8">
+        {(imoveis ?? []).map(imovel => {
+          const pag = pagMap[imovel.id]
+          const inquilino = Array.isArray(imovel.inquilinos) ? imovel.inquilinos[0] : imovel.inquilinos
+          const statusColor = !pag ? 'bg-gray-100 text-gray-500' : pag.status === 'pago' ? 'bg-green-100 text-green-700' : pag.status === 'atrasado' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+          const statusLabel = !pag ? 'Sem registro' : pag.status === 'pago' ? 'Pago' : pag.status === 'atrasado' ? 'Atrasado' : 'Pendente'
+
+          return (
+            <Link key={imovel.id} href={`/empresas/${id}/imoveis/${imovel.id}`}
+              className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-5 py-4 hover:border-blue-300 hover:shadow-sm transition-all">
+              <div>
+                <p className="font-medium text-gray-900">{imovel.endereco}</p>
+                <p className="text-sm text-gray-500 mt-0.5">{inquilino?.nome ?? 'Sem inquilino'}</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-medium text-gray-700">
+                  R$ {(imovel.valor_aluguel ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </span>
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusColor}`}>{statusLabel}</span>
+                <span className="text-gray-400">›</span>
+              </div>
+            </Link>
+          )
+        })}
+
+        {(imoveis ?? []).length === 0 && (
+          <div className="text-center py-12 text-gray-400 bg-white rounded-xl border border-dashed border-gray-200">
+            Nenhum imóvel cadastrado ainda.
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <h3 className="font-medium text-gray-900 mb-4">Adicionar imóvel</h3>
+        <NovoImovelForm empresaId={id} />
+      </div>
+    </div>
+  )
+}
