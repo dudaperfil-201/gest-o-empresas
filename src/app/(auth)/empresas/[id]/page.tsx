@@ -50,18 +50,12 @@ export default async function EmpresaPage({ params }: { params: Promise<{ id: st
       <div className="space-y-3 mb-8">
         {(imoveis ?? []).map(imovel => {
           const pag = pagMap[imovel.id]
-          const inquilino = Array.isArray(imovel.inquilinos) ? imovel.inquilinos[0] : imovel.inquilinos
-          const statusColor = !pag ? 'bg-gray-100 text-gray-500' : pag.status === 'pago' ? 'bg-green-100 text-green-700' : pag.status === 'atrasado' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
-          const statusLabel = !pag ? 'Sem registro' : pag.status === 'pago' ? 'Pago' : pag.status === 'atrasado' ? 'Atrasado' : 'Pendente'
-
           return (
             <ImovelCard
               key={imovel.id}
               imovel={imovel}
-              inquilinoNome={inquilino?.nome ?? null}
-              statusColor={statusColor}
-              statusLabel={statusLabel}
               empresaId={id}
+              pago={pag?.status === 'pago'}
             />
           )
         })}

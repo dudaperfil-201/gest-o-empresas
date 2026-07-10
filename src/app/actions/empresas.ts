@@ -11,6 +11,42 @@ export async function criarEmpresa(formData: FormData) {
   revalidatePath('/')
 }
 
+// Botão PAGOU: alterna o pagamento do mês corrente. Se ainda não está pago,
+// registra o pagamento com o valor do aluguel do imóvel; se já está pago,
+// desmarca (remove o registro).
+export async function alternarPagamento(imovelId: string, empresaId: string) {
+  const supabase = await createClient()
+  const mes = new Date().getMonth() + 1
+  const ano = new Date().getFullYear()
+
+  const { data: existente } = await supabase
+    .from('pagamentos')
+    .select('id, status')
+    .eq('imovel_id', imovelId)
+    .eq('mes', mes)
+    .eq('ano', ano)
+    .maybeSingle()
+
+  if (existente && existente.status === 'pago') {
+    await supabase.from('pagamentos').delete().eq('id', existente.id)
+  } else {
+    const { data: imovel } = await supabase.from('imoveis').select('valor_aluguel').eq('id', imovelId).single()
+    const valor = imovel?.valor_aluguel ?? 0
+    await supabase.from('pagamentos').upsert({
+      imovel_id: imovelId,
+      mes,
+      ano,
+      valor_original: valor,
+      valor_pago: valor,
+      status: 'pago',
+      data_pagamento: new Date().toISOString().slice(0, 10),
+    }, { onConflict: 'imovel_id,mes,ano' })
+  }
+
+  revalidatePath(`/empresas/${empresaId}`)
+  revalidatePath('/')
+}
+
 export async function criarImovel(formData: FormData) {
   const supabase = await createClient()
   const empresa_id = formData.get('empresa_id') as string
