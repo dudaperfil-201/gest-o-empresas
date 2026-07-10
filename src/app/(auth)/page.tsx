@@ -20,22 +20,18 @@ export default async function HomePage() {
       .eq('ativo', true)
 
     const ids = (imoveis ?? []).map(i => i.id)
-    if (ids.length === 0) return { ...empresa, total: 0, pagos: 0, pendentes: 0, atrasados: 0, totalValor: 0, recebido: 0 }
+    if (ids.length === 0) return { ...empresa, total: 0, pagamentos: 0 }
 
+    // PAGAMENTOS = soma de tudo que foi pago no mês corrente (mes/ano atuais).
     const { data: pagamentos } = await supabase
       .from('pagamentos')
-      .select('status, valor_original, valor_pago')
+      .select('valor_pago')
       .in('imovel_id', ids)
       .eq('mes', mesAtual)
       .eq('ano', anoAtual)
 
-    const pagos = (pagamentos ?? []).filter(p => p.status === 'pago').length
-    const atrasados = (pagamentos ?? []).filter(p => p.status === 'atrasado').length
-    const pendentes = (pagamentos ?? []).filter(p => p.status === 'pendente').length
-    const totalValor = (pagamentos ?? []).reduce((s, p) => s + (p.valor_original ?? 0), 0)
-    const recebido = (pagamentos ?? []).filter(p => p.status === 'pago').reduce((s, p) => s + (p.valor_pago ?? 0), 0)
-
-    return { ...empresa, total: ids.length, pagos, pendentes, atrasados, totalValor, recebido }
+    const totalPago = (pagamentos ?? []).reduce((s, p) => s + (p.valor_pago ?? 0), 0)
+    return { ...empresa, total: ids.length, pagamentos: totalPago }
   }))
 
   const nomeMes = new Date(anoAtual, mesAtual - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
@@ -55,37 +51,19 @@ export default async function HomePage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {(resumos ?? []).map(e => (
           <Link key={e.id} href={`/empresas/${e.id}`} className="bg-white border border-gray-200 rounded-xl p-5 hover:border-blue-300 hover:shadow-sm transition-all">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900 text-lg">{e.nome}</h3>
-              <span className="text-xs text-gray-400">{e.total} imóveis</span>
-            </div>
+            <h3 className="font-semibold text-gray-900 text-lg mb-4">{e.nome}</h3>
 
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className="text-center bg-green-50 rounded-lg py-2">
-                <p className="text-xl font-bold text-green-600">{e.pagos}</p>
-                <p className="text-xs text-green-600">Pagos</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="text-center bg-blue-50 rounded-lg py-4">
+                <p className="text-2xl font-bold text-blue-600">{e.total}</p>
+                <p className="text-xs text-blue-600 font-medium mt-0.5">IMÓVEIS</p>
               </div>
-              <div className="text-center bg-yellow-50 rounded-lg py-2">
-                <p className="text-xl font-bold text-yellow-600">{e.pendentes}</p>
-                <p className="text-xs text-yellow-600">Pendentes</p>
+              <div className="text-center bg-green-50 rounded-lg py-4">
+                <p className="text-xl font-bold text-green-600">
+                  R$ {e.pagamentos.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+                <p className="text-xs text-green-600 font-medium mt-0.5">PAGAMENTOS</p>
               </div>
-              <div className="text-center bg-red-50 rounded-lg py-2">
-                <p className="text-xl font-bold text-red-600">{e.atrasados}</p>
-                <p className="text-xs text-red-600">Atrasados</p>
-              </div>
-            </div>
-
-            <div className="flex justify-between text-sm border-t border-gray-100 pt-3">
-              <span className="text-gray-500">Recebido</span>
-              <span className="font-medium text-green-600">
-                R$ {e.recebido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </span>
-            </div>
-            <div className="flex justify-between text-sm mt-1">
-              <span className="text-gray-500">Total esperado</span>
-              <span className="font-medium text-gray-700">
-                R$ {e.totalValor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </span>
             </div>
           </Link>
         ))}
