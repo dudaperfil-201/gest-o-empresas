@@ -64,14 +64,10 @@ export default async function HomePage() {
         </Link>
       </div>
 
-      <div className="bg-green-600 text-white rounded-xl p-5 mb-4">
-        <p className="text-center text-2xl font-bold tracking-wide mb-3">{mesAnoFormatado}</p>
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-medium uppercase tracking-wide text-green-100">Total recebido</p>
-          <p className="text-3xl font-bold">
-            R$ {totalGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </p>
-        </div>
+      <div className="bg-green-600 text-white rounded-xl p-5 mb-4 flex items-center justify-between gap-3 text-xl font-bold tracking-wide">
+        <span className="uppercase">Total recebido</span>
+        <span>{mesAnoFormatado}</span>
+        <span>R$ {totalGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
