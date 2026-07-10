@@ -36,6 +36,9 @@ export default async function HomePage() {
 
   const nomeMes = new Date(anoAtual, mesAtual - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
 
+  // TOTAL = soma dos pagamentos de TODAS as empresas no mês corrente
+  const totalGeral = resumos.reduce((s, e) => s + e.pagamentos, 0)
+
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -46,6 +49,16 @@ export default async function HomePage() {
         <Link href="/empresas/nova" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
           + Nova empresa
         </Link>
+      </div>
+
+      <div className="bg-green-600 text-white rounded-xl p-5 mb-4 flex items-center justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-green-100">Total recebido</p>
+          <p className="text-xs text-green-100 capitalize">{nomeMes}</p>
+        </div>
+        <p className="text-3xl font-bold">
+          R$ {totalGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
