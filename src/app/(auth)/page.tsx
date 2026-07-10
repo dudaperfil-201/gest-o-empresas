@@ -15,12 +15,19 @@ export default async function HomePage() {
   const resumos = await Promise.all((empresas ?? []).map(async empresa => {
     const { data: imoveis } = await supabase
       .from('imoveis')
-      .select('id')
+      .select('id, inquilinos(id)')
       .eq('empresa_id', empresa.id)
       .eq('ativo', true)
 
+    // Locado = imóvel com inquilino; Disponível = sem inquilino
+    const locados = (imoveis ?? []).filter(im => {
+      const inq = Array.isArray(im.inquilinos) ? im.inquilinos : (im.inquilinos ? [im.inquilinos] : [])
+      return inq.length > 0
+    }).length
+    const disponiveis = (imoveis?.length ?? 0) - locados
+
     const ids = (imoveis ?? []).map(i => i.id)
-    if (ids.length === 0) return { ...empresa, total: 0, pagamentos: 0 }
+    if (ids.length === 0) return { ...empresa, total: 0, locados: 0, disponiveis: 0, pagamentos: 0 }
 
     // PAGAMENTOS = soma de tudo que foi pago no mês corrente (mes/ano atuais).
     const { data: pagamentos } = await supabase
@@ -31,7 +38,7 @@ export default async function HomePage() {
       .eq('ano', anoAtual)
 
     const totalPago = (pagamentos ?? []).reduce((s, p) => s + (p.valor_pago ?? 0), 0)
-    return { ...empresa, total: ids.length, pagamentos: totalPago }
+    return { ...empresa, total: ids.length, locados, disponiveis, pagamentos: totalPago }
   }))
 
   const nomeMes = new Date(anoAtual, mesAtual - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
@@ -67,9 +74,13 @@ export default async function HomePage() {
             <h3 className="font-semibold text-gray-900 text-lg mb-4">{e.nome}</h3>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="text-center bg-blue-50 rounded-lg py-4">
+              <div className="text-center bg-blue-50 rounded-lg py-4 px-2">
                 <p className="text-2xl font-bold text-blue-600">{e.total}</p>
                 <p className="text-xs text-blue-600 font-medium mt-0.5">IMÓVEIS</p>
+                <div className="mt-2 pt-2 border-t border-blue-100 flex justify-center gap-4 text-[11px]">
+                  <span className="text-green-700">Locados: <b>{e.locados}</b></span>
+                  <span className="text-gray-500">Disponíveis: <b>{e.disponiveis}</b></span>
+                </div>
               </div>
               <div className="text-center bg-green-50 rounded-lg py-4">
                 <p className="text-xl font-bold text-green-600">

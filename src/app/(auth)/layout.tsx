@@ -16,7 +16,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      <header className="relative bg-white shadow-sm px-4 py-2 flex items-center sticky top-0 z-10">
+      <header className="bg-white shadow-sm px-4 py-2 flex items-center">
         <div className="flex-1 flex justify-start">
           <nav className="hidden md:flex items-center gap-2">
             <Link href="/" className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-blue-700 border border-blue-200 rounded-full bg-white hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all">
@@ -28,8 +28,8 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
           </nav>
         </div>
 
-        <Link href="/" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <img src="/logo-hase.png" alt="HASE Management" className="h-12 w-auto object-contain" />
+        <Link href="/" className="shrink-0">
+          <img src="/logo-hase.png" alt="HASE Management" className="h-48 w-auto object-contain" />
         </Link>
 
         <div className="flex-1 flex justify-end items-center gap-3">
