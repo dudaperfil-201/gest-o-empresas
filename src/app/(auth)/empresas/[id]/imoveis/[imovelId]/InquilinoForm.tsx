@@ -27,15 +27,13 @@ export default function InquilinoForm({ imovelId, empresaId, inquilino }: {
         <div className="flex justify-between items-start">
           <div>
             <p className="font-medium text-gray-900">{inquilino.nome}</p>
-            {inquilino.cpf && <p className="text-sm text-gray-500">CPF: {inquilino.cpf}</p>}
             {inquilino.telefone && <p className="text-sm text-gray-500">Tel: {inquilino.telefone}</p>}
             {inquilino.email && <p className="text-sm text-gray-500">{inquilino.email}</p>}
             {inquilino.data_inicio && (
               <p className="text-sm text-gray-500">
-                Início: {new Date(inquilino.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')}
+                Início do contrato: {new Date(inquilino.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')}
               </p>
             )}
-            <p className="text-sm text-gray-500">Juros por atraso: {inquilino.juros_mes ?? 2}% a.m.</p>
           </div>
           <button onClick={() => setEditing(true)} className="text-sm text-blue-600 hover:underline">Editar</button>
         </div>
@@ -59,13 +57,8 @@ export default function InquilinoForm({ imovelId, empresaId, inquilino }: {
     <form onSubmit={handleSubmit} className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Nome *</label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Nome do inquilino *</label>
           <input name="nome" required defaultValue={inquilino?.nome}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">CPF</label>
-          <input name="cpf" defaultValue={inquilino?.cpf ?? ''}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <div>
@@ -79,13 +72,8 @@ export default function InquilinoForm({ imovelId, empresaId, inquilino }: {
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Data de início</label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Data de início do contrato</label>
           <input name="data_inicio" type="date" defaultValue={inquilino?.data_inicio ?? ''}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Juros por atraso (% a.m.)</label>
-          <input name="juros_mes" type="number" step="0.1" defaultValue={inquilino?.juros_mes ?? 2}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
       </div>
