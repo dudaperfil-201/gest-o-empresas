@@ -15,19 +15,24 @@ export default async function HomePage() {
   const resumos = await Promise.all((empresas ?? []).map(async empresa => {
     const { data: imoveis } = await supabase
       .from('imoveis')
-      .select('id, inquilinos(id)')
+      .select('id, valor_aluguel, inquilinos(id)')
       .eq('empresa_id', empresa.id)
       .eq('ativo', true)
 
-    // Locado = imóvel com inquilino; Disponível = sem inquilino
-    const locados = (imoveis ?? []).filter(im => {
+    const temInquilino = (im: { inquilinos: unknown }) => {
       const inq = Array.isArray(im.inquilinos) ? im.inquilinos : (im.inquilinos ? [im.inquilinos] : [])
       return inq.length > 0
-    }).length
+    }
+
+    // Locado = imóvel com inquilino; Disponível = sem inquilino
+    const locados = (imoveis ?? []).filter(temInquilino).length
     const disponiveis = (imoveis?.length ?? 0) - locados
 
+    // Potencial = soma dos aluguéis dos imóveis locados (o que entraria se todos pagassem)
+    const potencial = (imoveis ?? []).reduce((s, im) => temInquilino(im) ? s + (im.valor_aluguel ?? 0) : s, 0)
+
     const ids = (imoveis ?? []).map(i => i.id)
-    if (ids.length === 0) return { ...empresa, total: 0, locados: 0, disponiveis: 0, pagamentos: 0 }
+    if (ids.length === 0) return { ...empresa, total: 0, locados: 0, disponiveis: 0, potencial: 0, pagamentos: 0 }
 
     // PAGAMENTOS = soma de tudo que foi pago no mês corrente (mes/ano atuais).
     const { data: pagamentos } = await supabase
@@ -38,7 +43,7 @@ export default async function HomePage() {
       .eq('ano', anoAtual)
 
     const totalPago = (pagamentos ?? []).reduce((s, p) => s + (p.valor_pago ?? 0), 0)
-    return { ...empresa, total: ids.length, locados, disponiveis, pagamentos: totalPago }
+    return { ...empresa, total: ids.length, locados, disponiveis, potencial, pagamentos: totalPago }
   }))
 
   const nomeMes = new Date(anoAtual, mesAtual - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
@@ -82,11 +87,14 @@ export default async function HomePage() {
                   <span className="text-gray-500">Disponíveis: <b>{e.disponiveis}</b></span>
                 </div>
               </div>
-              <div className="text-center bg-green-50 rounded-lg py-4">
+              <div className="text-center bg-green-50 rounded-lg py-4 px-2">
                 <p className="text-xl font-bold text-green-600">
                   R$ {e.pagamentos.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
                 <p className="text-xs text-green-600 font-medium mt-0.5">PAGAMENTOS</p>
+                <div className="mt-2 pt-2 border-t border-green-100 text-[11px] text-gray-500">
+                  Potencial: <b className="text-green-700">R$ {e.potencial.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b>
+                </div>
               </div>
             </div>
           </Link>
