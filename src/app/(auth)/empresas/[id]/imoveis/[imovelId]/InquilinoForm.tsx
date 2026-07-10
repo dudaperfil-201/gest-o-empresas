@@ -13,10 +13,11 @@ interface Inquilino {
   juros_mes?: number
 }
 
-export default function InquilinoForm({ imovelId, empresaId, inquilino }: {
+export default function InquilinoForm({ imovelId, empresaId, inquilino, valorAluguel }: {
   imovelId: string
   empresaId: string
   inquilino: Inquilino | null
+  valorAluguel: number
 }) {
   const [editing, setEditing] = useState(!inquilino)
   const [loading, setLoading] = useState(false)
@@ -74,6 +75,11 @@ export default function InquilinoForm({ imovelId, empresaId, inquilino }: {
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Data de início do contrato</label>
           <input name="data_inicio" type="date" defaultValue={inquilino?.data_inicio ?? ''}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Valor do aluguel (R$)</label>
+          <input name="valor_aluguel" type="number" step="0.01" min="0" placeholder="0,00" defaultValue={valorAluguel || ''}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
       </div>

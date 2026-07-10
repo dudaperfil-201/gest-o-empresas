@@ -61,7 +61,18 @@ export async function salvarInquilino(formData: FormData) {
     await supabase.from('inquilinos').insert(dados)
   }
 
+  // Atualiza o valor do aluguel do imóvel, se informado no cadastro
+  const valorRaw = formData.get('valor_aluguel') as string | null
+  if (valorRaw != null && valorRaw !== '') {
+    const valor = parseFloat(valorRaw.replace(',', '.'))
+    if (!isNaN(valor)) {
+      await supabase.from('imoveis').update({ valor_aluguel: valor }).eq('id', imovel_id)
+    }
+  }
+
   revalidatePath(`/empresas/${empresa_id}/imoveis/${imovel_id}`)
+  revalidatePath(`/empresas/${empresa_id}`)
+  revalidatePath('/')
 }
 
 export async function registrarPagamento(formData: FormData) {

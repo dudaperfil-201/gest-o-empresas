@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import InquilinoForm from './InquilinoForm'
-import PagamentoForm from './PagamentoForm'
 
 export default async function ImovelPage({ params }: { params: Promise<{ id: string; imovelId: string }> }) {
   const { id, imovelId } = await params
@@ -21,9 +20,6 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
     .order('ano', { ascending: false })
     .order('mes', { ascending: false })
     .limit(24)
-
-  const mesAtual = new Date().getMonth() + 1
-  const anoAtual = new Date().getFullYear()
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -44,19 +40,7 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
 
       <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
         <h3 className="font-medium text-gray-900 mb-4">Inquilino</h3>
-        <InquilinoForm imovelId={imovelId} empresaId={id} inquilino={inquilino} />
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
-        <h3 className="font-medium text-gray-900 mb-4">Registrar pagamento</h3>
-        <PagamentoForm
-          imovelId={imovelId}
-          empresaId={id}
-          valorAluguel={imovel.valor_aluguel ?? 0}
-          juros={inquilino?.juros_mes ?? 2}
-          mesAtual={mesAtual}
-          anoAtual={anoAtual}
-        />
+        <InquilinoForm imovelId={imovelId} empresaId={id} inquilino={inquilino} valorAluguel={imovel.valor_aluguel ?? 0} />
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl p-5">
