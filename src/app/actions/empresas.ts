@@ -81,28 +81,35 @@ export async function salvarInquilino(formData: FormData) {
   const empresa_id = formData.get('empresa_id') as string
   const id = formData.get('id') as string | null
 
-  const dados = {
-    imovel_id,
-    nome: formData.get('nome') as string,
-    cpf: formData.get('cpf') as string || null,
-    telefone: formData.get('telefone') as string || null,
-    email: formData.get('email') as string || null,
-    data_inicio: formData.get('data_inicio') as string || null,
-    juros_mes: parseFloat(formData.get('juros_mes') as string) || 2,
-  }
-
-  if (id) {
-    await supabase.from('inquilinos').update(dados).eq('id', id)
-  } else {
-    await supabase.from('inquilinos').insert(dados)
-  }
-
-  // Atualiza o valor do aluguel do imóvel, se informado no cadastro
+  // Atualiza os dados do imóvel (nome/endereço e valor do aluguel), se informados
+  const imovelUpdate: Record<string, unknown> = {}
+  const endereco = (formData.get('endereco') as string | null)?.trim()
+  if (endereco) imovelUpdate.endereco = endereco
   const valorRaw = formData.get('valor_aluguel') as string | null
   if (valorRaw != null && valorRaw !== '') {
     const valor = parseFloat(valorRaw.replace(',', '.'))
-    if (!isNaN(valor)) {
-      await supabase.from('imoveis').update({ valor_aluguel: valor }).eq('id', imovel_id)
+    if (!isNaN(valor)) imovelUpdate.valor_aluguel = valor
+  }
+  if (Object.keys(imovelUpdate).length > 0) {
+    await supabase.from('imoveis').update(imovelUpdate).eq('id', imovel_id)
+  }
+
+  // Salva o inquilino apenas se o nome foi informado
+  const nome = (formData.get('nome') as string || '').trim()
+  if (nome) {
+    const dados = {
+      imovel_id,
+      nome,
+      cpf: formData.get('cpf') as string || null,
+      telefone: formData.get('telefone') as string || null,
+      email: formData.get('email') as string || null,
+      data_inicio: formData.get('data_inicio') as string || null,
+      juros_mes: parseFloat(formData.get('juros_mes') as string) || 2,
+    }
+    if (id) {
+      await supabase.from('inquilinos').update(dados).eq('id', id)
+    } else {
+      await supabase.from('inquilinos').insert(dados)
     }
   }
 

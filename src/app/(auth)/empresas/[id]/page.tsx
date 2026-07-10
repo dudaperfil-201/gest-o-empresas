@@ -45,6 +45,7 @@ export default async function EmpresaPage({ params }: { params: Promise<{ id: st
           <h2 className="text-xl font-semibold text-gray-900">{empresa.nome}</h2>
           <p className="text-sm text-gray-500 capitalize mt-0.5">Imóveis — {nomeMes}</p>
         </div>
+        <NovoImovelForm empresaId={id} />
       </div>
 
       <div className="space-y-3 mb-8">
@@ -65,11 +66,6 @@ export default async function EmpresaPage({ params }: { params: Promise<{ id: st
             Nenhum imóvel cadastrado ainda.
           </div>
         )}
-      </div>
-
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <h3 className="font-medium text-gray-900 mb-4">Adicionar imóvel</h3>
-        <NovoImovelForm empresaId={id} />
       </div>
     </div>
   )

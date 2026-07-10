@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { salvarInquilino } from '@/app/actions/empresas'
 
 interface Inquilino {
@@ -13,12 +14,14 @@ interface Inquilino {
   juros_mes?: number
 }
 
-export default function InquilinoForm({ imovelId, empresaId, inquilino, valorAluguel }: {
+export default function InquilinoForm({ imovelId, empresaId, inquilino, valorAluguel, enderecoImovel }: {
   imovelId: string
   empresaId: string
   inquilino: Inquilino | null
   valorAluguel: number
+  enderecoImovel: string
 }) {
+  const router = useRouter()
   const [editing, setEditing] = useState(!inquilino)
   const [loading, setLoading] = useState(false)
 
@@ -50,6 +53,7 @@ export default function InquilinoForm({ imovelId, empresaId, inquilino, valorAlu
     fd.append('empresa_id', empresaId)
     if (inquilino) fd.append('id', inquilino.id)
     await salvarInquilino(fd)
+    router.refresh()
     setLoading(false)
     setEditing(false)
   }
@@ -57,9 +61,14 @@ export default function InquilinoForm({ imovelId, empresaId, inquilino, valorAlu
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="sm:col-span-2">
+          <label className="block text-xs font-medium text-gray-600 mb-1">Nome do imóvel *</label>
+          <input name="endereco" required defaultValue={enderecoImovel}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Nome do inquilino *</label>
-          <input name="nome" required defaultValue={inquilino?.nome}
+          <label className="block text-xs font-medium text-gray-600 mb-1">Nome do inquilino</label>
+          <input name="nome" defaultValue={inquilino?.nome}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <div>

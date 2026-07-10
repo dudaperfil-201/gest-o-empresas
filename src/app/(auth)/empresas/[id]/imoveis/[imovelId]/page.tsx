@@ -39,8 +39,8 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
-        <h3 className="font-medium text-gray-900 mb-4">Inquilino</h3>
-        <InquilinoForm imovelId={imovelId} empresaId={id} inquilino={inquilino} valorAluguel={imovel.valor_aluguel ?? 0} />
+        <h3 className="font-medium text-gray-900 mb-4">Cadastro do imóvel</h3>
+        <InquilinoForm imovelId={imovelId} empresaId={id} inquilino={inquilino} valorAluguel={imovel.valor_aluguel ?? 0} enderecoImovel={imovel.endereco} />
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl p-5">
