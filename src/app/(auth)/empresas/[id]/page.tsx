@@ -64,6 +64,7 @@ export default async function EmpresaPage({ params }: { params: Promise<{ id: st
               imovel={imovel}
               empresaId={id}
               pago={pag?.status === 'pago'}
+              atrasado={pag?.status === 'atrasado'}
               disponivel={disponivel}
             />
           )

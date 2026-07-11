@@ -47,6 +47,30 @@ export async function alternarPagamento(imovelId: string, empresaId: string) {
   revalidatePath('/')
 }
 
+// Botão PAGOU COM ATRASO: registra o pagamento do mês corrente com um valor
+// digitado (aluguel + multa), que é diferente do valor cadastrado. Status 'atrasado'.
+export async function registrarPagamentoComAtraso(imovelId: string, empresaId: string, valorPago: number) {
+  const supabase = await createClient()
+  const mes = new Date().getMonth() + 1
+  const ano = new Date().getFullYear()
+
+  const { data: imovel } = await supabase.from('imoveis').select('valor_aluguel').eq('id', imovelId).single()
+  const valorOriginal = imovel?.valor_aluguel ?? 0
+
+  await supabase.from('pagamentos').upsert({
+    imovel_id: imovelId,
+    mes,
+    ano,
+    valor_original: valorOriginal,
+    valor_pago: valorPago,
+    status: 'atrasado',
+    data_pagamento: new Date().toISOString().slice(0, 10),
+  }, { onConflict: 'imovel_id,mes,ano' })
+
+  revalidatePath(`/empresas/${empresaId}`)
+  revalidatePath('/')
+}
+
 export async function criarImovel(formData: FormData) {
   const supabase = await createClient()
   const empresa_id = formData.get('empresa_id') as string
