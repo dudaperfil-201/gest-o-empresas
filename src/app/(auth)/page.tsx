@@ -24,12 +24,16 @@ export default async function HomePage() {
       return inq.length > 0
     }
 
-    // Locado = imóvel com inquilino; Disponível = sem inquilino
-    const locados = (imoveis ?? []).filter(temInquilino).length
+    // Locado = imóvel com dado no cadastro (valor de aluguel preenchido) ou com inquilino.
+    // Disponível = sem nenhum dado (aluguel zerado e sem inquilino).
+    const estaLocado = (im: { inquilinos: unknown; valor_aluguel: number | null }) =>
+      temInquilino(im) || (im.valor_aluguel ?? 0) > 0
+
+    const locados = (imoveis ?? []).filter(estaLocado).length
     const disponiveis = (imoveis?.length ?? 0) - locados
 
     // Potencial = soma dos aluguéis dos imóveis locados (o que entraria se todos pagassem)
-    const potencial = (imoveis ?? []).reduce((s, im) => temInquilino(im) ? s + (im.valor_aluguel ?? 0) : s, 0)
+    const potencial = (imoveis ?? []).reduce((s, im) => estaLocado(im) ? s + (im.valor_aluguel ?? 0) : s, 0)
 
     const ids = (imoveis ?? []).map(i => i.id)
     if (ids.length === 0) return { ...empresa, total: 0, locados: 0, disponiveis: 0, potencial: 0, pagamentos: 0 }
