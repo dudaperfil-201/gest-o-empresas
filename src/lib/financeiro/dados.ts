@@ -1,0 +1,177 @@
+// Dados de investimentos extraídos da planilha INVESTIMENTOS.xlsx — posição mensal de 2026.
+// valores[i] corresponde a MESES_2026[i] (Jan..Mai/2026). Blank na planilha = 0.
+// Enquanto os saldos vêm da planilha, ficam aqui embutidos; ao migrarmos para
+// atualização em app, isso vira tabela no Supabase.
+
+export const MESES_2026 = [
+  { abrev: 'JAN', nome: 'JANEIRO' },
+  { abrev: 'FEV', nome: 'FEVEREIRO' },
+  { abrev: 'MAR', nome: 'MARÇO' },
+  { abrev: 'ABR', nome: 'ABRIL' },
+  { abrev: 'MAI', nome: 'MAIO' },
+]
+
+export interface Investimento { nome: string; valores: number[] }
+export interface Conta { banco: string; investimentos: Investimento[] }
+export interface Carteira { slug: string; nome: string; tipo: 'brasil' | 'internacional'; contas: Conta[] }
+
+export const CARTEIRAS: Carteira[] = [
+  {
+    slug: 'ob-holding', nome: 'OB Holding', tipo: 'brasil', contas: [
+      { banco: 'XP', investimentos: [
+        { nome: 'Ações', valores: [128743.20, 103929.90, 114167.10, 119321.70, 119318.10] },
+        { nome: 'COE', valores: [1195.75, 1216.53, 1226.12, 1242.90, 1256.48] },
+        { nome: 'Dividendos', valores: [467.52, 336.00, 0, 0, 604.80] },
+        { nome: 'Em conta', valores: [0, 1213.17, 381.72, 462.27, 481.20] },
+      ] },
+      { banco: 'Inter', investimentos: [
+        { nome: 'Em conta', valores: [5593.22, 18294.83, 52847.43, 8049.20, 108842.09] },
+      ] },
+      { banco: 'Itaú', investimentos: [
+        { nome: 'Saldo', valores: [0, 0, 74396.50, 183482.91, 101939.92] },
+      ] },
+    ],
+  },
+  {
+    slug: 'metvisa', nome: 'METVISA', tipo: 'brasil', contas: [
+      { banco: 'XP', investimentos: [
+        { nome: 'Renda Fixa', valores: [270761.18, 283028.06, 285134.16, 288832.21, 292373.81] },
+        { nome: 'COE', valores: [100225.39, 101690.44, 102559.32, 103863.43, 104942.76] },
+        { nome: 'Proventos', valores: [216.36, 216.36, 216.36, 0, 0] },
+        { nome: 'Em conta', valores: [0, 0, 0, 183.91, 0] },
+      ] },
+      { banco: 'Inter', investimentos: [
+        { nome: 'Em conta', valores: [235762.26, 235762.26, 52960.45, 0, 0] },
+      ] },
+      { banco: 'Itaú', investimentos: [
+        { nome: 'Saldo', valores: [1348.41, 188750.69, 260119.86, 62671.12, 288409.36] },
+      ] },
+    ],
+  },
+  {
+    slug: 'eme', nome: 'E.M.E', tipo: 'brasil', contas: [
+      { banco: 'XP', investimentos: [
+        { nome: 'Renda Fixa', valores: [413127.71, 413439.05, 415696.12, 419428.81, 421321.24] },
+        { nome: 'COE', valores: [354767.20, 355978.17, 359015.04, 364081.93, 367156.46] },
+        { nome: 'Dividendos', valores: [173.09, 173.09, 173.09, 0, 0] },
+        { nome: 'Em conta', valores: [0, 6313.17, 6313.17, 6914.41, 0] },
+      ] },
+      { banco: 'Inter', investimentos: [
+        { nome: 'Em conta', valores: [151650.29, 201228.88, 157803.36, 8859.98, 0] },
+      ] },
+      { banco: 'Itaú', investimentos: [
+        { nome: 'Saldo', valores: [24964.81, 22846.80, 99310.63, 39192.17, 101939.92] },
+      ] },
+    ],
+  },
+  {
+    slug: 'summit', nome: 'Summit', tipo: 'brasil', contas: [
+      { banco: 'Itaú', investimentos: [
+        { nome: 'Saldo', valores: [31008.89, 43225.23, 52322.27, 5788.41, 9154.56] },
+      ] },
+    ],
+  },
+  {
+    slug: 'img-brasil', nome: 'IMG-Brasil', tipo: 'brasil', contas: [
+      { banco: 'XP', investimentos: [
+        { nome: 'COE', valores: [2294766.95, 2309181.58, 2316146.19, 2329945.93, 2338182.96] },
+        { nome: 'Em conta', valores: [0, 5434.73, 1.53, 1554.70, 0] },
+      ] },
+      { banco: 'Banco do Brasil', investimentos: [
+        { nome: 'Saldo', valores: [226830.10, 29799.06, 264845.82, 585507.75, 98405.25] },
+      ] },
+      { banco: 'Bradesco', investimentos: [
+        { nome: 'Saldo', valores: [399.53, 231.29, 4083.42, 3780.14, 23381.70] },
+      ] },
+      { banco: 'Sicoob', investimentos: [
+        { nome: 'Saldo', valores: [11425.14, 0, 0, 446.00, 397.13] },
+      ] },
+      { banco: 'Itaú', investimentos: [
+        { nome: 'Saldo', valores: [523413.09, 1515205.58, 190041.64, 621564.47, 1173647.88] },
+      ] },
+    ],
+  },
+  {
+    slug: 'pan', nome: 'Pan', tipo: 'brasil', contas: [
+      { banco: 'Itaú', investimentos: [
+        { nome: 'Saldo', valores: [152.33, 152.51, 152.54, 152.62, 153.12] },
+      ] },
+    ],
+  },
+  {
+    slug: 'apex', nome: 'Apex', tipo: 'brasil', contas: [
+      { banco: 'Itaú', investimentos: [
+        { nome: 'Saldo', valores: [0, 0, 0, 0, 0] },
+      ] },
+    ],
+  },
+  {
+    slug: 'oyster', nome: 'Oyster', tipo: 'brasil', contas: [
+      { banco: 'Itaú', investimentos: [
+        { nome: 'Saldo', valores: [169066.30, 147184.16, 395605.93, 433086.13, 484295.45] },
+      ] },
+    ],
+  },
+  {
+    slug: 'seastar', nome: 'Seastar', tipo: 'brasil', contas: [
+      { banco: 'Itaú', investimentos: [
+        { nome: 'Saldo', valores: [0, 0, 1538.43, 7030.01, 3601.35] },
+      ] },
+    ],
+  },
+  {
+    slug: 'black-fortune', nome: 'Black Fortune', tipo: 'brasil', contas: [
+      { banco: 'Itaú', investimentos: [
+        { nome: 'Saldo', valores: [529.14, 8889.15, 5234.32, 11708.60, 11331.54] },
+      ] },
+    ],
+  },
+  {
+    slug: 'fidic-golden-sky', nome: 'Fidic Golden Sky', tipo: 'brasil', contas: [
+      { banco: 'Banco Finaxis', investimentos: [
+        { nome: 'Saldo', valores: [2003200.98, 507335.27, 1481074.90, 646469.13, 1055220.26] },
+      ] },
+    ],
+  },
+  {
+    slug: 'rnx', nome: 'RNX', tipo: 'brasil', contas: [
+      { banco: 'Fundo RNX', investimentos: [
+        { nome: 'Eduardo', valores: [854076.71, 866786.58, 881955.34, 895978.42, 909866.08] },
+        { nome: 'Sergio Filho', valores: [854076.71, 866786.58, 881955.34, 895978.42, 909866.08] },
+      ] },
+    ],
+  },
+  {
+    slug: 'itau-eduardo', nome: 'Itaú Eduardo', tipo: 'brasil', contas: [
+      { banco: 'Itaú', investimentos: [
+        { nome: 'Investido', valores: [7582517.75, 7761608.55, 8008361.95, 8321989.27, 8329546.46] },
+        { nome: 'Em conta', valores: [2.12, 6229.25, 30737.14, 3162.91, 10378.78] },
+      ] },
+    ],
+  },
+  {
+    slug: 'itau-serginho', nome: 'Itaú Serginho', tipo: 'brasil', contas: [
+      { banco: 'Itaú', investimentos: [
+        { nome: 'Investido', valores: [7577661.61, 7727593.93, 7942308.52, 8319071.98, 8332182.43] },
+        { nome: 'Em conta', valores: [1.17, 25702.49, 7839.71, 5065.81, 10378.78] },
+      ] },
+    ],
+  },
+  {
+    slug: 'imovel-all-wert', nome: 'Imóvel All Wert (Porto Belo)', tipo: 'brasil', contas: [
+      { banco: 'Imóvel', investimentos: [
+        { nome: 'Valor', valores: [2800000, 2806160, 2815139.71, 2823866.64, 2848434.27] },
+      ] },
+    ],
+  },
+]
+
+export const saldoConta = (c: Conta, i: number) =>
+  c.investimentos.reduce((s, inv) => s + (inv.valores[i] ?? 0), 0)
+
+export const saldoCarteira = (c: Carteira, i: number) =>
+  c.contas.reduce((s, ct) => s + saldoConta(ct, i), 0)
+
+export const getCarteira = (slug: string) => CARTEIRAS.find(c => c.slug === slug)
+
+export const brl = (n: number) => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
