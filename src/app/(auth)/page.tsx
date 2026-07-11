@@ -24,6 +24,7 @@ export default async function HomePage() {
       return inq.length > 0
     }
 
+    // Regra do usuário: se há dado no cadastro, o imóvel está locado.
     // Locado = imóvel com dado no cadastro (valor de aluguel preenchido) ou com inquilino.
     // Disponível = sem nenhum dado (aluguel zerado e sem inquilino).
     const estaLocado = (im: { inquilinos: unknown; valor_aluguel: number | null }) =>
