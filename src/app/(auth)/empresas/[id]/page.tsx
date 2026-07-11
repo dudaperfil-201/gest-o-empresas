@@ -39,7 +39,7 @@ export default async function EmpresaPage({ params }: { params: Promise<{ id: st
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-        <Link href="/" className="hover:text-blue-600">Empresas</Link>
+        <Link href="/imoveis" className="hover:text-blue-600">Empresas</Link>
         <span>/</span>
         <span className="text-gray-900 font-medium">{empresa.nome}</span>
       </div>

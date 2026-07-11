@@ -14,13 +14,13 @@ export default function NovaEmpresaPage() {
     setLoading(true)
     const fd = new FormData(e.currentTarget)
     await criarEmpresa(fd)
-    router.push('/')
+    router.push('/imoveis')
   }
 
   return (
     <div className="max-w-md mx-auto">
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-        <Link href="/" className="hover:text-blue-600">Empresas</Link>
+        <Link href="/imoveis" className="hover:text-blue-600">Empresas</Link>
         <span>/</span>
         <span className="text-gray-900 font-medium">Nova empresa</span>
       </div>
@@ -39,7 +39,7 @@ export default function NovaEmpresaPage() {
               className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-60">
               {loading ? 'Criando...' : 'Criar empresa'}
             </button>
-            <Link href="/" className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition-colors">
+            <Link href="/imoveis" className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition-colors">
               Cancelar
             </Link>
           </div>

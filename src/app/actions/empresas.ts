@@ -8,7 +8,7 @@ export async function criarEmpresa(formData: FormData) {
   const nome = formData.get('nome') as string
   const { error } = await supabase.from('empresas').insert({ nome })
   if (error) throw new Error(error.message)
-  revalidatePath('/')
+  revalidatePath('/imoveis')
 }
 
 // Botão PAGOU: alterna o pagamento do mês corrente. Se ainda não está pago,
@@ -44,7 +44,7 @@ export async function alternarPagamento(imovelId: string, empresaId: string) {
   }
 
   revalidatePath(`/empresas/${empresaId}`)
-  revalidatePath('/')
+  revalidatePath('/imoveis')
 }
 
 // Botão PAGOU COM ATRASO: registra o pagamento do mês corrente com um valor
@@ -68,7 +68,7 @@ export async function registrarPagamentoComAtraso(imovelId: string, empresaId: s
   }, { onConflict: 'imovel_id,mes,ano' })
 
   revalidatePath(`/empresas/${empresaId}`)
-  revalidatePath('/')
+  revalidatePath('/imoveis')
 }
 
 export async function criarImovel(formData: FormData) {
@@ -144,7 +144,7 @@ export async function salvarInquilino(formData: FormData) {
 
   revalidatePath(`/empresas/${empresa_id}/imoveis/${imovel_id}`)
   revalidatePath(`/empresas/${empresa_id}`)
-  revalidatePath('/')
+  revalidatePath('/imoveis')
 }
 
 export async function registrarPagamento(formData: FormData) {

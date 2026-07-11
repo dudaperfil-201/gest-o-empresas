@@ -24,7 +24,7 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-        <Link href="/" className="hover:text-blue-600">Empresas</Link>
+        <Link href="/imoveis" className="hover:text-blue-600">Empresas</Link>
         <span>/</span>
         <Link href={`/empresas/${id}`} className="hover:text-blue-600">{empresa?.nome}</Link>
         <span>/</span>

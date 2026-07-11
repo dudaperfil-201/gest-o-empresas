@@ -27,7 +27,13 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
       <div className="flex-1 flex gap-4 p-4 md:p-6 pb-24 md:pb-6">
         <nav className="hidden md:flex flex-col gap-2 shrink-0">
           <Link href="/" className="px-4 py-2 text-sm font-medium text-blue-700 border border-blue-200 rounded-lg bg-white hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all whitespace-nowrap">
-            🏢 Empresas
+            🏠 Início
+          </Link>
+          <Link href="/imoveis" className="px-4 py-2 text-sm font-medium text-blue-700 border border-blue-200 rounded-lg bg-white hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all whitespace-nowrap">
+            🏢 Imóveis
+          </Link>
+          <Link href="/financeiro" className="px-4 py-2 text-sm font-medium text-green-700 border border-green-200 rounded-lg bg-white hover:bg-green-600 hover:text-white hover:border-green-600 transition-all whitespace-nowrap">
+            💰 Financeiro
           </Link>
           <Link href="/relatorio" className="px-4 py-2 text-sm font-medium text-blue-700 border border-blue-200 rounded-lg bg-white hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all whitespace-nowrap">
             📊 Relatório
@@ -44,11 +50,19 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
 
       {/* Menu inferior (mobile) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-10 bg-white border-t border-gray-200 flex items-center justify-around px-1 py-2">
-        <Link href="/" className="flex flex-col items-center gap-0.5 px-4 py-1 text-blue-700">
-          <span className="text-xl">🏢</span>
-          <span className="text-[10px] font-medium">Empresas</span>
+        <Link href="/" className="flex flex-col items-center gap-0.5 px-3 py-1 text-blue-700">
+          <span className="text-xl">🏠</span>
+          <span className="text-[10px] font-medium">Início</span>
         </Link>
-        <Link href="/relatorio" className="flex flex-col items-center gap-0.5 px-4 py-1 text-blue-700">
+        <Link href="/imoveis" className="flex flex-col items-center gap-0.5 px-3 py-1 text-blue-700">
+          <span className="text-xl">🏢</span>
+          <span className="text-[10px] font-medium">Imóveis</span>
+        </Link>
+        <Link href="/financeiro" className="flex flex-col items-center gap-0.5 px-3 py-1 text-green-700">
+          <span className="text-xl">💰</span>
+          <span className="text-[10px] font-medium">Financeiro</span>
+        </Link>
+        <Link href="/relatorio" className="flex flex-col items-center gap-0.5 px-3 py-1 text-blue-700">
           <span className="text-xl">📊</span>
           <span className="text-[10px] font-medium">Relatório</span>
         </Link>
