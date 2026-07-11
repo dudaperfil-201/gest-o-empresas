@@ -8,12 +8,34 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
   if (isNaN(i) || i < 0) i = 0
   if (i > ultimo) i = ultimo
 
-  const mesAnterior = i > 0 ? i : null      // link ?mes= (1-based) para o mês anterior
+  const mesAnterior = i > 0 ? i : null
   const mesProximo = i < ultimo ? i + 2 : null
 
-  const carteiras = CARTEIRAS.map(c => ({ ...c, saldo: saldoCarteira(c, i) }))
-    .sort((a, b) => b.saldo - a.saldo)
-  const totalBrasil = carteiras.reduce((s, c) => s + c.saldo, 0)
+  const comSaldo = CARTEIRAS.map(c => ({ ...c, saldo: saldoCarteira(c, i) })).sort((a, b) => b.saldo - a.saldo)
+  const brasil = comSaldo.filter(c => c.tipo === 'brasil')
+  const internacional = comSaldo.filter(c => c.tipo === 'internacional')
+  const totalBrasil = brasil.reduce((s, c) => s + c.saldo, 0)
+  const totalIntl = internacional.reduce((s, c) => s + c.saldo, 0)
+  const totalGeral = totalBrasil + totalIntl
+  const pct = (v: number) => totalGeral > 0 ? (v / totalGeral * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) : '0'
+
+  const Chip = ({ tipo }: { tipo: string }) => (
+    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+      {tipo === 'brasil' ? '🇧🇷' : '🌎'}
+    </span>
+  )
+
+  const Card = (c: typeof comSaldo[number]) => (
+    <Link key={c.slug} href={`/financeiro/${c.slug}?mes=${i + 1}`}
+      className="bg-white border border-gray-200 rounded-xl p-5 hover:border-green-300 hover:shadow-sm transition-all">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="font-semibold text-gray-900 text-lg">{c.nome}</h3>
+        <Chip tipo={c.tipo} />
+      </div>
+      <p className="text-2xl font-bold text-green-700">{brl(c.saldo)}</p>
+      <p className="text-xs text-gray-400 mt-1">{c.contas.map(ct => ct.banco).join(' · ')}</p>
+    </Link>
+  )
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -27,13 +49,13 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
         <span className="text-3xl">💰</span>
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Financeiro</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Carteiras de investimento — Brasil</p>
+          <p className="text-sm text-gray-500 mt-0.5">Carteiras de investimento — Brasil e Internacional</p>
         </div>
       </div>
 
       {/* Banner com patrimônio total e navegação de mês */}
       <div className="bg-green-600 text-white rounded-xl p-5 mb-4 flex items-center justify-between gap-3 text-xl font-bold tracking-wide">
-        <span className="uppercase">Patrimônio (Brasil)</span>
+        <span className="uppercase">Patrimônio total</span>
         <span className="flex items-center gap-2 sm:gap-4">
           {mesAnterior ? (
             <Link href={`/financeiro?mes=${mesAnterior}`} aria-label="Mês anterior"
@@ -49,26 +71,32 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
             <span className="w-8 h-8 flex items-center justify-center rounded-full bg-green-700/40 text-2xl leading-none opacity-40">›</span>
           )}
         </span>
-        <span>{brl(totalBrasil)}</span>
+        <span>{brl(totalGeral)}</span>
       </div>
 
+      {/* Divisão Brasil x Internacional */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
+          <p className="text-sm text-gray-500">🇧🇷 Brasil</p>
+          <p className="text-xl font-bold text-gray-900 mt-1">{brl(totalBrasil)}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{pct(totalBrasil)}% da carteira</p>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
+          <p className="text-sm text-gray-500">🌎 Internacional</p>
+          <p className="text-xl font-bold text-gray-900 mt-1">{brl(totalIntl)}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{pct(totalIntl)}% da carteira</p>
+        </div>
+      </div>
+
+      <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">🇧🇷 Brasil</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+        {brasil.map(Card)}
+      </div>
+
+      <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">🌎 Internacional</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {carteiras.map(c => (
-          <Link key={c.slug} href={`/financeiro/${c.slug}?mes=${i + 1}`}
-            className="bg-white border border-gray-200 rounded-xl p-5 hover:border-green-300 hover:shadow-sm transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold text-gray-900 text-lg">{c.nome}</h3>
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">🇧🇷</span>
-            </div>
-            <p className="text-2xl font-bold text-green-700">{brl(c.saldo)}</p>
-            <p className="text-xs text-gray-400 mt-1">{c.contas.map(ct => ct.banco).join(' · ')}</p>
-          </Link>
-        ))}
+        {internacional.map(Card)}
       </div>
-
-      <p className="text-sm text-gray-400 mt-6 text-center">
-        Falta ainda o bloco <b>Internacional</b> (LA JOLLA, Real State USA e câmbio) — próximo passo.
-      </p>
     </div>
   )
 }

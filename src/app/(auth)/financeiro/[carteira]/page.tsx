@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { MESES_2026, getCarteira, saldoConta, saldoCarteira, brl } from '@/lib/financeiro/dados'
+import { MESES_2026, getCarteira, saldoConta, saldoCarteira, brl, fmtMoeda } from '@/lib/financeiro/dados'
 
 export default async function CarteiraPage({ params, searchParams }: {
   params: Promise<{ carteira: string }>
@@ -99,19 +99,29 @@ export default async function CarteiraPage({ params, searchParams }: {
       {/* Contas por banco (posição do mês selecionado) */}
       <div className="space-y-3">
         {carteira.contas.map(conta => {
-          const mostrarDetalhe = conta.investimentos.length > 1 || conta.investimentos[0]?.nome !== 'Saldo'
+          const inv0 = conta.investimentos[0]
+          const single = conta.investimentos.length === 1 && inv0.nome === 'Saldo'
           return (
             <div key={conta.banco} className="bg-white border border-gray-200 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-gray-900">{conta.banco}</h3>
                 <span className="text-lg font-bold text-green-700">{brl(saldoConta(conta, i))}</span>
               </div>
-              {mostrarDetalhe && (
+              {single ? (
+                inv0.moeda && inv0.valoresMoeda && (
+                  <p className="text-xs text-gray-400 mt-1 text-right">{fmtMoeda(inv0.moeda, inv0.valoresMoeda[i] ?? 0)}</p>
+                )
+              ) : (
                 <div className="space-y-1.5 mt-3">
                   {conta.investimentos.map(inv => (
                     <div key={inv.nome} className="flex items-center justify-between text-sm border-b border-gray-50 last:border-0 pb-1.5 last:pb-0">
                       <span className="text-gray-600">{inv.nome}</span>
-                      <span className="text-gray-800 font-medium">{brl(inv.valores[i] ?? 0)}</span>
+                      <span className="text-right">
+                        <span className="text-gray-800 font-medium">{brl(inv.valores[i] ?? 0)}</span>
+                        {inv.moeda && inv.valoresMoeda && (
+                          <span className="block text-xs text-gray-400">{fmtMoeda(inv.moeda, inv.valoresMoeda[i] ?? 0)}</span>
+                        )}
+                      </span>
                     </div>
                   ))}
                 </div>

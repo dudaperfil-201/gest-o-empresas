@@ -11,7 +11,7 @@ export const MESES_2026 = [
   { abrev: 'MAI', nome: 'MAIO' },
 ]
 
-export interface Investimento { nome: string; valores: number[] }
+export interface Investimento { nome: string; valores: number[]; moeda?: string; valoresMoeda?: number[] }
 export interface Conta { banco: string; investimentos: Investimento[] }
 export interface Carteira { slug: string; nome: string; tipo: 'brasil' | 'internacional'; contas: Conta[] }
 
@@ -164,6 +164,39 @@ export const CARTEIRAS: Carteira[] = [
       ] },
     ],
   },
+
+  // ── Internacional ──────────────────────────────────────────────────────
+  // valores = valor em R$ (convertido pelo câmbio do mês); valoresMoeda = na moeda original.
+  {
+    slug: 'la-jolla', nome: 'La Jolla', tipo: 'internacional', contas: [
+      { banco: 'Itaú Miami (EUA)', investimentos: [
+        { nome: 'Saldo', moeda: 'US$',
+          valores: [7694225.69, 7542882.64, 7343371.82, 7507906.03, 7785361.64],
+          valoresMoeda: [1476818.75, 1439481.42, 1425897.44, 1532225.72, 1541655.77] },
+      ] },
+    ],
+  },
+  {
+    slug: 'real-state-usa', nome: 'Real State USA', tipo: 'internacional', contas: [
+      { banco: 'Imóvel (EUA)', investimentos: [
+        { nome: 'Saldo', moeda: 'US$',
+          valores: [599990.22, 603445.05, 613680.54, 583890.22, 601764.41],
+          valoresMoeda: [115161.27, 115161.27, 119161.27, 119161.27, 119161.27] },
+      ] },
+    ],
+  },
+  {
+    slug: 'cambio-aberto', nome: 'Câmbio em aberto (IMG)', tipo: 'internacional', contas: [
+      { banco: 'Câmbio', investimentos: [
+        { nome: 'Dólar', moeda: 'US$',
+          valores: [3535454.53, 2350414.73, 3580268.72, 4014214.26, 4978794.34],
+          valoresMoeda: [678590.12, 448552.43, 695197.81, 819227.40, 985899.87] },
+        { nome: 'Euro', moeda: '€',
+          valores: [241162.15, 168598.56, 166082.16, 161049.37, 163565.77],
+          valoresMoeda: [38959.96, 27959.96, 27959.96, 27959.96, 27959.96] },
+      ] },
+    ],
+  },
 ]
 
 export const saldoConta = (c: Conta, i: number) =>
@@ -175,3 +208,6 @@ export const saldoCarteira = (c: Carteira, i: number) =>
 export const getCarteira = (slug: string) => CARTEIRAS.find(c => c.slug === slug)
 
 export const brl = (n: number) => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+
+export const fmtMoeda = (simbolo: string, n: number) =>
+  `${simbolo} ${n.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
