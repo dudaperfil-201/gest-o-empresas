@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 
-export default async function HomePage() {
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ mes?: string; ano?: string }> }) {
   const supabase = await createClient()
 
   const { data: empresas } = await supabase
@@ -9,8 +9,17 @@ export default async function HomePage() {
     .select('id, nome')
     .order('nome')
 
-  const mesAtual = new Date().getMonth() + 1
-  const anoAtual = new Date().getFullYear()
+  // Mês exibido: vem da URL (?mes=&ano=) ou, se não houver, o mês atual.
+  const sp = await searchParams
+  const agora = new Date()
+  const mesAtual = sp.mes ? parseInt(sp.mes, 10) : agora.getMonth() + 1
+  const anoAtual = sp.ano ? parseInt(sp.ano, 10) : agora.getFullYear()
+
+  // Mês anterior / próximo para as setas de navegação
+  const mesAnterior = mesAtual === 1 ? 12 : mesAtual - 1
+  const anoAnterior = mesAtual === 1 ? anoAtual - 1 : anoAtual
+  const mesProximo = mesAtual === 12 ? 1 : mesAtual + 1
+  const anoProximo = mesAtual === 12 ? anoAtual + 1 : anoAtual
 
   const resumos = await Promise.all((empresas ?? []).map(async empresa => {
     const { data: imoveis } = await supabase
@@ -71,7 +80,17 @@ export default async function HomePage() {
 
       <div className="bg-green-600 text-white rounded-xl p-5 mb-4 flex items-center justify-between gap-3 text-xl font-bold tracking-wide">
         <span className="uppercase">Total recebido</span>
-        <span>{mesAnoFormatado}</span>
+        <span className="flex items-center gap-2 sm:gap-4">
+          <Link href={`/?mes=${mesAnterior}&ano=${anoAnterior}`} aria-label="Mês anterior"
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-green-700 hover:bg-green-800 transition-colors text-2xl leading-none">
+            ‹
+          </Link>
+          <span className="min-w-[9rem] text-center">{mesAnoFormatado}</span>
+          <Link href={`/?mes=${mesProximo}&ano=${anoProximo}`} aria-label="Próximo mês"
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-green-700 hover:bg-green-800 transition-colors text-2xl leading-none">
+            ›
+          </Link>
+        </span>
         <span>R$ {totalGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
       </div>
 
