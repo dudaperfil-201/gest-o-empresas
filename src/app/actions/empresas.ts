@@ -90,6 +90,11 @@ export async function salvarInquilino(formData: FormData) {
     const valor = parseFloat(valorRaw.replace(',', '.'))
     if (!isNaN(valor)) imovelUpdate.valor_aluguel = valor
   }
+  const diaRaw = formData.get('dia_vencimento') as string | null
+  if (diaRaw != null && diaRaw !== '') {
+    const dia = parseInt(diaRaw, 10)
+    if (!isNaN(dia) && dia >= 1 && dia <= 31) imovelUpdate.dia_vencimento = dia
+  }
   if (Object.keys(imovelUpdate).length > 0) {
     await supabase.from('imoveis').update(imovelUpdate).eq('id', imovel_id)
   }

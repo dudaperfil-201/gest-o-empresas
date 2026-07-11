@@ -14,12 +14,13 @@ interface Inquilino {
   juros_mes?: number
 }
 
-export default function InquilinoForm({ imovelId, empresaId, inquilino, valorAluguel, enderecoImovel }: {
+export default function InquilinoForm({ imovelId, empresaId, inquilino, valorAluguel, enderecoImovel, diaVencimento }: {
   imovelId: string
   empresaId: string
   inquilino: Inquilino | null
   valorAluguel: number
   enderecoImovel: string
+  diaVencimento: number | null
 }) {
   const router = useRouter()
   const [editing, setEditing] = useState(!inquilino)
@@ -37,6 +38,9 @@ export default function InquilinoForm({ imovelId, empresaId, inquilino, valorAlu
               <p className="text-sm text-gray-500">
                 Início do contrato: {new Date(inquilino.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')}
               </p>
+            )}
+            {diaVencimento != null && (
+              <p className="text-sm text-gray-500">Dia do pagamento: todo dia {diaVencimento}</p>
             )}
           </div>
           <button onClick={() => setEditing(true)} className="text-sm text-blue-600 hover:underline">Editar</button>
@@ -84,6 +88,11 @@ export default function InquilinoForm({ imovelId, empresaId, inquilino, valorAlu
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Data de início do contrato</label>
           <input name="data_inicio" type="date" defaultValue={inquilino?.data_inicio ?? ''}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Dia do pagamento</label>
+          <input name="dia_vencimento" type="number" min="1" max="31" placeholder="ex: 10" defaultValue={diaVencimento ?? ''}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <div>
