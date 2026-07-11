@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import Link from 'next/link'
 
 export default async function RelatorioPage() {
   const supabase = await createClient()
@@ -44,6 +45,14 @@ export default async function RelatorioPage() {
 
   return (
     <div className="max-w-5xl mx-auto">
+      <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+        <Link href="/" className="hover:text-blue-600">Início</Link>
+        <span>/</span>
+        <Link href="/imoveis" className="hover:text-blue-600">Imóveis</Link>
+        <span>/</span>
+        <span className="text-gray-900 font-medium">Relatório</span>
+      </div>
+
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Relatório Mensal</h2>
         <p className="text-sm text-gray-500 capitalize mt-0.5">{nomeMes}</p>

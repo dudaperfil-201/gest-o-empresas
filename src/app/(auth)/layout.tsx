@@ -35,9 +35,6 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
           <Link href="/financeiro" className="px-4 py-2 text-sm font-medium text-green-700 border border-green-200 rounded-lg bg-white hover:bg-green-600 hover:text-white hover:border-green-600 transition-all whitespace-nowrap">
             💰 Financeiro
           </Link>
-          <Link href="/relatorio" className="px-4 py-2 text-sm font-medium text-blue-700 border border-blue-200 rounded-lg bg-white hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all whitespace-nowrap">
-            📊 Relatório
-          </Link>
           <form action={logout} className="mt-1">
             <button type="submit" className="w-full px-4 py-2 text-sm text-gray-500 border border-gray-200 rounded-lg bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all">
               Sair
@@ -61,10 +58,6 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
         <Link href="/financeiro" className="flex flex-col items-center gap-0.5 px-3 py-1 text-green-700">
           <span className="text-xl">💰</span>
           <span className="text-[10px] font-medium">Financeiro</span>
-        </Link>
-        <Link href="/relatorio" className="flex flex-col items-center gap-0.5 px-3 py-1 text-blue-700">
-          <span className="text-xl">📊</span>
-          <span className="text-[10px] font-medium">Relatório</span>
         </Link>
         <form action={logout}>
           <button type="submit" className="flex flex-col items-center gap-0.5 px-4 py-1 text-gray-500">

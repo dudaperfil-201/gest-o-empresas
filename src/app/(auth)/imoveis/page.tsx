@@ -79,9 +79,14 @@ export default async function ImoveisPage({ searchParams }: { searchParams: Prom
           <h2 className="text-xl font-semibold text-gray-900">Empresas</h2>
           <p className="text-sm text-gray-500 capitalize mt-0.5">Resumo de {nomeMes}</p>
         </div>
-        <Link href="/empresas/nova" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
-          + Nova empresa
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/relatorio" className="border border-blue-200 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors">
+            📊 Relatório
+          </Link>
+          <Link href="/empresas/nova" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+            + Nova empresa
+          </Link>
+        </div>
       </div>
 
       <div className="bg-green-600 text-white rounded-xl p-5 mb-4 flex items-center justify-between gap-3 text-xl font-bold tracking-wide">
