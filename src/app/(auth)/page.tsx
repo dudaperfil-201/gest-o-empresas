@@ -86,7 +86,7 @@ export default async function HomePage() {
                 <p className="text-xs text-blue-600 font-medium mt-0.5">IMÓVEIS</p>
                 <div className="mt-2 pt-2 border-t border-blue-100 flex flex-wrap justify-center gap-x-3 gap-y-0.5 text-sm">
                   <span className="text-green-700">Locados: <b>{e.locados}</b></span>
-                  <span className="text-gray-500">Disponíveis: <b>{e.disponiveis}</b></span>
+                  <span className={e.disponiveis > 0 ? 'text-red-600 font-semibold' : 'text-gray-500'}>Disponíveis: <b>{e.disponiveis}</b></span>
                 </div>
               </div>
               <div className="text-center bg-green-50 rounded-lg py-4 px-2">

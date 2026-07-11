@@ -51,12 +51,16 @@ export default async function EmpresaPage({ params }: { params: Promise<{ id: st
       <div className="space-y-3 mb-8">
         {(imoveis ?? []).map(imovel => {
           const pag = pagMap[imovel.id]
+          // Disponível = sem dado no cadastro (aluguel zerado e sem inquilino). Mesma regra do dashboard.
+          const inq = Array.isArray(imovel.inquilinos) ? imovel.inquilinos : (imovel.inquilinos ? [imovel.inquilinos] : [])
+          const disponivel = inq.length === 0 && (imovel.valor_aluguel ?? 0) <= 0
           return (
             <ImovelCard
               key={imovel.id}
               imovel={imovel}
               empresaId={id}
               pago={pag?.status === 'pago'}
+              disponivel={disponivel}
             />
           )
         })}
