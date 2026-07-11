@@ -11,11 +11,15 @@ export default async function EmpresaPage({ params }: { params: Promise<{ id: st
   const { data: empresa } = await supabase.from('empresas').select('*').eq('id', id).single()
   if (!empresa) notFound()
 
-  const { data: imoveis } = await supabase
+  const { data: imoveisRaw } = await supabase
     .from('imoveis')
     .select('id, endereco, valor_aluguel, ativo, inquilinos(nome)')
     .eq('empresa_id', id)
-    .order('endereco')
+
+  // Ordenação numérica natural: SALA-1, SALA-2, ... SALA-10 (e não SALA-1, SALA-10, SALA-2)
+  const imoveis = [...(imoveisRaw ?? [])].sort((a, b) =>
+    a.endereco.localeCompare(b.endereco, 'pt-BR', { numeric: true, sensitivity: 'base' })
+  )
 
   const mesAtual = new Date().getMonth() + 1
   const anoAtual = new Date().getFullYear()
