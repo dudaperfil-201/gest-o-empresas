@@ -85,16 +85,16 @@ export const CARTEIRAS: Carteira[] = [
         { nome: 'Em conta', valores: [0, 5434.73, 1.53, 1554.70, 0, 1554.70] },
       ] },
       { banco: 'Banco do Brasil', investimentos: [
-        { nome: 'Saldo', valores: [226830.10, 29799.06, 264845.82, 585507.75, 98405.25] },
+        { nome: 'Saldo', valores: [226830.10, 29799.06, 264845.82, 585507.75, 98405.25, 198375.20] },
       ] },
       { banco: 'Bradesco', investimentos: [
-        { nome: 'Saldo', valores: [399.53, 231.29, 4083.42, 3780.14, 23381.70] },
+        { nome: 'Saldo', valores: [399.53, 231.29, 4083.42, 3780.14, 23381.70, 49860.72] },
       ] },
       { banco: 'Sicoob', investimentos: [
-        { nome: 'Saldo', valores: [11425.14, 0, 0, 446.00, 397.13] },
+        { nome: 'Saldo', valores: [11425.14, 0, 0, 446.00, 397.13, 299.33] },
       ] },
       { banco: 'Itaú', investimentos: [
-        { nome: 'Saldo', valores: [523413.09, 1515205.58, 190041.64, 621564.47, 1173647.88] },
+        { nome: 'Saldo', valores: [523413.09, 1515205.58, 190041.64, 621564.47, 1173647.88, 2196282.83] },
       ] },
     ],
   },
@@ -115,14 +115,14 @@ export const CARTEIRAS: Carteira[] = [
   {
     slug: 'oyster', nome: 'Oyster', tipo: 'brasil', contas: [
       { banco: 'Itaú', investimentos: [
-        { nome: 'Saldo', valores: [169066.30, 147184.16, 395605.93, 433086.13, 484295.45] },
+        { nome: 'Saldo', valores: [169066.30, 147184.16, 395605.93, 433086.13, 484295.45, 987310.24] },
       ] },
     ],
   },
   {
     slug: 'seastar', nome: 'Seastar', tipo: 'brasil', contas: [
       { banco: 'Itaú', investimentos: [
-        { nome: 'Saldo', valores: [0, 0, 1538.43, 7030.01, 3601.35] },
+        { nome: 'Saldo', valores: [0, 0, 1538.43, 7030.01, 3601.35, 5343.53] },
       ] },
     ],
   },
@@ -136,7 +136,7 @@ export const CARTEIRAS: Carteira[] = [
   {
     slug: 'fidic-golden-sky', nome: 'Fidic Golden Sky', tipo: 'brasil', contas: [
       { banco: 'Banco Finaxis', investimentos: [
-        { nome: 'Saldo', valores: [2003200.98, 507335.27, 1481074.90, 646469.13, 1055220.26] },
+        { nome: 'Saldo', valores: [2003200.98, 507335.27, 1481074.90, 646469.13, 1055220.26, 632974.85] },
       ] },
     ],
   },
@@ -196,11 +196,11 @@ export const CARTEIRAS: Carteira[] = [
     slug: 'cambio-aberto', nome: 'Câmbio em aberto (IMG)', tipo: 'internacional', contas: [
       { banco: 'Câmbio', investimentos: [
         { nome: 'Dólar', moeda: 'US$',
-          valores: [3535454.53, 2350414.73, 3580268.72, 4014214.26, 4978794.34],
-          valoresMoeda: [678590.12, 448552.43, 695197.81, 819227.40, 985899.87] },
+          valores: [3535454.53, 2350414.73, 3580268.72, 4014214.26, 4978794.34, 3859374.36],
+          valoresMoeda: [678590.12, 448552.43, 695197.81, 819227.40, 985899.87, 756740.07] },
         { nome: 'Euro', moeda: '€',
-          valores: [241162.15, 168598.56, 166082.16, 161049.37, 163565.77],
-          valoresMoeda: [38959.96, 27959.96, 27959.96, 27959.96, 27959.96] },
+          valores: [241162.15, 168598.56, 166082.16, 161049.37, 163565.77, 327619.63],
+          valoresMoeda: [38959.96, 27959.96, 27959.96, 27959.96, 27959.96, 55528.75] },
       ] },
     ],
   },
