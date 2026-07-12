@@ -9,7 +9,11 @@ export const MESES_2026 = [
   { abrev: 'MAR', nome: 'MARÇO' },
   { abrev: 'ABR', nome: 'ABRIL' },
   { abrev: 'MAI', nome: 'MAIO' },
+  { abrev: 'JUN', nome: 'JUNHO' },
 ]
+
+// Cada carteira/conta pode ter menos meses que o total (dados chegam por extrato,
+// mês a mês). valores[i] === undefined = "ainda sem extrato" para aquele mês.
 
 export interface Investimento { nome: string; valores: number[]; moeda?: string; valoresMoeda?: number[] }
 export interface Conta { banco: string; investimentos: Investimento[] }
@@ -34,11 +38,12 @@ export const CARTEIRAS: Carteira[] = [
   },
   {
     slug: 'metvisa', nome: 'METVISA', tipo: 'brasil', contas: [
+      // Junho/2026 (índice 5) importado do extrato XP (posição 30/06/2026).
       { banco: 'XP', investimentos: [
-        { nome: 'Renda Fixa', valores: [270761.18, 283028.06, 285134.16, 288832.21, 292373.81] },
-        { nome: 'COE', valores: [100225.39, 101690.44, 102559.32, 103863.43, 104942.76] },
-        { nome: 'Proventos', valores: [216.36, 216.36, 216.36, 0, 0] },
-        { nome: 'Em conta', valores: [0, 0, 0, 183.91, 0] },
+        { nome: 'Renda Fixa', valores: [270761.18, 283028.06, 285134.16, 288832.21, 292373.81, 224764.14] },
+        { nome: 'COE', valores: [100225.39, 101690.44, 102559.32, 103863.43, 104942.76, 106155.18] },
+        { nome: 'Proventos', valores: [216.36, 216.36, 216.36, 0, 0, 0] },
+        { nome: 'Em conta', valores: [0, 0, 0, 183.91, 0, 3230.97] },
       ] },
       { banco: 'Inter', investimentos: [
         { nome: 'Em conta', valores: [235762.26, 235762.26, 52960.45, 0, 0] },
@@ -199,11 +204,28 @@ export const CARTEIRAS: Carteira[] = [
   },
 ]
 
+// Nº de meses com dado na carteira (o maior entre suas contas/investimentos).
+export const numMeses = (c: Carteira) =>
+  Math.max(0, ...c.contas.flatMap(ct => ct.investimentos.map(inv => inv.valores.length)))
+
+// A conta tem extrato para o mês i?
+export const contaTemMes = (ct: Conta, i: number) =>
+  ct.investimentos.some(inv => inv.valores[i] !== undefined)
+
 export const saldoConta = (c: Conta, i: number) =>
   c.investimentos.reduce((s, inv) => s + (inv.valores[i] ?? 0), 0)
 
+// Soma só as contas que já têm extrato do mês i.
 export const saldoCarteira = (c: Carteira, i: number) =>
-  c.contas.reduce((s, ct) => s + saldoConta(ct, i), 0)
+  c.contas.reduce((s, ct) => s + (contaTemMes(ct, i) ? saldoConta(ct, i) : 0), 0)
+
+// Mês i é parcial: parte das contas tem extrato e parte ainda não.
+export const carteiraParcial = (c: Carteira, i: number) =>
+  c.contas.some(ct => contaTemMes(ct, i)) && c.contas.some(ct => !contaTemMes(ct, i))
+
+// Bancos ainda sem extrato para o mês i.
+export const bancosPendentes = (c: Carteira, i: number) =>
+  c.contas.filter(ct => !contaTemMes(ct, i)).map(ct => ct.banco)
 
 export const getCarteira = (slug: string) => CARTEIRAS.find(c => c.slug === slug)
 

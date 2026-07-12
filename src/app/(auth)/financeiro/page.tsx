@@ -1,9 +1,11 @@
 import Link from 'next/link'
-import { MESES_2026, CARTEIRAS, saldoCarteira, brl } from '@/lib/financeiro/dados'
+import { MESES_2026, CARTEIRAS, saldoCarteira, brl, numMeses } from '@/lib/financeiro/dados'
 
 export default async function FinanceiroPage({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
   const sp = await searchParams
-  const ultimo = MESES_2026.length - 1
+  // Só navega até o último mês COMPLETO (todas as carteiras têm dado). Meses
+  // parciais (ainda importando extratos) aparecem só no detalhe de cada carteira.
+  const ultimo = Math.min(...CARTEIRAS.map(numMeses)) - 1
   let i = sp.mes ? parseInt(sp.mes, 10) - 1 : ultimo
   if (isNaN(i) || i < 0) i = 0
   if (i > ultimo) i = ultimo

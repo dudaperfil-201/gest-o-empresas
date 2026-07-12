@@ -1,6 +1,9 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { MESES_2026, getCarteira, saldoConta, saldoCarteira, brl, fmtMoeda } from '@/lib/financeiro/dados'
+import {
+  MESES_2026, getCarteira, saldoConta, saldoCarteira, brl, fmtMoeda,
+  numMeses, contaTemMes, carteiraParcial, bancosPendentes,
+} from '@/lib/financeiro/dados'
 
 export default async function CarteiraPage({ params, searchParams }: {
   params: Promise<{ carteira: string }>
@@ -11,13 +14,18 @@ export default async function CarteiraPage({ params, searchParams }: {
   if (!carteira) notFound()
 
   const sp = await searchParams
-  const ultimo = MESES_2026.length - 1
+  const ultimo = numMeses(carteira) - 1
   let i = sp.mes ? parseInt(sp.mes, 10) - 1 : ultimo
   if (isNaN(i) || i < 0) i = 0
   if (i > ultimo) i = ultimo
 
   const total = saldoCarteira(carteira, i)
-  const anterior = i > 0 ? saldoCarteira(carteira, i - 1) : null
+  const parcial = carteiraParcial(carteira, i)
+  const pendentes = bancosPendentes(carteira, i)
+
+  // Variação só quando o mês atual e o anterior estão completos (senão engana).
+  const podeVariacao = !parcial && i > 0 && !carteiraParcial(carteira, i - 1)
+  const anterior = podeVariacao ? saldoCarteira(carteira, i - 1) : null
   const variacao = anterior !== null ? total - anterior : null
   const variacaoPct = anterior && anterior !== 0 ? (variacao! / anterior) * 100 : null
 
@@ -42,7 +50,10 @@ export default async function CarteiraPage({ params, searchParams }: {
 
       {/* Banner de saldo total com setas de mês */}
       <div className="bg-green-600 text-white rounded-xl p-5 mb-3 flex items-center justify-between gap-3 text-xl font-bold tracking-wide">
-        <span className="uppercase">Saldo total</span>
+        <span className="uppercase flex items-center gap-2">
+          Saldo total
+          {parcial && <span className="text-[10px] font-semibold bg-yellow-400 text-yellow-900 px-1.5 py-0.5 rounded">PARCIAL</span>}
+        </span>
         <span className="flex items-center gap-2 sm:gap-4">
           {temAnterior ? (
             <Link href={`/financeiro/${slug}?mes=${i}`} aria-label="Mês anterior"
@@ -61,8 +72,12 @@ export default async function CarteiraPage({ params, searchParams }: {
         <span>{brl(total)}</span>
       </div>
 
-      {/* Variação no mês */}
-      {variacao !== null && (
+      {/* Aviso de mês parcial ou variação no mês */}
+      {parcial ? (
+        <div className="mb-4 text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+          Mês parcial — aguardando extrato de: <b>{pendentes.join(', ')}</b>. O saldo mostra só o que já foi importado.
+        </div>
+      ) : variacao !== null && (
         <div className="mb-4 text-sm text-gray-600 flex items-center gap-2">
           <span>Variação no mês:</span>
           <span className={`font-semibold ${variacao >= 0 ? 'text-green-700' : 'text-red-600'}`}>
@@ -72,20 +87,23 @@ export default async function CarteiraPage({ params, searchParams }: {
         </div>
       )}
 
-      {/* Evolução no ano com variação mês a mês */}
+      {/* Evolução no ano */}
       <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
         <h3 className="font-medium text-gray-900 mb-3">Evolução em 2026</h3>
-        <div className="grid grid-cols-5 gap-2 text-center">
-          {MESES_2026.map((m, idx) => {
+        <div className={`grid gap-2 text-center`} style={{ gridTemplateColumns: `repeat(${ultimo + 1}, minmax(0, 1fr))` }}>
+          {Array.from({ length: ultimo + 1 }, (_, idx) => idx).map(idx => {
             const v = saldoCarteira(carteira, idx)
-            const delta = idx > 0 ? v - saldoCarteira(carteira, idx - 1) : null
+            const p = carteiraParcial(carteira, idx)
+            const delta = idx > 0 && !p && !carteiraParcial(carteira, idx - 1) ? v - saldoCarteira(carteira, idx - 1) : null
             const selecionado = idx === i
             return (
-              <Link key={m.abrev} href={`/financeiro/${slug}?mes=${idx + 1}`}
+              <Link key={idx} href={`/financeiro/${slug}?mes=${idx + 1}`}
                 className={`rounded-lg py-3 px-1 transition-colors ${selecionado ? 'bg-green-50 ring-1 ring-green-300' : 'bg-gray-50 hover:bg-gray-100'}`}>
-                <p className="text-[11px] font-medium text-gray-400">{m.abrev}</p>
+                <p className="text-[11px] font-medium text-gray-400">{MESES_2026[idx].abrev}</p>
                 <p className="text-sm font-semibold text-gray-800 mt-1">{brl(v)}</p>
-                {delta !== null && (
+                {p ? (
+                  <p className="text-[10px] mt-0.5 text-yellow-600">parcial</p>
+                ) : delta !== null && (
                   <p className={`text-[11px] mt-0.5 ${delta >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                     {delta >= 0 ? '▲' : '▼'} {brl(Math.abs(delta))}
                   </p>
@@ -99,19 +117,18 @@ export default async function CarteiraPage({ params, searchParams }: {
       {/* Contas por banco (posição do mês selecionado) */}
       <div className="space-y-3">
         {carteira.contas.map(conta => {
+          const temMes = contaTemMes(conta, i)
           const inv0 = conta.investimentos[0]
           const single = conta.investimentos.length === 1 && inv0.nome === 'Saldo'
           return (
-            <div key={conta.banco} className="bg-white border border-gray-200 rounded-xl p-5">
+            <div key={conta.banco} className={`border rounded-xl p-5 ${temMes ? 'bg-white border-gray-200' : 'bg-gray-50 border-dashed border-gray-300'}`}>
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-gray-900">{conta.banco}</h3>
-                <span className="text-lg font-bold text-green-700">{brl(saldoConta(conta, i))}</span>
+                {temMes
+                  ? <span className="text-lg font-bold text-green-700">{brl(saldoConta(conta, i))}</span>
+                  : <span className="text-sm font-medium text-gray-400">Aguardando extrato</span>}
               </div>
-              {single ? (
-                inv0.moeda && inv0.valoresMoeda && (
-                  <p className="text-xs text-gray-400 mt-1 text-right">{fmtMoeda(inv0.moeda, inv0.valoresMoeda[i] ?? 0)}</p>
-                )
-              ) : (
+              {temMes && !single && (
                 <div className="space-y-1.5 mt-3">
                   {conta.investimentos.map(inv => (
                     <div key={inv.nome} className="flex items-center justify-between text-sm border-b border-gray-50 last:border-0 pb-1.5 last:pb-0">
@@ -125,6 +142,9 @@ export default async function CarteiraPage({ params, searchParams }: {
                     </div>
                   ))}
                 </div>
+              )}
+              {temMes && single && inv0.moeda && inv0.valoresMoeda && (
+                <p className="text-xs text-gray-400 mt-1 text-right">{fmtMoeda(inv0.moeda, inv0.valoresMoeda[i] ?? 0)}</p>
               )}
             </div>
           )
