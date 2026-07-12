@@ -134,10 +134,12 @@ export const CARTEIRAS: Carteira[] = [
     ],
   },
   {
+    // RNX não vem de extrato: rende 145% do CDI ao mês. Cada mês = mês anterior
+    // × (1 + taxa). Junho: +1,63% (informado pelo usuário) → Maio × 1,0163.
     slug: 'rnx', nome: 'RNX', tipo: 'brasil', contas: [
       { banco: 'Fundo RNX', investimentos: [
-        { nome: 'Eduardo', valores: [854076.71, 866786.58, 881955.34, 895978.42, 909866.08] },
-        { nome: 'Sergio Filho', valores: [854076.71, 866786.58, 881955.34, 895978.42, 909866.08] },
+        { nome: 'Eduardo', valores: [854076.71, 866786.58, 881955.34, 895978.42, 909866.08, 924696.90] },
+        { nome: 'Sergio Filho', valores: [854076.71, 866786.58, 881955.34, 895978.42, 909866.08, 924696.90] },
       ] },
     ],
   },
