@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { MESES_2026, CARTEIRAS, saldoCarteira, brl, numMeses } from '@/lib/financeiro/dados'
+import { MESES_2026, CARTEIRAS, saldoCarteira, brl, numMeses, contaTemMes } from '@/lib/financeiro/dados'
 
 export default async function FinanceiroPage({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
   const sp = await searchParams
@@ -35,14 +35,18 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
         <h3 className={`font-semibold text-lg ${c.temMes ? 'text-gray-900' : 'text-gray-400'}`}>{c.nome}</h3>
         <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{c.tipo === 'brasil' ? '🇧🇷' : '🌎'}</span>
       </div>
-      {c.temMes ? (
-        <>
-          <p className="text-2xl font-bold text-green-700">{brl(c.saldo)}</p>
-          <p className="text-xs text-gray-400 mt-1">{c.contas.map(ct => ct.banco).join(' · ')}</p>
-        </>
-      ) : (
-        <p className="text-sm font-medium text-gray-400">Aguardando extrato</p>
-      )}
+      {c.temMes
+        ? <p className="text-2xl font-bold text-green-700">{brl(c.saldo)}</p>
+        : <p className="text-sm font-medium text-gray-400">Aguardando extrato</p>}
+      {/* Bancos: em vermelho os que ainda não têm extrato do mês selecionado */}
+      <p className="text-xs mt-1">
+        {c.contas.map((ct, idx) => (
+          <span key={ct.banco}>
+            {idx > 0 && <span className="text-gray-300"> · </span>}
+            <span className={contaTemMes(ct, i) ? 'text-gray-400' : 'text-red-600 font-semibold'}>{ct.banco}</span>
+          </span>
+        ))}
+      </p>
     </Link>
   )
 
