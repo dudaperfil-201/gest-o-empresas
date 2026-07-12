@@ -79,9 +79,10 @@ export const CARTEIRAS: Carteira[] = [
   },
   {
     slug: 'img-brasil', nome: 'IMG-Brasil', tipo: 'brasil', contas: [
+      // Junho: posição XP atual (12/07) — extrato do mês (saldo atual, extrato atrasado).
       { banco: 'XP', investimentos: [
-        { nome: 'COE', valores: [2294766.95, 2309181.58, 2316146.19, 2329945.93, 2338182.96] },
-        { nome: 'Em conta', valores: [0, 5434.73, 1.53, 1554.70, 0] },
+        { nome: 'COE', valores: [2294766.95, 2309181.58, 2316146.19, 2329945.93, 2338182.96, 2355056.36] },
+        { nome: 'Em conta', valores: [0, 5434.73, 1.53, 1554.70, 0, 1554.70] },
       ] },
       { banco: 'Banco do Brasil', investimentos: [
         { nome: 'Saldo', valores: [226830.10, 29799.06, 264845.82, 585507.75, 98405.25] },
