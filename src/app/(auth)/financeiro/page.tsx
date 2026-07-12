@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { MESES_2026, CARTEIRAS, saldoCarteira, brl, numMeses, contaTemMes } from '@/lib/financeiro/dados'
+import { MESES_2026, CARTEIRAS, saldoCarteira, brl, numMeses, contaTemMes, carteiraParcial } from '@/lib/financeiro/dados'
 
 export default async function FinanceiroPage({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
   const sp = await searchParams
@@ -28,27 +28,45 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
   const parcial = comSaldo.some(c => !c.temMes)
   const nPendentes = comSaldo.filter(c => !c.temMes).length
 
-  const Card = (c: typeof comSaldo[number]) => (
-    <Link key={c.slug} href={`/financeiro/${c.slug}?mes=${i + 1}`}
-      className={`border rounded-xl p-5 transition-all ${c.temMes ? 'bg-white border-gray-200 hover:border-green-300 hover:shadow-sm' : 'bg-gray-50 border-dashed border-gray-300'}`}>
-      <div className="flex items-center justify-between mb-2">
-        <h3 className={`font-semibold text-lg ${c.temMes ? 'text-gray-900' : 'text-gray-400'}`}>{c.nome}</h3>
-        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{c.tipo === 'brasil' ? '🇧🇷' : '🌎'}</span>
-      </div>
-      {c.temMes
-        ? <p className="text-2xl font-bold text-green-700">{brl(c.saldo)}</p>
-        : <p className="text-sm font-medium text-gray-400">Aguardando extrato</p>}
-      {/* Bancos: em vermelho os que ainda não têm extrato do mês selecionado */}
-      <p className="text-xs mt-1">
-        {c.contas.map((ct, idx) => (
-          <span key={ct.banco}>
-            {idx > 0 && <span className="text-gray-300"> · </span>}
-            <span className={contaTemMes(ct, i) ? 'text-gray-400' : 'text-red-600 font-semibold'}>{ct.banco}</span>
-          </span>
-        ))}
-      </p>
-    </Link>
-  )
+  const Card = (c: typeof comSaldo[number]) => {
+    // Variação vs mês anterior — só quando a comparação é justa (ambos completos).
+    const podeVariacao = c.temMes && i > 0 && !carteiraParcial(c, i) && !carteiraParcial(c, i - 1)
+    const anterior = podeVariacao ? saldoCarteira(c, i - 1) : null
+    const variacaoPct = anterior && anterior !== 0 ? ((c.saldo - anterior) / anterior) * 100 : null
+    const subiu = anterior !== null && c.saldo >= anterior
+    return (
+      <Link key={c.slug} href={`/financeiro/${c.slug}?mes=${i + 1}`}
+        className={`border rounded-xl p-5 transition-all ${c.temMes ? 'bg-white border-gray-200 hover:border-green-300 hover:shadow-sm' : 'bg-gray-50 border-dashed border-gray-300'}`}>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className={`font-semibold text-lg ${c.temMes ? 'text-gray-900' : 'text-gray-400'}`}>{c.nome}</h3>
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{c.tipo === 'brasil' ? '🇧🇷' : '🌎'}</span>
+        </div>
+        {c.temMes
+          ? <p className="text-2xl font-bold text-green-700">{brl(c.saldo)}</p>
+          : <p className="text-sm font-medium text-gray-400">Aguardando extrato</p>}
+        {/* Mês anterior (fonte menor) + variação % */}
+        {anterior !== null && (
+          <p className="text-xs text-gray-500 mt-0.5">
+            {MESES_2026[i - 1].abrev}: {brl(anterior)}
+            {variacaoPct !== null && (
+              <span className={`ml-2 font-semibold ${subiu ? 'text-green-600' : 'text-red-500'}`}>
+                {subiu ? '▲' : '▼'} {subiu ? '+' : '−'}{Math.abs(variacaoPct).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%
+              </span>
+            )}
+          </p>
+        )}
+        {/* Bancos: em vermelho os que ainda não têm extrato do mês selecionado */}
+        <p className="text-xs mt-1">
+          {c.contas.map((ct, idx) => (
+            <span key={ct.banco}>
+              {idx > 0 && <span className="text-gray-300"> · </span>}
+              <span className={contaTemMes(ct, i) ? 'text-gray-400' : 'text-red-600 font-semibold'}>{ct.banco}</span>
+            </span>
+          ))}
+        </p>
+      </Link>
+    )
+  }
 
   return (
     <div className="max-w-5xl mx-auto">
