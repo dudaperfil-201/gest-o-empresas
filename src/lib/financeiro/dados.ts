@@ -160,9 +160,11 @@ export const CARTEIRAS: Carteira[] = [
     ],
   },
   {
+    // Imóvel All Wert: evolui pela variação % do CUB-SC (Residencial Médio) do mês.
+    // Cada mês = mês anterior × (1 + variação CUB). Junho: +0,87% → Maio × 1,0087.
     slug: 'imovel-all-wert', nome: 'Imóvel All Wert (Porto Belo)', tipo: 'brasil', contas: [
       { banco: 'Imóvel', investimentos: [
-        { nome: 'Valor', valores: [2800000, 2806160, 2815139.71, 2823866.64, 2848434.27] },
+        { nome: 'Valor', valores: [2800000, 2806160, 2815139.71, 2823866.64, 2848434.27, 2873215.65] },
       ] },
     ],
   },
