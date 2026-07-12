@@ -29,10 +29,10 @@ export const CARTEIRAS: Carteira[] = [
         { nome: 'Em conta', valores: [0, 1213.17, 381.72, 462.27, 481.20] },
       ] },
       { banco: 'Inter', investimentos: [
-        { nome: 'Em conta', valores: [5593.22, 18294.83, 52847.43, 8049.20, 108842.09] },
+        { nome: 'Em conta', valores: [5593.22, 18294.83, 52847.43, 8049.20, 108842.09, 0] },
       ] },
       { banco: 'Itaú', investimentos: [
-        { nome: 'Saldo', valores: [0, 0, 74396.50, 183482.91, 101939.92] },
+        { nome: 'Saldo', valores: [0, 0, 74396.50, 183482.91, 101939.92, 51577.18] },
       ] },
     ],
   },
@@ -50,7 +50,7 @@ export const CARTEIRAS: Carteira[] = [
         { nome: 'Em conta', valores: [235762.26, 235762.26, 52960.45, 0, 0, 38407.09] },
       ] },
       { banco: 'Itaú', investimentos: [
-        { nome: 'Saldo', valores: [1348.41, 188750.69, 260119.86, 62671.12, 288409.36] },
+        { nome: 'Saldo', valores: [1348.41, 188750.69, 260119.86, 62671.12, 288409.36, 377485.11] },
       ] },
     ],
   },
@@ -63,17 +63,17 @@ export const CARTEIRAS: Carteira[] = [
         { nome: 'Em conta', valores: [0, 6313.17, 6313.17, 6914.41, 0] },
       ] },
       { banco: 'Inter', investimentos: [
-        { nome: 'Em conta', valores: [151650.29, 201228.88, 157803.36, 8859.98, 0] },
+        { nome: 'Em conta', valores: [151650.29, 201228.88, 157803.36, 8859.98, 0, 8904.13] },
       ] },
       { banco: 'Itaú', investimentos: [
-        { nome: 'Saldo', valores: [24964.81, 22846.80, 99310.63, 39192.17, 101939.92] },
+        { nome: 'Saldo', valores: [24964.81, 22846.80, 99310.63, 39192.17, 101939.92, 103075.51] },
       ] },
     ],
   },
   {
     slug: 'summit', nome: 'Summit', tipo: 'brasil', contas: [
       { banco: 'Itaú', investimentos: [
-        { nome: 'Saldo', valores: [31008.89, 43225.23, 52322.27, 5788.41, 9154.56] },
+        { nome: 'Saldo', valores: [31008.89, 43225.23, 52322.27, 5788.41, 9154.56, 1795.28] },
       ] },
     ],
   },
@@ -101,7 +101,7 @@ export const CARTEIRAS: Carteira[] = [
   {
     slug: 'pan', nome: 'Pan', tipo: 'brasil', contas: [
       { banco: 'Itaú', investimentos: [
-        { nome: 'Saldo', valores: [152.33, 152.51, 152.54, 152.62, 153.12] },
+        { nome: 'Saldo', valores: [152.33, 152.51, 152.54, 152.62, 153.12, 153.29] },
       ] },
     ],
   },
@@ -129,7 +129,7 @@ export const CARTEIRAS: Carteira[] = [
   {
     slug: 'black-fortune', nome: 'Black Fortune', tipo: 'brasil', contas: [
       { banco: 'Itaú', investimentos: [
-        { nome: 'Saldo', valores: [529.14, 8889.15, 5234.32, 11708.60, 11331.54] },
+        { nome: 'Saldo', valores: [529.14, 8889.15, 5234.32, 11708.60, 11331.54, 7131.97] },
       ] },
     ],
   },
