@@ -3,11 +3,10 @@ import { MESES_2026, CARTEIRAS, saldoCarteira, brl, numMeses, contaTemMes, carte
 
 export default async function FinanceiroPage({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
   const sp = await searchParams
-  // Pode navegar até o último mês com QUALQUER dado (mês em construção);
-  // o padrão (ao abrir) é o último mês COMPLETO.
-  const ultimoCompleto = Math.min(...CARTEIRAS.map(numMeses)) - 1
+  // Ao abrir, mostra o último mês com QUALQUER dado (o mês que está sendo
+  // cadastrado). As setas navegam por todos os meses disponíveis.
   const ultimoNavegavel = Math.max(...CARTEIRAS.map(numMeses)) - 1
-  let i = sp.mes ? parseInt(sp.mes, 10) - 1 : ultimoCompleto
+  let i = sp.mes ? parseInt(sp.mes, 10) - 1 : ultimoNavegavel
   if (isNaN(i) || i < 0) i = 0
   if (i > ultimoNavegavel) i = ultimoNavegavel
 
