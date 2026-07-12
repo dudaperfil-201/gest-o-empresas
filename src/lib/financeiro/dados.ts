@@ -45,8 +45,9 @@ export const CARTEIRAS: Carteira[] = [
         { nome: 'Proventos', valores: [216.36, 216.36, 216.36, 0, 0, 0] },
         { nome: 'Em conta', valores: [0, 0, 0, 183.91, 0, 3230.97] },
       ] },
+      // Junho: extrato Inter veio atrasado → usado o saldo atual (12/07) R$ 38.407,09.
       { banco: 'Inter', investimentos: [
-        { nome: 'Em conta', valores: [235762.26, 235762.26, 52960.45, 0, 0] },
+        { nome: 'Em conta', valores: [235762.26, 235762.26, 52960.45, 0, 0, 38407.09] },
       ] },
       { banco: 'Itaú', investimentos: [
         { nome: 'Saldo', valores: [1348.41, 188750.69, 260119.86, 62671.12, 288409.36] },
