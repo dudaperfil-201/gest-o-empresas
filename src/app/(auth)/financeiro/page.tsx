@@ -13,9 +13,11 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
   const mesAnterior = i > 0 ? i : null
   const mesProximo = i < ultimoNavegavel ? i + 2 : null
 
+  // Ordena por grandeza = tamanho real da carteira (último saldo conhecido),
+  // para que as maiores fiquem no topo mesmo quando o mês atual ainda está pendente.
   const comSaldo = CARTEIRAS
-    .map(c => ({ ...c, saldo: saldoCarteira(c, i), temMes: numMeses(c) > i }))
-    .sort((a, b) => (Number(b.temMes) - Number(a.temMes)) || (b.saldo - a.saldo))
+    .map(c => ({ ...c, saldo: saldoCarteira(c, i), temMes: numMeses(c) > i, magnitude: saldoCarteira(c, numMeses(c) - 1) }))
+    .sort((a, b) => b.magnitude - a.magnitude)
 
   const brasil = comSaldo.filter(c => c.tipo === 'brasil')
   const internacional = comSaldo.filter(c => c.tipo === 'internacional')

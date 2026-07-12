@@ -106,13 +106,6 @@ export const CARTEIRAS: Carteira[] = [
     ],
   },
   {
-    slug: 'apex', nome: 'Apex', tipo: 'brasil', contas: [
-      { banco: 'Itaú', investimentos: [
-        { nome: 'Saldo', valores: [0, 0, 0, 0, 0] },
-      ] },
-    ],
-  },
-  {
     slug: 'oyster', nome: 'Oyster', tipo: 'brasil', contas: [
       { banco: 'Itaú', investimentos: [
         { nome: 'Saldo', valores: [169066.30, 147184.16, 395605.93, 433086.13, 484295.45, 987310.24] },
