@@ -23,10 +23,10 @@ export const CARTEIRAS: Carteira[] = [
   {
     slug: 'ob-holding', nome: 'OB Holding', tipo: 'brasil', contas: [
       { banco: 'XP', investimentos: [
-        { nome: 'Ações', valores: [128743.20, 103929.90, 114167.10, 119321.70, 119318.10] },
-        { nome: 'COE', valores: [1195.75, 1216.53, 1226.12, 1242.90, 1256.48] },
-        { nome: 'Dividendos', valores: [467.52, 336.00, 0, 0, 604.80] },
-        { nome: 'Em conta', valores: [0, 1213.17, 381.72, 462.27, 481.20] },
+        { nome: 'Ações', valores: [128743.20, 103929.90, 114167.10, 119321.70, 119318.10, 119123.50] },
+        { nome: 'COE', valores: [1195.75, 1216.53, 1226.12, 1242.90, 1256.48, 1282.84] },
+        { nome: 'Dividendos', valores: [467.52, 336.00, 0, 0, 604.80, 0] },
+        { nome: 'Em conta', valores: [0, 1213.17, 381.72, 462.27, 481.20, 1097.17] },
       ] },
       { banco: 'Inter', investimentos: [
         { nome: 'Em conta', valores: [5593.22, 18294.83, 52847.43, 8049.20, 108842.09, 0] },
@@ -57,10 +57,10 @@ export const CARTEIRAS: Carteira[] = [
   {
     slug: 'eme', nome: 'E.M.E', tipo: 'brasil', contas: [
       { banco: 'XP', investimentos: [
-        { nome: 'Renda Fixa', valores: [413127.71, 413439.05, 415696.12, 419428.81, 421321.24] },
-        { nome: 'COE', valores: [354767.20, 355978.17, 359015.04, 364081.93, 367156.46] },
-        { nome: 'Dividendos', valores: [173.09, 173.09, 173.09, 0, 0] },
-        { nome: 'Em conta', valores: [0, 6313.17, 6313.17, 6914.41, 0] },
+        { nome: 'Renda Fixa', valores: [413127.71, 413439.05, 415696.12, 419428.81, 421321.24, 291567.39] },
+        { nome: 'COE', valores: [354767.20, 355978.17, 359015.04, 364081.93, 367156.46, 373383.96] },
+        { nome: 'Dividendos', valores: [173.09, 173.09, 173.09, 0, 0, 0] },
+        { nome: 'Em conta', valores: [0, 6313.17, 6313.17, 6914.41, 0, 3663.35] },
       ] },
       { banco: 'Inter', investimentos: [
         { nome: 'Em conta', valores: [151650.29, 201228.88, 157803.36, 8859.98, 0, 8904.13] },
