@@ -146,16 +146,16 @@ export const CARTEIRAS: Carteira[] = [
   {
     slug: 'itau-eduardo', nome: 'Itaú Eduardo', tipo: 'brasil', contas: [
       { banco: 'Itaú', investimentos: [
-        { nome: 'Investido', valores: [7582517.75, 7761608.55, 8008361.95, 8321989.27, 8329546.46] },
-        { nome: 'Em conta', valores: [2.12, 6229.25, 30737.14, 3162.91, 10378.78] },
+        { nome: 'Investido', valores: [7582517.75, 7761608.55, 8008361.95, 8321989.27, 8329546.46, 8344142.13] },
+        { nome: 'Em conta', valores: [2.12, 6229.25, 30737.14, 3162.91, 10378.78, 26516.85] },
       ] },
     ],
   },
   {
     slug: 'itau-serginho', nome: 'Itaú Serginho', tipo: 'brasil', contas: [
       { banco: 'Itaú', investimentos: [
-        { nome: 'Investido', valores: [7577661.61, 7727593.93, 7942308.52, 8319071.98, 8332182.43] },
-        { nome: 'Em conta', valores: [1.17, 25702.49, 7839.71, 5065.81, 10378.78] },
+        { nome: 'Investido', valores: [7577661.61, 7727593.93, 7942308.52, 8319071.98, 8332182.43, 8354659.08] },
+        { nome: 'Em conta', valores: [1.17, 25702.49, 7839.71, 5065.81, 10378.78, 32977.26] },
       ] },
     ],
   },
