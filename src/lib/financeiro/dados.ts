@@ -183,11 +183,13 @@ export const CARTEIRAS: Carteira[] = [
     ],
   },
   {
+    // Real State USA: valor CONSTANTE (sem variação) — repetir o valor do mês
+    // anterior até o usuário avisar que mudou.
     slug: 'real-state-usa', nome: 'Real State USA', tipo: 'internacional', contas: [
       { banco: 'Imóvel (EUA)', investimentos: [
         { nome: 'Saldo', moeda: 'US$',
-          valores: [599990.22, 603445.05, 613680.54, 583890.22, 601764.41],
-          valoresMoeda: [115161.27, 115161.27, 119161.27, 119161.27, 119161.27] },
+          valores: [599990.22, 603445.05, 613680.54, 583890.22, 601764.41, 601764.41],
+          valoresMoeda: [115161.27, 115161.27, 119161.27, 119161.27, 119161.27, 119161.27] },
       ] },
     ],
   },
