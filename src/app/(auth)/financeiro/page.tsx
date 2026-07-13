@@ -26,8 +26,17 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
   const totalGeral = totalBrasil + totalIntl
   const pct = (v: number) => totalGeral > 0 ? (v / totalGeral * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) : '0'
 
-  const parcial = comSaldo.some(c => !c.temMes)
-  const nPendentes = comSaldo.filter(c => !c.temMes).length
+  // Mês incompleto = alguma carteira sem dado OU parcial (faltando algum extrato).
+  const parcial = comSaldo.some(c => !c.temMes || carteiraParcial(c, i))
+  const nPendentes = comSaldo.filter(c => !c.temMes || carteiraParcial(c, i)).length
+
+  // Variação do patrimônio total vs mês anterior — só quando ambos os meses
+  // estão 100% completos (mesmo critério dos cards, para não dar % falso).
+  const mesCompleto = (k: number) => k >= 0 && CARTEIRAS.every(c => numMeses(c) > k && !carteiraParcial(c, k))
+  const podeVariacao = i > 0 && mesCompleto(i) && mesCompleto(i - 1)
+  const totalAnterior = podeVariacao ? CARTEIRAS.reduce((s, c) => s + saldoCarteira(c, i - 1), 0) : null
+  const variacaoPct = totalAnterior && totalAnterior !== 0 ? ((totalGeral - totalAnterior) / totalAnterior) * 100 : null
+  const subiu = totalAnterior !== null && totalGeral >= totalAnterior
 
   const Card = (c: typeof comSaldo[number]) => {
     // Variação vs mês anterior — só quando a comparação é justa (ambos completos).
@@ -106,12 +115,24 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
             <span className="w-8 h-8 flex items-center justify-center rounded-full bg-green-700/40 text-2xl leading-none opacity-40">›</span>
           )}
         </span>
-        <span>{brl(totalGeral)}</span>
+        <span className="flex flex-col items-end leading-tight">
+          <span>{brl(totalGeral)}</span>
+          {podeVariacao && totalAnterior !== null && (
+            <span className="text-xs font-normal text-white/85 mt-1">
+              {MESES_2026[i - 1].abrev}: {brl(totalAnterior)}
+              {variacaoPct !== null && (
+                <span className="ml-2 bg-green-800/60 rounded px-1.5 py-0.5">
+                  {subiu ? '▲' : '▼'} {subiu ? '+' : '−'}{Math.abs(variacaoPct).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%
+                </span>
+              )}
+            </span>
+          )}
+        </span>
       </div>
 
       {parcial && (
         <div className="mb-4 text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
-          Mês em construção — {nPendentes} carteira(s) ainda sem extrato. O total soma só o que já foi importado.
+          Mês em construção — {nPendentes} carteira(s) ainda incompleta(s). O total soma só o que já foi importado.
         </div>
       )}
 
