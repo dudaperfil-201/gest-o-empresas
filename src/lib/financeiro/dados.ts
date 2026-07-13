@@ -173,10 +173,12 @@ export const CARTEIRAS: Carteira[] = [
   // valores = valor em R$ (convertido pelo câmbio do mês); valoresMoeda = na moeda original.
   {
     slug: 'la-jolla', nome: 'La Jolla', tipo: 'internacional', contas: [
+      // Junho: extrato Itaú Private Banking (Total Net Worth US$ 1.645.556,42),
+      // convertido pela cotação atual do dólar 5,11 = R$ 8.408.793,31.
       { banco: 'Itaú Miami (EUA)', investimentos: [
         { nome: 'Saldo', moeda: 'US$',
-          valores: [7694225.69, 7542882.64, 7343371.82, 7507906.03, 7785361.64],
-          valoresMoeda: [1476818.75, 1439481.42, 1425897.44, 1532225.72, 1541655.77] },
+          valores: [7694225.69, 7542882.64, 7343371.82, 7507906.03, 7785361.64, 8408793.31],
+          valoresMoeda: [1476818.75, 1439481.42, 1425897.44, 1532225.72, 1541655.77, 1645556.42] },
       ] },
     ],
   },
