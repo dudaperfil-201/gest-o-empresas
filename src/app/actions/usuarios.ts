@@ -1,7 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getSessao, OWNER_EMAIL, type Papel } from '@/lib/auth'
+import { getSessao, OWNER_EMAIL, normalizarPapel, type Papel } from '@/lib/auth'
 import { revalidatePath } from 'next/cache'
 
 export interface UsuarioItem {
@@ -32,7 +32,7 @@ export async function listarUsuarios(): Promise<UsuarioItem[]> {
       id: u.id,
       email: u.email ?? '',
       nome: perfil?.nome ?? '',
-      papel: (papelBruto === 'admin' ? 'admin' : 'imoveis') as Papel,
+      papel: normalizarPapel(papelBruto),
       ehVoce: u.id === sessao.userId,
     }
   })
@@ -45,7 +45,10 @@ export async function criarUsuario(formData: FormData): Promise<{ ok: true } | {
   const nome = (formData.get('nome') as string || '').trim()
   const email = (formData.get('email') as string || '').trim().toLowerCase()
   const senha = (formData.get('senha') as string || '')
-  const papel: Papel = (formData.get('papel') as string) === 'admin' ? 'admin' : 'imoveis'
+  // Módulos marcados: Imóveis é sempre incluído; Financeiro e Admin são opcionais.
+  const querFinanceiro = formData.get('financeiro') === 'on'
+  const querAdmin = formData.get('admin') === 'on'
+  const papel: Papel = querAdmin ? 'admin' : querFinanceiro ? 'ambos' : 'imoveis'
 
   if (!email || !senha) return { ok: false, erro: 'E-mail e senha são obrigatórios.' }
   if (senha.length < 6) return { ok: false, erro: 'A senha precisa ter ao menos 6 caracteres.' }

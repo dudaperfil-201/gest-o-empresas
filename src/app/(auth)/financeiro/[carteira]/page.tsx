@@ -4,13 +4,13 @@ import {
   MESES_2026, getCarteira, saldoConta, saldoCarteira, brl, fmtMoeda,
   numMeses, contaTemMes, carteiraParcial, bancosPendentes,
 } from '@/lib/financeiro/dados'
-import { exigirAdmin } from '@/lib/auth'
+import { exigirFinanceiro } from '@/lib/auth'
 
 export default async function CarteiraPage({ params, searchParams }: {
   params: Promise<{ carteira: string }>
   searchParams: Promise<{ mes?: string }>
 }) {
-  await exigirAdmin()
+  await exigirFinanceiro()
   const { carteira: slug } = await params
   const carteira = getCarteira(slug)
   if (!carteira) notFound()

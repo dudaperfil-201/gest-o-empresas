@@ -4,13 +4,24 @@ import { redirect } from 'next/navigation'
 // Dono do sistema — sempre admin (segurança extra caso a tabela usuarios falhe).
 export const OWNER_EMAIL = 'dudaperfil@gmail.com'
 
-export type Papel = 'admin' | 'imoveis'
+// Papéis:
+// - imoveis: só o módulo Imóveis
+// - ambos:   Imóveis + Financeiro (sem gerenciar usuários)
+// - admin:   tudo (Imóveis + Financeiro + gerenciar usuários)
+export type Papel = 'imoveis' | 'ambos' | 'admin'
+
+export function normalizarPapel(bruto?: string | null): Papel {
+  if (bruto === 'admin') return 'admin'
+  if (bruto === 'ambos') return 'ambos'
+  return 'imoveis'
+}
 
 export interface Sessao {
   userId: string
   email: string
   nome: string
   papel: Papel
+  podeFinanceiro: boolean
   ehAdmin: boolean
 }
 
@@ -26,19 +37,27 @@ export async function getSessao(): Promise<Sessao | null> {
     .eq('id', user.id)
     .maybeSingle()
 
-  const papelBruto = perfil?.papel ?? (user.email === OWNER_EMAIL ? 'admin' : 'imoveis')
-  const papel: Papel = papelBruto === 'admin' ? 'admin' : 'imoveis'
+  const papel = normalizarPapel(perfil?.papel ?? (user.email === OWNER_EMAIL ? 'admin' : 'imoveis'))
 
   return {
     userId: user.id,
     email: user.email ?? '',
     nome: perfil?.nome ?? user.email ?? '',
     papel,
+    podeFinanceiro: papel === 'ambos' || papel === 'admin',
     ehAdmin: papel === 'admin',
   }
 }
 
-// Guarda de rota: exige admin, senão manda para os Imóveis (área permitida a todos).
+// Guarda: exige acesso ao Financeiro, senão manda para os Imóveis.
+export async function exigirFinanceiro(): Promise<Sessao> {
+  const sessao = await getSessao()
+  if (!sessao) redirect('/login')
+  if (!sessao.podeFinanceiro) redirect('/imoveis')
+  return sessao
+}
+
+// Guarda: exige admin (gerenciar usuários), senão manda para os Imóveis.
 export async function exigirAdmin(): Promise<Sessao> {
   const sessao = await getSessao()
   if (!sessao) redirect('/login')

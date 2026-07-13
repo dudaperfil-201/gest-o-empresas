@@ -4,8 +4,8 @@ import { getSessao } from '@/lib/auth'
 
 export default async function HomePage() {
   const sessao = await getSessao()
-  // Quem não é admin só tem Imóveis — vai direto pra lá (não vê o Financeiro).
-  if (sessao && !sessao.ehAdmin) redirect('/imoveis')
+  // Quem não tem o módulo Financeiro só tem Imóveis — vai direto pra lá.
+  if (sessao && !sessao.podeFinanceiro) redirect('/imoveis')
 
   return (
     <div className="max-w-4xl mx-auto">

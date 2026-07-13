@@ -4,13 +4,19 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { criarUsuario, alterarPapel, excluirUsuario, type UsuarioItem } from '@/app/actions/usuarios'
 
-const PAPEL_LABEL: Record<string, string> = { admin: 'Admin (tudo)', imoveis: 'Imóveis' }
+type Papel = 'imoveis' | 'ambos' | 'admin'
+
+const PAPEL_LABEL: Record<Papel, string> = {
+  imoveis: 'Imóveis',
+  ambos: 'Imóveis + Financeiro',
+  admin: 'Admin (tudo)',
+}
 
 export default function UsuariosCliente({ usuarios }: { usuarios: UsuarioItem[] }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
-  const [criado, setCriado] = useState<{ email: string; senha: string; papel: string } | null>(null)
+  const [criado, setCriado] = useState<{ email: string; senha: string; papel: Papel } | null>(null)
 
   async function handleCriar(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -18,10 +24,11 @@ export default function UsuariosCliente({ usuarios }: { usuarios: UsuarioItem[] 
     setLoading(true)
     const form = e.currentTarget
     const fd = new FormData(form)
+    const papel: Papel = fd.get('admin') === 'on' ? 'admin' : fd.get('financeiro') === 'on' ? 'ambos' : 'imoveis'
     try {
       const res = await criarUsuario(fd)
       if (res.ok) {
-        setCriado({ email: (fd.get('email') as string).trim().toLowerCase(), senha: fd.get('senha') as string, papel: fd.get('papel') as string })
+        setCriado({ email: (fd.get('email') as string).trim().toLowerCase(), senha: fd.get('senha') as string, papel })
         form.reset()
         router.refresh()
       } else {
@@ -32,7 +39,7 @@ export default function UsuariosCliente({ usuarios }: { usuarios: UsuarioItem[] 
     }
   }
 
-  async function handlePapel(id: string, papel: 'admin' | 'imoveis') {
+  async function handlePapel(id: string, papel: Papel) {
     setErro('')
     const res = await alterarPapel(id, papel)
     if (!res.ok) setErro(res.erro)
@@ -61,7 +68,7 @@ export default function UsuariosCliente({ usuarios }: { usuarios: UsuarioItem[] 
             <p><b>Link:</b> {link}</p>
             <p><b>E-mail:</b> {criado.email}</p>
             <p><b>Senha:</b> {criado.senha}</p>
-            <p><b>Permissão:</b> {PAPEL_LABEL[criado.papel] ?? criado.papel}</p>
+            <p><b>Permissão:</b> {PAPEL_LABEL[criado.papel]}</p>
           </div>
           <button
             onClick={() => navigator.clipboard?.writeText(`Acesse: ${link}\nE-mail: ${criado.email}\nSenha: ${criado.senha}`)}
@@ -88,14 +95,27 @@ export default function UsuariosCliente({ usuarios }: { usuarios: UsuarioItem[] 
             <label className="block text-xs font-medium text-gray-600 mb-1">Senha *</label>
             <input name="senha" required minLength={6} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="mínimo 6 caracteres" />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Permissão *</label>
-            <select name="papel" defaultValue="imoveis" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="imoveis">Imóveis (só a parte de imóveis)</option>
-              <option value="admin">Admin (acesso total)</option>
-            </select>
+        </div>
+
+        {/* Seleção de módulos */}
+        <div className="mt-4">
+          <label className="block text-xs font-medium text-gray-600 mb-2">Permissões (o que a pessoa pode acessar)</label>
+          <div className="flex flex-col gap-2 text-sm text-gray-700">
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked disabled className="w-4 h-4 accent-blue-600" />
+              🏢 Imóveis <span className="text-xs text-gray-400">(sempre incluído)</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="financeiro" className="w-4 h-4 accent-green-600" />
+              💰 Financeiro
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer mt-1 pt-2 border-t border-gray-100">
+              <input type="checkbox" name="admin" className="w-4 h-4 accent-gray-700" />
+              👥 Administrador <span className="text-xs text-gray-400">(pode gerenciar usuários)</span>
+            </label>
           </div>
         </div>
+
         <button type="submit" disabled={loading} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-60">
           {loading ? 'Criando...' : '+ Criar acesso'}
         </button>
@@ -117,10 +137,11 @@ export default function UsuariosCliente({ usuarios }: { usuarios: UsuarioItem[] 
                 <>
                   <select
                     value={u.papel}
-                    onChange={e => handlePapel(u.id, e.target.value as 'admin' | 'imoveis')}
+                    onChange={e => handlePapel(u.id, e.target.value as Papel)}
                     className="text-xs border border-gray-300 rounded-lg px-2 py-1 bg-white"
                   >
                     <option value="imoveis">Imóveis</option>
+                    <option value="ambos">Imóveis + Financeiro</option>
                     <option value="admin">Admin</option>
                   </select>
                   <button onClick={() => handleExcluir(u.id, u.email)} className="text-xs text-red-500 hover:text-red-700 px-2 py-1">

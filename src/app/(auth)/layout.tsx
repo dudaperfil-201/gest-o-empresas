@@ -7,6 +7,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
   const sessao = await getSessao()
   if (!sessao) redirect('/login')
   const ehAdmin = sessao.ehAdmin
+  const podeFinanceiro = sessao.podeFinanceiro
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -26,7 +27,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
           <Link href="/imoveis" className="px-4 py-2 text-sm font-medium text-blue-700 border border-blue-200 rounded-lg bg-white hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all whitespace-nowrap">
             🏢 Imóveis
           </Link>
-          {ehAdmin && (
+          {podeFinanceiro && (
             <Link href="/financeiro" className="px-4 py-2 text-sm font-medium text-green-700 border border-green-200 rounded-lg bg-white hover:bg-green-600 hover:text-white hover:border-green-600 transition-all whitespace-nowrap">
               💰 Financeiro
             </Link>
@@ -56,7 +57,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
           <span className="text-xl">🏢</span>
           <span className="text-[10px] font-medium">Imóveis</span>
         </Link>
-        {ehAdmin && (
+        {podeFinanceiro && (
           <Link href="/financeiro" className="flex flex-col items-center gap-0.5 px-3 py-1 text-green-700">
             <span className="text-xl">💰</span>
             <span className="text-[10px] font-medium">Financeiro</span>
