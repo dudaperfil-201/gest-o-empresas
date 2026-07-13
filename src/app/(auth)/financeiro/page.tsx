@@ -1,7 +1,9 @@
 import Link from 'next/link'
 import { MESES_2026, CARTEIRAS, saldoCarteira, brl, numMeses, contaTemMes, carteiraParcial } from '@/lib/financeiro/dados'
+import { exigirAdmin } from '@/lib/auth'
 
 export default async function FinanceiroPage({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
+  await exigirAdmin()
   const sp = await searchParams
   // Ao abrir, mostra o último mês com QUALQUER dado (o mês que está sendo
   // cadastrado). As setas navegam por todos os meses disponíveis.
