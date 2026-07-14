@@ -24,6 +24,9 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
+  // Rotas de cron têm autenticação própria (secret / user-agent) — não exigem sessão.
+  if (pathname.startsWith('/api/cron')) return supabaseResponse
+
   if (!user && pathname !== '/login') {
     return NextResponse.redirect(new URL('/login', request.url))
   }
