@@ -27,7 +27,7 @@ export default async function EmpresaPage({ params }: { params: Promise<{ id: st
 
   const { data: pagamentos } = ids.length > 0 ? await supabase
     .from('pagamentos')
-    .select('imovel_id, status, valor_original, valor_pago')
+    .select('imovel_id, status, valor_original, valor_pago, valor_extras, descricao_extras')
     .in('imovel_id', ids)
     .eq('mes', mesAtual)
     .eq('ano', anoAtual) : { data: [] }
@@ -66,6 +66,8 @@ export default async function EmpresaPage({ params }: { params: Promise<{ id: st
               pago={pag?.status === 'pago'}
               atrasado={pag?.status === 'atrasado'}
               disponivel={disponivel}
+              valorExtras={pag?.valor_extras ?? null}
+              descricaoExtras={pag?.descricao_extras ?? null}
             />
           )
         })}

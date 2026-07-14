@@ -21,14 +21,20 @@ export async function alternarPagamento(imovelId: string, empresaId: string) {
 
   const { data: existente } = await supabase
     .from('pagamentos')
-    .select('id, status')
+    .select('id, status, valor_extras')
     .eq('imovel_id', imovelId)
     .eq('mes', mes)
     .eq('ano', ano)
     .maybeSingle()
 
   if (existente && existente.status === 'pago') {
-    await supabase.from('pagamentos').delete().eq('id', existente.id)
+    // Desmarcar o aluguel: se há extras nesse mês, preserva a linha (só zera o
+    // aluguel); senão, remove a linha inteira.
+    if ((existente.valor_extras ?? 0) > 0) {
+      await supabase.from('pagamentos').update({ status: 'pendente', valor_pago: 0 }).eq('id', existente.id)
+    } else {
+      await supabase.from('pagamentos').delete().eq('id', existente.id)
+    }
   } else {
     const { data: imovel } = await supabase.from('imoveis').select('valor_aluguel').eq('id', imovelId).single()
     const valor = imovel?.valor_aluguel ?? 0
@@ -66,6 +72,46 @@ export async function registrarPagamentoComAtraso(imovelId: string, empresaId: s
     status: 'atrasado',
     data_pagamento: new Date().toISOString().slice(0, 10),
   }, { onConflict: 'imovel_id,mes,ano' })
+
+  revalidatePath(`/empresas/${empresaId}`)
+  revalidatePath('/imoveis')
+}
+
+// Botão EXTRAS: registra valores pagos ALÉM do aluguel (energia, condomínio, etc.)
+// no mês corrente. Fica num campo próprio (valor_extras) e NÃO substitui o aluguel —
+// convive com PAGOU/PAGOU COM ATRASO no mesmo mês. Entra no montante total.
+export async function registrarExtras(imovelId: string, empresaId: string, valorExtras: number, descricao: string) {
+  const supabase = await createClient()
+  const mes = new Date().getMonth() + 1
+  const ano = new Date().getFullYear()
+
+  const { data: existente } = await supabase
+    .from('pagamentos')
+    .select('id')
+    .eq('imovel_id', imovelId)
+    .eq('mes', mes)
+    .eq('ano', ano)
+    .maybeSingle()
+
+  const desc = descricao.trim() || null
+  const valor = valorExtras > 0 ? valorExtras : 0
+
+  if (existente) {
+    // Preserva o pagamento do aluguel (status/valor_pago) — só atualiza os extras.
+    await supabase.from('pagamentos').update({ valor_extras: valor, descricao_extras: desc }).eq('id', existente.id)
+  } else {
+    // Ainda não há registro do mês: cria com o aluguel pendente + os extras.
+    const { data: imovel } = await supabase.from('imoveis').select('valor_aluguel').eq('id', imovelId).single()
+    await supabase.from('pagamentos').insert({
+      imovel_id: imovelId,
+      mes,
+      ano,
+      valor_original: imovel?.valor_aluguel ?? 0,
+      status: 'pendente',
+      valor_extras: valor,
+      descricao_extras: desc,
+    })
+  }
 
   revalidatePath(`/empresas/${empresaId}`)
   revalidatePath('/imoveis')

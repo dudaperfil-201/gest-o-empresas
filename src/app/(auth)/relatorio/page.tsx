@@ -20,7 +20,7 @@ export default async function RelatorioPage() {
     const ids = (imoveis ?? []).map(i => i.id)
     const { data: pagamentos } = ids.length > 0 ? await supabase
       .from('pagamentos')
-      .select('imovel_id, status, valor_original, valor_pago')
+      .select('imovel_id, status, valor_original, valor_pago, valor_extras, descricao_extras')
       .in('imovel_id', ids)
       .eq('mes', mesAtual)
       .eq('ano', anoAtual) : { data: [] }
@@ -40,7 +40,10 @@ export default async function RelatorioPage() {
   const nomeMes = new Date(anoAtual, mesAtual - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
 
   const totalEsperado = resultado.flatMap(e => e.imoveis).reduce((s, i) => s + (i.valor_aluguel ?? 0), 0)
-  const totalRecebido = resultado.flatMap(e => e.imoveis).filter(i => i.pag?.status === 'pago' || i.pag?.status === 'atrasado').reduce((s, i) => s + (i.pag?.valor_pago ?? 0), 0)
+  // Recebido = aluguéis pagos (pago/atrasado) + todos os extras do mês.
+  const totalRecebidoAluguel = resultado.flatMap(e => e.imoveis).filter(i => i.pag?.status === 'pago' || i.pag?.status === 'atrasado').reduce((s, i) => s + (i.pag?.valor_pago ?? 0), 0)
+  const totalExtras = resultado.flatMap(e => e.imoveis).reduce((s, i) => s + (i.pag?.valor_extras ?? 0), 0)
+  const totalRecebido = totalRecebidoAluguel + totalExtras
   const totalPendente = totalEsperado - resultado.flatMap(e => e.imoveis).filter(i => i.pag?.status === 'pago' || i.pag?.status === 'atrasado').reduce((s, i) => s + (i.valor_aluguel ?? 0), 0)
 
   return (
