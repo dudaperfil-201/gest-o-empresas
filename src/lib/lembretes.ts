@@ -2,8 +2,12 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { enviarEmail } from '@/lib/email'
 
-// Quantos dias antes do vencimento o lembrete é enviado.
+// Quantos dias antes do vencimento o e-mail automático é enviado.
 export const DIAS_ANTES = 5
+
+// Janela (em dias) da lista de lembretes e da contagem do botão — os dois usam a
+// MESMA janela para que o número do botão bata exatamente com o que aparece na página.
+export const JANELA_LEMBRETES = 7
 
 export type Lembrete = {
   imovelId: string
@@ -137,7 +141,7 @@ export async function buscarLembretes(
 // Quantos WhatsApp estão pendentes de envio (vencendo em até DIAS_ANTES dias, com
 // telefone e ainda não marcados como enviados). Usado para acender o botão em vermelho.
 export async function contarWhatsAppPendentes(supabase: SupabaseClient): Promise<number> {
-  const lembretes = await buscarLembretes(supabase, DIAS_ANTES)
+  const lembretes = await buscarLembretes(supabase, JANELA_LEMBRETES)
   return lembretes.filter(l => l.whatsUrl && !l.whatsappEnviado).length
 }
 

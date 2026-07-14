@@ -1,11 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
-import { buscarLembretes, DIAS_ANTES } from '@/lib/lembretes'
+import { buscarLembretes, DIAS_ANTES, JANELA_LEMBRETES } from '@/lib/lembretes'
 import Link from 'next/link'
 import BotaoWhatsApp from './BotaoWhatsApp'
 
 export const dynamic = 'force-dynamic'
 
-const JANELA = 7 // mostra vencimentos dos próximos 7 dias
+const JANELA = JANELA_LEMBRETES // mesma janela usada na contagem do botão
 
 export default async function LembretesPage() {
   const supabase = await createClient()
