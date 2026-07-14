@@ -61,6 +61,12 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
                         Pago em {new Date(p.data_pagamento + 'T12:00:00').toLocaleDateString('pt-BR')}
                       </p>
                     )}
+                    {(p.valor_extras ?? 0) > 0 && (
+                      <p className="text-xs text-indigo-600 font-medium">
+                        + Extras: R$ {(p.valor_extras ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        {p.descricao_extras ? ` · ${p.descricao_extras}` : ''}
+                      </p>
+                    )}
                     {p.observacao && <p className="text-xs text-gray-400">{p.observacao}</p>}
                   </div>
                   <div className="flex items-center gap-3">
