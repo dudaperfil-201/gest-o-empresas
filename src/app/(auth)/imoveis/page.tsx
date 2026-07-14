@@ -80,6 +80,9 @@ export default async function ImoveisPage({ searchParams }: { searchParams: Prom
           <p className="text-sm text-gray-500 capitalize mt-0.5">Resumo de {nomeMes}</p>
         </div>
         <div className="flex items-center gap-2">
+          <Link href="/lembretes" className="border border-amber-200 text-amber-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-50 transition-colors">
+            🔔 Lembretes
+          </Link>
           <Link href="/relatorio" className="border border-blue-200 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors">
             📊 Relatório
           </Link>
