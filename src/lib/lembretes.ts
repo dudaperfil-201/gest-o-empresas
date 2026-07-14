@@ -15,7 +15,8 @@ export type Lembrete = {
   vencimento: Date
   diasRestantes: number
   whatsUrl: string | null
-  jaEnviado: boolean
+  jaEnviado: boolean       // e-mail já enviado neste ciclo
+  whatsappEnviado: boolean // WhatsApp já marcado como enviado neste ciclo
 }
 
 const fmtData = (d: Date) => d.toLocaleDateString('pt-BR')
@@ -110,24 +111,34 @@ export async function buscarLembretes(
       diasRestantes: dias,
       whatsUrl: linkWhats(inq.telefone, msg),
       jaEnviado: false,
+      whatsappEnviado: false,
     })
   }
 
-  // Marca quais já tiveram lembrete enviado (para este mês/ano de vencimento).
+  // Marca o que já foi enviado (e-mail e WhatsApp) para este mês/ano de vencimento.
   const ids = itens.map(i => i.imovelId)
   if (ids.length > 0) {
-    const { data: enviados } = await supabase
-      .from('lembretes_vencimento')
-      .select('imovel_id, ano, mes')
-      .in('imovel_id', ids)
-    const set = new Set((enviados ?? []).map(e => `${e.imovel_id}_${e.ano}_${e.mes}`))
+    const chaveDe = (i: Lembrete) => `${i.imovelId}_${i.vencimento.getFullYear()}_${i.vencimento.getMonth() + 1}`
+    const [{ data: emails }, { data: whats }] = await Promise.all([
+      supabase.from('lembretes_vencimento').select('imovel_id, ano, mes').in('imovel_id', ids),
+      supabase.from('lembretes_whatsapp').select('imovel_id, ano, mes').in('imovel_id', ids),
+    ])
+    const setEmail = new Set((emails ?? []).map(e => `${e.imovel_id}_${e.ano}_${e.mes}`))
+    const setWhats = new Set((whats ?? []).map(e => `${e.imovel_id}_${e.ano}_${e.mes}`))
     for (const i of itens) {
-      const chave = `${i.imovelId}_${i.vencimento.getFullYear()}_${i.vencimento.getMonth() + 1}`
-      i.jaEnviado = set.has(chave)
+      i.jaEnviado = setEmail.has(chaveDe(i))
+      i.whatsappEnviado = setWhats.has(chaveDe(i))
     }
   }
 
   return itens.sort((a, b) => a.diasRestantes - b.diasRestantes)
+}
+
+// Quantos WhatsApp estão pendentes de envio (vencendo em até DIAS_ANTES dias, com
+// telefone e ainda não marcados como enviados). Usado para acender o botão em vermelho.
+export async function contarWhatsAppPendentes(supabase: SupabaseClient): Promise<number> {
+  const lembretes = await buscarLembretes(supabase, DIAS_ANTES)
+  return lembretes.filter(l => l.whatsUrl && !l.whatsappEnviado).length
 }
 
 export type ResultadoLembretes = {

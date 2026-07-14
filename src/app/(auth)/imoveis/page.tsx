@@ -1,8 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { contarWhatsAppPendentes } from '@/lib/lembretes'
 
 export default async function ImoveisPage({ searchParams }: { searchParams: Promise<{ mes?: string; ano?: string }> }) {
   const supabase = await createClient()
+
+  // Quantos WhatsApp de lembrete estão pendentes de envio (para acender o botão).
+  const whatsPendentes = await contarWhatsAppPendentes(supabase)
 
   const { data: empresas } = await supabase
     .from('empresas')
@@ -80,8 +84,15 @@ export default async function ImoveisPage({ searchParams }: { searchParams: Prom
           <p className="text-sm text-gray-500 capitalize mt-0.5">Resumo de {nomeMes}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/lembretes" className="border border-amber-200 text-amber-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-50 transition-colors">
-            🔔 Lembretes
+          <Link
+            href="/lembretes"
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
+              whatsPendentes > 0
+                ? 'bg-red-600 text-white border-red-600 hover:bg-red-700 animate-pulse'
+                : 'border-amber-200 text-amber-700 hover:bg-amber-50'
+            }`}
+          >
+            🔔 Lembretes{whatsPendentes > 0 ? ` (${whatsPendentes})` : ''}
           </Link>
           <Link href="/relatorio" className="border border-blue-200 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors">
             📊 Relatório

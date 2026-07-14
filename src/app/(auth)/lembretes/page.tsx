@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { buscarLembretes, DIAS_ANTES } from '@/lib/lembretes'
 import Link from 'next/link'
+import BotaoWhatsApp from './BotaoWhatsApp'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,14 +56,13 @@ export default async function LembretesPage() {
                 </div>
                 <div className="shrink-0">
                   {l.whatsUrl ? (
-                    <a
-                      href={l.whatsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                      💬 Enviar WhatsApp
-                    </a>
+                    <BotaoWhatsApp
+                      imovelId={l.imovelId}
+                      ano={l.vencimento.getFullYear()}
+                      mes={l.vencimento.getMonth() + 1}
+                      whatsUrl={l.whatsUrl}
+                      enviado={l.whatsappEnviado}
+                    />
                   ) : (
                     <span className="text-xs text-gray-400">sem telefone</span>
                   )}
