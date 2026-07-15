@@ -104,9 +104,13 @@ export default function ImovelCard({ imovel, empresaId, pago, atrasado, disponiv
           R$ {brl(imovel.valor_aluguel ?? 0)}
         </p>
         {temExtras && (
-          <p className="text-xs mt-0.5 text-indigo-600 font-medium truncate">
-            + Extras: R$ {brl(totalExtras)} ({itens.length} {itens.length === 1 ? 'item' : 'itens'})
-          </p>
+          <div className="mt-0.5 space-y-0.5">
+            {itens.map(item => (
+              <p key={item.id} className="text-xs text-indigo-600 font-medium truncate">
+                + {item.descricao || 'Extra'}: R$ {brl(item.valor ?? 0)}
+              </p>
+            ))}
+          </div>
         )}
       </Link>
 
