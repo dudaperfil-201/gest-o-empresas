@@ -53,14 +53,13 @@ export default async function ImoveisPage({ searchParams }: { searchParams: Prom
     if (ids.length === 0) return { ...empresa, total: 0, locados: 0, disponiveis: 0, potencial: 0, pagamentos: 0 }
 
     // PAGAMENTOS = soma de tudo que foi recebido no mês (aluguel + extras).
-    const { data: pagamentos } = await supabase
-      .from('pagamentos')
-      .select('valor_pago, valor_extras')
-      .in('imovel_id', ids)
-      .eq('mes', mesAtual)
-      .eq('ano', anoAtual)
+    const [{ data: pagamentos }, { data: extras }] = await Promise.all([
+      supabase.from('pagamentos').select('valor_pago').in('imovel_id', ids).eq('mes', mesAtual).eq('ano', anoAtual),
+      supabase.from('extras_itens').select('valor').in('imovel_id', ids).eq('mes', mesAtual).eq('ano', anoAtual),
+    ])
 
-    const totalPago = (pagamentos ?? []).reduce((s, p) => s + (p.valor_pago ?? 0) + (p.valor_extras ?? 0), 0)
+    const totalPago = (pagamentos ?? []).reduce((s, p) => s + (p.valor_pago ?? 0), 0)
+      + (extras ?? []).reduce((s, e) => s + (e.valor ?? 0), 0)
     return { ...empresa, total: ids.length, locados, disponiveis, potencial, pagamentos: totalPago }
   }))
 

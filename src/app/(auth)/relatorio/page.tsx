@@ -18,21 +18,21 @@ export default async function RelatorioPage() {
       .order('endereco')
 
     const ids = (imoveis ?? []).map(i => i.id)
-    const { data: pagamentos } = ids.length > 0 ? await supabase
-      .from('pagamentos')
-      .select('imovel_id, status, valor_original, valor_pago, valor_extras, descricao_extras')
-      .in('imovel_id', ids)
-      .eq('mes', mesAtual)
-      .eq('ano', anoAtual) : { data: [] }
+    const [{ data: pagamentos }, { data: extrasRaw }] = ids.length > 0 ? await Promise.all([
+      supabase.from('pagamentos').select('imovel_id, status, valor_original, valor_pago').in('imovel_id', ids).eq('mes', mesAtual).eq('ano', anoAtual),
+      supabase.from('extras_itens').select('imovel_id, valor').in('imovel_id', ids).eq('mes', mesAtual).eq('ano', anoAtual),
+    ]) : [{ data: [] }, { data: [] }]
 
     const pagMap = Object.fromEntries((pagamentos ?? []).map(p => [p.imovel_id, p]))
+    const extrasSum: Record<string, number> = {}
+    for (const e of extrasRaw ?? []) extrasSum[e.imovel_id] = (extrasSum[e.imovel_id] ?? 0) + (e.valor ?? 0)
 
     return {
       ...empresa,
       imoveis: (imoveis ?? []).map(imovel => {
         const pag = pagMap[imovel.id]
         const inquilino = Array.isArray(imovel.inquilinos) ? imovel.inquilinos[0] : imovel.inquilinos
-        return { ...imovel, pag, inquilino }
+        return { ...imovel, pag, inquilino, extras: extrasSum[imovel.id] ?? 0 }
       })
     }
   }))
@@ -42,7 +42,7 @@ export default async function RelatorioPage() {
   const totalEsperado = resultado.flatMap(e => e.imoveis).reduce((s, i) => s + (i.valor_aluguel ?? 0), 0)
   // Recebido = aluguéis pagos (pago/atrasado) + todos os extras do mês.
   const totalRecebidoAluguel = resultado.flatMap(e => e.imoveis).filter(i => i.pag?.status === 'pago' || i.pag?.status === 'atrasado').reduce((s, i) => s + (i.pag?.valor_pago ?? 0), 0)
-  const totalExtras = resultado.flatMap(e => e.imoveis).reduce((s, i) => s + (i.pag?.valor_extras ?? 0), 0)
+  const totalExtras = resultado.flatMap(e => e.imoveis).reduce((s, i) => s + (i.extras ?? 0), 0)
   const totalRecebido = totalRecebidoAluguel + totalExtras
   const totalPendente = totalEsperado - resultado.flatMap(e => e.imoveis).filter(i => i.pag?.status === 'pago' || i.pag?.status === 'atrasado').reduce((s, i) => s + (i.valor_aluguel ?? 0), 0)
 

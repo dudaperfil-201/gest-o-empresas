@@ -27,12 +27,26 @@ export default async function EmpresaPage({ params }: { params: Promise<{ id: st
 
   const { data: pagamentos } = ids.length > 0 ? await supabase
     .from('pagamentos')
-    .select('imovel_id, status, valor_original, valor_pago, valor_extras, descricao_extras')
+    .select('imovel_id, status, valor_original, valor_pago')
     .in('imovel_id', ids)
     .eq('mes', mesAtual)
     .eq('ano', anoAtual) : { data: [] }
 
   const pagMap = Object.fromEntries((pagamentos ?? []).map(p => [p.imovel_id, p]))
+
+  // Lista de extras (energia, condomínio...) do mês, agrupada por imóvel.
+  const { data: extrasRaw } = ids.length > 0 ? await supabase
+    .from('extras_itens')
+    .select('id, imovel_id, descricao, valor')
+    .in('imovel_id', ids)
+    .eq('mes', mesAtual)
+    .eq('ano', anoAtual)
+    .order('created_at') : { data: [] }
+
+  const extrasMap: Record<string, { id: string; descricao: string | null; valor: number }[]> = {}
+  for (const e of extrasRaw ?? []) {
+    ;(extrasMap[e.imovel_id] ??= []).push({ id: e.id, descricao: e.descricao, valor: e.valor })
+  }
 
   const nomeMes = new Date(anoAtual, mesAtual - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
 
@@ -66,8 +80,7 @@ export default async function EmpresaPage({ params }: { params: Promise<{ id: st
               pago={pag?.status === 'pago'}
               atrasado={pag?.status === 'atrasado'}
               disponivel={disponivel}
-              valorExtras={pag?.valor_extras ?? null}
-              descricaoExtras={pag?.descricao_extras ?? null}
+              extras={extrasMap[imovel.id] ?? []}
             />
           )
         })}

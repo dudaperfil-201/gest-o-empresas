@@ -21,6 +21,18 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
     .order('mes', { ascending: false })
     .limit(24)
 
+  // Extras (energia, condomínio...) do imóvel, agrupados por mês/ano.
+  const { data: extrasRaw } = await supabase
+    .from('extras_itens')
+    .select('ano, mes, descricao, valor')
+    .eq('imovel_id', imovelId)
+    .order('created_at')
+
+  const extrasPorMes: Record<string, { descricao: string | null; valor: number }[]> = {}
+  for (const e of extrasRaw ?? []) {
+    ;(extrasPorMes[`${e.ano}_${e.mes}`] ??= []).push({ descricao: e.descricao, valor: e.valor })
+  }
+
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
@@ -61,10 +73,11 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
                         Pago em {new Date(p.data_pagamento + 'T12:00:00').toLocaleDateString('pt-BR')}
                       </p>
                     )}
-                    {(p.valor_extras ?? 0) > 0 && (
+                    {(extrasPorMes[`${p.ano}_${p.mes}`] ?? []).length > 0 && (
                       <p className="text-xs text-indigo-600 font-medium">
-                        + Extras: R$ {(p.valor_extras ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        {p.descricao_extras ? ` · ${p.descricao_extras}` : ''}
+                        + Extras: R$ {(extrasPorMes[`${p.ano}_${p.mes}`].reduce((s, e) => s + (e.valor ?? 0), 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        {' · '}
+                        {extrasPorMes[`${p.ano}_${p.mes}`].map(e => e.descricao || 'extra').join(', ')}
                       </p>
                     )}
                     {p.observacao && <p className="text-xs text-gray-400">{p.observacao}</p>}
