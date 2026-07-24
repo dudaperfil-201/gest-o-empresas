@@ -133,24 +133,30 @@ export default function ImovelCard({ imovel, empresaId, pago, atrasado, disponiv
         </span>
       ) : (
         <div className="ml-4 shrink-0 flex flex-wrap gap-2 justify-end">
-          <button
-            onClick={handlePagou}
-            disabled={loading}
-            className={`text-sm font-semibold px-4 py-2 rounded-lg text-white transition-colors disabled:opacity-60 ${
-              estaPago ? 'bg-green-700 hover:bg-green-800' : 'bg-green-600 hover:bg-green-700'
-            }`}
-          >
-            {estaPago ? '✓ PAGO' : 'PAGOU'}
-          </button>
-          <button
-            onClick={() => setModalAberto(true)}
-            disabled={loading}
-            className={`text-sm font-semibold px-4 py-2 rounded-lg text-white transition-colors disabled:opacity-60 ${
-              estaAtrasado ? 'bg-amber-600 hover:bg-amber-700' : 'bg-amber-500 hover:bg-amber-600'
-            }`}
-          >
-            {estaAtrasado ? '✓ COM ATRASO' : 'PAGOU COM ATRASO'}
-          </button>
+          {/* Pagou em dia: mostra o "PAGO". Some se o pagamento foi com atraso. */}
+          {!estaAtrasado && (
+            <button
+              onClick={handlePagou}
+              disabled={loading}
+              className={`text-sm font-semibold px-4 py-2 rounded-lg text-white transition-colors disabled:opacity-60 ${
+                estaPago ? 'bg-green-700 hover:bg-green-800' : 'bg-green-600 hover:bg-green-700'
+              }`}
+            >
+              {estaPago ? '✓ PAGO' : 'PAGOU'}
+            </button>
+          )}
+          {/* Pagou com atraso: mostra o "COM ATRASO". Some se já foi pago em dia. */}
+          {!estaPago && (
+            <button
+              onClick={() => setModalAberto(true)}
+              disabled={loading}
+              className={`text-sm font-semibold px-4 py-2 rounded-lg text-white transition-colors disabled:opacity-60 ${
+                estaAtrasado ? 'bg-amber-600 hover:bg-amber-700' : 'bg-amber-500 hover:bg-amber-600'
+              }`}
+            >
+              {estaAtrasado ? '✓ COM ATRASO' : 'PAGOU COM ATRASO'}
+            </button>
+          )}
           <button
             onClick={() => setModalExtras(true)}
             disabled={loading}
