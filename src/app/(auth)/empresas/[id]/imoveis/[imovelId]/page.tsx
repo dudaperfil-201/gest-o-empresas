@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import InquilinoForm from './InquilinoForm'
@@ -26,9 +27,10 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
   let contratosDocs: { name: string; path: string }[] = []
   let boletosDocs: { name: string; path: string; mes: string }[] = []
   if (inquilino) {
+    const admin = createAdminClient()
     const [cRes, bRes] = await Promise.all([
-      supabase.storage.from('documentos-inquilino').list(`${inquilino.id}/contrato`, { limit: 100 }),
-      supabase.storage.from('documentos-inquilino').list(`${inquilino.id}/boletos`, { limit: 200 }),
+      admin.storage.from('documentos-inquilino').list(`${inquilino.id}/contrato`, { limit: 100 }),
+      admin.storage.from('documentos-inquilino').list(`${inquilino.id}/boletos`, { limit: 200 }),
     ])
     contratosDocs = (cRes.data ?? []).filter(a => a.id !== null)
       .map(a => ({ name: a.name, path: `${inquilino.id}/contrato/${a.name}` }))

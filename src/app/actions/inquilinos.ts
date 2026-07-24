@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
@@ -104,8 +105,9 @@ export async function uploadDocumentoInquilino(formData: FormData): Promise<{ ok
     path = `${inquilinoId}/boletos/${mes}__${Date.now()}_${safe}`
   }
 
+  const admin = createAdminClient()
   const bytes = new Uint8Array(await file.arrayBuffer())
-  const { error } = await supabase.storage.from(BUCKET).upload(path, bytes, {
+  const { error } = await admin.storage.from(BUCKET).upload(path, bytes, {
     contentType: file.type || 'application/octet-stream', upsert: false,
   })
   if (error) return { ok: false, erro: error.message }
@@ -133,6 +135,7 @@ export async function uploadBoletosEmLote(formData: FormData): Promise<{ ok: boo
   // Ordena por nome (numérico) para casar com a ordem dos meses.
   files.sort((a, b) => a.name.localeCompare(b.name, 'pt', { numeric: true }))
 
+  const admin = createAdminClient()
   const [ano0, mes0] = mesInicial.split('-').map(Number)
   let enviados = 0
   let primeiroErro = ''
@@ -142,7 +145,7 @@ export async function uploadBoletosEmLote(formData: FormData): Promise<{ ok: boo
     const path = `${inquilinoId}/boletos/${mesStr}__${Date.now()}_${i}_${sanitizar(files[i].name || 'boleto.pdf')}`
     try {
       const bytes = new Uint8Array(await files[i].arrayBuffer())
-      const { error } = await supabase.storage.from(BUCKET).upload(path, bytes, {
+      const { error } = await admin.storage.from(BUCKET).upload(path, bytes, {
         contentType: files[i].type || 'application/pdf', upsert: false,
       })
       if (error) { if (!primeiroErro) primeiroErro = error.message }
@@ -159,6 +162,7 @@ export async function removerDocumentoInquilino(path: string, empresaId: string,
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
-  await supabase.storage.from(BUCKET).remove([path])
+  const admin = createAdminClient()
+  await admin.storage.from(BUCKET).remove([path])
   revalidatePath(`/empresas/${empresaId}/imoveis/${imovelId}`)
 }

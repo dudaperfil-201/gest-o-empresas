@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { COOKIE_NAME, verificarToken } from '@/lib/auth-inquilino'
 import { logoutInquilino } from '@/app/actions/inquilinos'
 
@@ -34,15 +35,17 @@ export default async function PortalInquilinoPage() {
     ? await supabase.from('empresas').select('nome').eq('id', imovel.empresa_id).maybeSingle()
     : { data: null }
 
-  // Contrato(s) e boletos do inquilino.
-  const { data: contratoArqs } = await supabase.storage.from(BUCKET).list(`${inquilinoId}/contrato`, { limit: 100 })
-  const { data: boletoArqs } = await supabase.storage.from(BUCKET).list(`${inquilinoId}/boletos`, { limit: 200 })
+  // Contrato(s) e boletos do inquilino. Usa a chave de serviço (admin) para
+  // não esbarrar na RLS do Storage.
+  const admin = createAdminClient()
+  const { data: contratoArqs } = await admin.storage.from(BUCKET).list(`${inquilinoId}/contrato`, { limit: 100 })
+  const { data: boletoArqs } = await admin.storage.from(BUCKET).list(`${inquilinoId}/boletos`, { limit: 200 })
 
   async function comUrl(pasta: string, arqs: { name: string; id: string | null }[] | null) {
     const validos = (arqs ?? []).filter(a => a.id !== null)
     return Promise.all(validos.map(async a => {
       const path = `${inquilinoId}/${pasta}/${a.name}`
-      const { data } = await supabase.storage.from(BUCKET).createSignedUrl(path, 3600)
+      const { data } = await admin.storage.from(BUCKET).createSignedUrl(path, 3600)
       return { name: a.name, url: data?.signedUrl ?? null }
     }))
   }
