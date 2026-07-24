@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import InquilinoForm from './InquilinoForm'
+import DocumentosInquilino from './DocumentosInquilino'
 
 export default async function ImovelPage({ params }: { params: Promise<{ id: string; imovelId: string }> }) {
   const { id, imovelId } = await params
@@ -20,6 +21,21 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
+
+  // Documentos do inquilino (contrato + boletos) para a Área do Inquilino.
+  let contratosDocs: { name: string; path: string }[] = []
+  let boletosDocs: { name: string; path: string; mes: string }[] = []
+  if (inquilino) {
+    const [cRes, bRes] = await Promise.all([
+      supabase.storage.from('documentos-inquilino').list(`${inquilino.id}/contrato`, { limit: 100 }),
+      supabase.storage.from('documentos-inquilino').list(`${inquilino.id}/boletos`, { limit: 200 }),
+    ])
+    contratosDocs = (cRes.data ?? []).filter(a => a.id !== null)
+      .map(a => ({ name: a.name, path: `${inquilino.id}/contrato/${a.name}` }))
+    boletosDocs = (bRes.data ?? []).filter(a => a.id !== null)
+      .map(a => ({ name: a.name, path: `${inquilino.id}/boletos/${a.name}`, mes: a.name.split('__')[0] }))
+      .sort((a, b) => b.mes.localeCompare(a.mes))
+  }
 
   const { data: pagamentos } = await supabase
     .from('pagamentos')
@@ -62,6 +78,21 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
         <h3 className="font-medium text-gray-900 mb-4">Cadastro do imóvel</h3>
         <InquilinoForm imovelId={imovelId} empresaId={id} inquilino={inquilino} valorAluguel={imovel.valor_aluguel ?? 0} enderecoImovel={imovel.endereco} diaVencimento={imovel.dia_vencimento ?? null} />
       </div>
+
+      {inquilino && (
+        <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
+          <h3 className="font-medium text-gray-900 mb-4">Área do Inquilino — acesso e documentos</h3>
+          <DocumentosInquilino
+            inquilinoId={inquilino.id}
+            empresaId={id}
+            imovelId={imovelId}
+            inquilinoEmail={inquilino.email ?? null}
+            senhaAtual={inquilino.senha_acesso ?? null}
+            contratos={contratosDocs}
+            boletos={boletosDocs}
+          />
+        </div>
+      )}
 
       <div className="bg-white border border-gray-200 rounded-xl p-5">
         <h3 className="font-medium text-gray-900 mb-4">Histórico de pagamentos</h3>

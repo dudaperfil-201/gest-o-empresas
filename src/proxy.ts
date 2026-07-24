@@ -27,6 +27,10 @@ export async function proxy(request: NextRequest) {
   // Rotas de cron têm autenticação própria (secret / user-agent) — não exigem sessão.
   if (pathname.startsWith('/api/cron')) return supabaseResponse
 
+  // Área do Inquilino: portal externo com login PRÓPRIO (cookie inquilino_session).
+  // Não usa a sessão da equipe (Supabase Auth); o portal se protege sozinho.
+  if (pathname.startsWith('/area-inquilino')) return supabaseResponse
+
   if (!user && pathname !== '/login') {
     return NextResponse.redirect(new URL('/login', request.url))
   }
