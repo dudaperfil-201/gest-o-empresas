@@ -45,37 +45,33 @@ export default async function EmpresaPage({ params }: { params: Promise<{ id: st
   const histMap: Record<string, { mes: number; ano: number; status: string }[]> = {}
   for (const p of histRaw ?? []) (histMap[p.imovel_id] ??= []).push(p)
 
-  const hoje = new Date()
-  const diaHoje = hoje.getDate()
   const curKey = anoAtual * 12 + (mesAtual - 1) // mês atual em "chave" contínua
 
   type Classificacao = 'otimo' | 'bom' | 'ruim'
-  function classificar(imovelId: string, diaVenc: number | null, dataInicio: string | null): Classificacao {
+  // Reputação com base SOMENTE nos meses já FECHADOS. O mês em andamento nunca
+  // pesa — o inquilino é "ótimo até o mês fechar", e na virada do mês é reavaliado
+  // pela forma como pagou (pago / com atraso / não pagou). Como o mês atual vem da
+  // data real, a reavaliação acontece sozinha na troca do mês (sem robô/botão).
+  function classificar(imovelId: string): Classificacao {
     const pags = histMap[imovelId] ?? []
-    const atrasos = pags.filter(p => p.status === 'atrasado').length
+    const fechados = pags.filter(p => p.ano * 12 + (p.mes - 1) < curKey)
+    const atrasos = fechados.filter(p => p.status === 'atrasado').length
     const quitados = new Set(
-      pags.filter(p => p.status === 'pago' || p.status === 'atrasado').map(p => `${p.ano}-${p.mes}`)
+      fechados.filter(p => p.status === 'pago' || p.status === 'atrasado').map(p => `${p.ano}-${p.mes}`)
     )
-    // Início da checagem de "em aberto": primeiro registro de pagamento do imóvel
-    // (ou o mês atual, se não houver nenhum) — nunca antes do sistema existir.
+    // Primeiro mês com registro (nunca antes do sistema existir).
     let inicio: number | null = null
     for (const p of pags) {
       const k = p.ano * 12 + (p.mes - 1)
       if (inicio === null || k < inicio) inicio = k
     }
-    if (inicio === null) inicio = curKey
-    // Não vai antes do início do contrato.
-    if (dataInicio) {
-      const d = new Date(dataInicio)
-      const diKey = d.getFullYear() * 12 + d.getMonth()
-      if (inicio < diKey) inicio = diKey
-    }
-    const venc = diaVenc ?? 10
+    // Boleto que ficou em aberto = mês JÁ FECHADO sem nenhum pagamento.
     let temAberto = false
-    for (let k = inicio; k <= curKey; k++) {
-      const ano = Math.floor(k / 12), mes = (k % 12) + 1
-      const vencido = k < curKey || (k === curKey && diaHoje > venc)
-      if (vencido && !quitados.has(`${ano}-${mes}`)) { temAberto = true; break }
+    if (inicio !== null) {
+      for (let k = inicio; k < curKey; k++) {
+        const ano = Math.floor(k / 12), mes = (k % 12) + 1
+        if (!quitados.has(`${ano}-${mes}`)) { temAberto = true; break }
+      }
     }
     if (atrasos > 2 || temAberto) return 'ruim'
     if (atrasos >= 1) return 'bom'
@@ -120,7 +116,6 @@ export default async function EmpresaPage({ params }: { params: Promise<{ id: st
           // Disponível = sem dado no cadastro (aluguel zerado e sem inquilino). Mesma regra do dashboard.
           const inq = Array.isArray(imovel.inquilinos) ? imovel.inquilinos : (imovel.inquilinos ? [imovel.inquilinos] : [])
           const disponivel = inq.length === 0 && (imovel.valor_aluguel ?? 0) <= 0
-          const dataInicio = inq.map(i => i.data_inicio).find(Boolean) ?? null
           const temInquilino = inq.length > 0
           return (
             <ImovelCard
@@ -131,7 +126,7 @@ export default async function EmpresaPage({ params }: { params: Promise<{ id: st
               atrasado={pag?.status === 'atrasado'}
               disponivel={disponivel}
               extras={extrasMap[imovel.id] ?? []}
-              classificacao={temInquilino ? classificar(imovel.id, imovel.dia_vencimento ?? null, dataInicio) : null}
+              classificacao={temInquilino ? classificar(imovel.id) : null}
             />
           )
         })}

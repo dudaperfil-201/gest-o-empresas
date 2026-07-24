@@ -118,7 +118,8 @@ export default function ImovelCard({ imovel, empresaId, pago, atrasado, disponiv
   }
 
   return (
-    <div className={`flex items-center justify-between border rounded-xl px-5 py-4 transition-all ${
+    <div className="flex items-stretch gap-3">
+    <div className={`flex-1 flex items-center justify-between border rounded-xl px-5 py-4 transition-all ${
       disponivel ? 'bg-red-50 border-red-300 hover:border-red-400' : 'bg-white border-gray-200 hover:border-gray-300'
     }`}>
       <Link href={`/empresas/${empresaId}/imoveis/${imovel.id}`} className="flex-1 min-w-0">
@@ -178,16 +179,19 @@ export default function ImovelCard({ imovel, empresaId, pago, atrasado, disponiv
           </button>
         </div>
       )}
+      </div>
 
-      {/* Selo de reputação do inquilino — coluna independente, à direita do EXTRAS */}
-      {!disponivel && classificacao && (
-        <span
-          title={SELO[classificacao].title}
-          className={`ml-3 shrink-0 text-xs font-bold px-3 py-2 rounded-lg text-white text-center ${SELO[classificacao].cls}`}
-        >
-          {SELO[classificacao].label}
-        </span>
-      )}
+      {/* Coluna do selo de reputação — FORA do card, separada dos botões */}
+      <div className="shrink-0 w-24 flex items-center justify-center">
+        {!disponivel && classificacao && (
+          <span
+            title={SELO[classificacao].title}
+            className={`w-full text-center text-xs font-bold px-2 py-2.5 rounded-lg text-white ${SELO[classificacao].cls}`}
+          >
+            {SELO[classificacao].label}
+          </span>
+        )}
+      </div>
 
       {modalAberto && (
         <div
