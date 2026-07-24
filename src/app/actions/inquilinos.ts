@@ -104,7 +104,8 @@ export async function uploadDocumentoInquilino(formData: FormData): Promise<{ ok
     path = `${inquilinoId}/boletos/${mes}__${Date.now()}_${safe}`
   }
 
-  const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  const { error } = await supabase.storage.from(BUCKET).upload(path, bytes, {
     contentType: file.type || 'application/octet-stream', upsert: false,
   })
   if (error) return { ok: false, erro: error.message }
@@ -134,17 +135,24 @@ export async function uploadBoletosEmLote(formData: FormData): Promise<{ ok: boo
 
   const [ano0, mes0] = mesInicial.split('-').map(Number)
   let enviados = 0
+  let primeiroErro = ''
   for (let i = 0; i < files.length; i++) {
     const d = new Date(ano0, mes0 - 1 + i, 1)
     const mesStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     const path = `${inquilinoId}/boletos/${mesStr}__${Date.now()}_${i}_${sanitizar(files[i].name || 'boleto.pdf')}`
-    const { error } = await supabase.storage.from(BUCKET).upload(path, files[i], {
-      contentType: files[i].type || 'application/pdf', upsert: false,
-    })
-    if (!error) enviados++
+    try {
+      const bytes = new Uint8Array(await files[i].arrayBuffer())
+      const { error } = await supabase.storage.from(BUCKET).upload(path, bytes, {
+        contentType: files[i].type || 'application/pdf', upsert: false,
+      })
+      if (error) { if (!primeiroErro) primeiroErro = error.message }
+      else enviados++
+    } catch (e) {
+      if (!primeiroErro) primeiroErro = e instanceof Error ? e.message : String(e)
+    }
   }
   revalidatePath(`/empresas/${empresaId}/imoveis/${imovelId}`)
-  return enviados > 0 ? { ok: true, enviados } : { ok: false, erro: 'Não foi possível enviar os boletos.' }
+  return enviados > 0 ? { ok: true, enviados } : { ok: false, erro: primeiroErro || 'Não foi possível enviar os boletos.' }
 }
 
 export async function removerDocumentoInquilino(path: string, empresaId: string, imovelId: string) {
