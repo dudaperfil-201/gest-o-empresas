@@ -13,7 +13,7 @@ export default async function EmpresaPage({ params }: { params: Promise<{ id: st
 
   const { data: imoveisRaw } = await supabase
     .from('imoveis')
-    .select('id, endereco, valor_aluguel, ativo, inquilinos(nome)')
+    .select('id, endereco, valor_aluguel, ativo, dia_vencimento, inquilinos(nome, data_inicio)')
     .eq('empresa_id', id)
 
   // Ordenação numérica natural: SALA-1, SALA-2, ... SALA-10 (e não SALA-1, SALA-10, SALA-2)
@@ -33,6 +33,54 @@ export default async function EmpresaPage({ params }: { params: Promise<{ id: st
     .eq('ano', anoAtual) : { data: [] }
 
   const pagMap = Object.fromEntries((pagamentos ?? []).map(p => [p.imovel_id, p]))
+
+  // ── Classificação do inquilino (ótimo / bom / ruim) ──
+  // Histórico completo de pagamentos (todos os meses) para calcular atrasos e
+  // boletos em aberto.
+  const { data: histRaw } = ids.length > 0 ? await supabase
+    .from('pagamentos')
+    .select('imovel_id, mes, ano, status')
+    .in('imovel_id', ids) : { data: [] }
+
+  const histMap: Record<string, { mes: number; ano: number; status: string }[]> = {}
+  for (const p of histRaw ?? []) (histMap[p.imovel_id] ??= []).push(p)
+
+  const hoje = new Date()
+  const diaHoje = hoje.getDate()
+  const curKey = anoAtual * 12 + (mesAtual - 1) // mês atual em "chave" contínua
+
+  type Classificacao = 'otimo' | 'bom' | 'ruim'
+  function classificar(imovelId: string, diaVenc: number | null, dataInicio: string | null): Classificacao {
+    const pags = histMap[imovelId] ?? []
+    const atrasos = pags.filter(p => p.status === 'atrasado').length
+    const quitados = new Set(
+      pags.filter(p => p.status === 'pago' || p.status === 'atrasado').map(p => `${p.ano}-${p.mes}`)
+    )
+    // Início da checagem de "em aberto": primeiro registro de pagamento do imóvel
+    // (ou o mês atual, se não houver nenhum) — nunca antes do sistema existir.
+    let inicio: number | null = null
+    for (const p of pags) {
+      const k = p.ano * 12 + (p.mes - 1)
+      if (inicio === null || k < inicio) inicio = k
+    }
+    if (inicio === null) inicio = curKey
+    // Não vai antes do início do contrato.
+    if (dataInicio) {
+      const d = new Date(dataInicio)
+      const diKey = d.getFullYear() * 12 + d.getMonth()
+      if (inicio < diKey) inicio = diKey
+    }
+    const venc = diaVenc ?? 10
+    let temAberto = false
+    for (let k = inicio; k <= curKey; k++) {
+      const ano = Math.floor(k / 12), mes = (k % 12) + 1
+      const vencido = k < curKey || (k === curKey && diaHoje > venc)
+      if (vencido && !quitados.has(`${ano}-${mes}`)) { temAberto = true; break }
+    }
+    if (atrasos > 2 || temAberto) return 'ruim'
+    if (atrasos >= 1) return 'bom'
+    return 'otimo'
+  }
 
   // Lista de extras (energia, condomínio...) do mês, agrupada por imóvel.
   const { data: extrasRaw } = ids.length > 0 ? await supabase
@@ -72,6 +120,8 @@ export default async function EmpresaPage({ params }: { params: Promise<{ id: st
           // Disponível = sem dado no cadastro (aluguel zerado e sem inquilino). Mesma regra do dashboard.
           const inq = Array.isArray(imovel.inquilinos) ? imovel.inquilinos : (imovel.inquilinos ? [imovel.inquilinos] : [])
           const disponivel = inq.length === 0 && (imovel.valor_aluguel ?? 0) <= 0
+          const dataInicio = inq.map(i => i.data_inicio).find(Boolean) ?? null
+          const temInquilino = inq.length > 0
           return (
             <ImovelCard
               key={imovel.id}
@@ -81,6 +131,7 @@ export default async function EmpresaPage({ params }: { params: Promise<{ id: st
               atrasado={pag?.status === 'atrasado'}
               disponivel={disponivel}
               extras={extrasMap[imovel.id] ?? []}
+              classificacao={temInquilino ? classificar(imovel.id, imovel.dia_vencimento ?? null, dataInicio) : null}
             />
           )
         })}

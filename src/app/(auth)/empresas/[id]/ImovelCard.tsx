@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { alternarPagamento, registrarPagamentoComAtraso, adicionarExtra, removerExtra, type ExtraItem } from '@/app/actions/empresas'
 
+type Classificacao = 'otimo' | 'bom' | 'ruim'
+
 interface Props {
   imovel: { id: string; endereco: string; valor_aluguel: number | null }
   empresaId: string
@@ -12,11 +14,19 @@ interface Props {
   atrasado: boolean
   disponivel: boolean
   extras?: ExtraItem[]
+  classificacao?: Classificacao | null
 }
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
 
-export default function ImovelCard({ imovel, empresaId, pago, atrasado, disponivel, extras }: Props) {
+// Selo de reputação de pagador.
+const SELO: Record<Classificacao, { label: string; cls: string; title: string }> = {
+  otimo: { label: 'ÓTIMO', cls: 'bg-green-600', title: 'Sempre pagou em dia' },
+  bom: { label: 'BOM', cls: 'bg-orange-500', title: 'Pagou com atraso até 2 vezes' },
+  ruim: { label: 'RUIM', cls: 'bg-red-600', title: 'Mais de 2 atrasos ou boleto em aberto' },
+}
+
+export default function ImovelCard({ imovel, empresaId, pago, atrasado, disponivel, extras, classificacao }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [estaPago, setEstaPago] = useState(pago)
@@ -167,6 +177,16 @@ export default function ImovelCard({ imovel, empresaId, pago, atrasado, disponiv
             {temExtras ? `✓ EXTRAS (${itens.length})` : 'EXTRAS'}
           </button>
         </div>
+      )}
+
+      {/* Selo de reputação do inquilino — coluna independente, à direita do EXTRAS */}
+      {!disponivel && classificacao && (
+        <span
+          title={SELO[classificacao].title}
+          className={`ml-3 shrink-0 text-xs font-bold px-3 py-2 rounded-lg text-white text-center ${SELO[classificacao].cls}`}
+        >
+          {SELO[classificacao].label}
+        </span>
       )}
 
       {modalAberto && (
