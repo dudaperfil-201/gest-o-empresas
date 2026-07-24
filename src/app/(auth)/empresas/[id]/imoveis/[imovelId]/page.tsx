@@ -11,7 +11,15 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
   const { data: imovel } = await supabase.from('imoveis').select('*').eq('id', imovelId).single()
   if (!imovel) notFound()
 
-  const { data: inquilino } = await supabase.from('inquilinos').select('*').eq('imovel_id', imovelId).single()
+  // Pega o inquilino MAIS RECENTE do imóvel, de forma tolerante: `.single()`
+  // dava erro (e retornava null → form vazio) quando havia 0 OU mais de 1 registro.
+  const { data: inquilino } = await supabase
+    .from('inquilinos')
+    .select('*')
+    .eq('imovel_id', imovelId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
   const { data: pagamentos } = await supabase
     .from('pagamentos')

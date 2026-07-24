@@ -170,11 +170,24 @@ export async function salvarInquilino(formData: FormData) {
       data_inicio: formData.get('data_inicio') as string || null,
       juros_mes: parseFloat(formData.get('juros_mes') as string) || 2,
     }
-    if (id) {
-      await supabase.from('inquilinos').update(dados).eq('id', id)
-    } else {
-      await supabase.from('inquilinos').insert(dados)
+    // Anti-duplicata: se não veio o id do form MAS já existe inquilino para o
+    // imóvel, atualiza o existente em vez de criar outro. (Era assim que nasciam
+    // as duplicatas: o form abria vazio por causa do bug de leitura e inseria.)
+    let alvoId = id
+    if (!alvoId) {
+      const { data: existente } = await supabase
+        .from('inquilinos')
+        .select('id')
+        .eq('imovel_id', imovel_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (existente) alvoId = existente.id
     }
+    const { error: erroInq } = alvoId
+      ? await supabase.from('inquilinos').update(dados).eq('id', alvoId)
+      : await supabase.from('inquilinos').insert(dados)
+    if (erroInq) throw new Error('Erro ao salvar inquilino: ' + erroInq.message)
   }
 
   revalidatePath(`/empresas/${empresa_id}/imoveis/${imovel_id}`)
