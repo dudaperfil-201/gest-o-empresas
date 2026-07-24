@@ -26,6 +26,12 @@ export default function ImovelCard({ imovel, empresaId, pago, atrasado, disponiv
 
   const [modalAberto, setModalAberto] = useState(false)
   const [valorTexto, setValorTexto] = useState('')
+  // Mês a que o pagamento atrasado se refere (padrão: mês atual). Formato "AAAA-MM".
+  const mesAtualStr = (() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  })()
+  const [mesAtraso, setMesAtraso] = useState(mesAtualStr)
 
   // Lista de extras (energia, condomínio, etc.) do imóvel no mês.
   const [itens, setItens] = useState<ExtraItem[]>(extras ?? [])
@@ -55,11 +61,18 @@ export default function ImovelCard({ imovel, empresaId, pago, atrasado, disponiv
   async function confirmarAtraso() {
     const valor = parseFloat(valorTexto.replace(',', '.'))
     if (isNaN(valor) || valor <= 0) return
+    const [anoSel, mesSel] = mesAtraso.split('-').map(Number)
+    if (!anoSel || !mesSel) return
     setLoading(true)
     try {
-      await registrarPagamentoComAtraso(imovel.id, empresaId, valor)
-      setEstaAtrasado(true)
-      setEstaPago(false)
+      await registrarPagamentoComAtraso(imovel.id, empresaId, valor, mesSel, anoSel)
+      // O card reflete o status do MÊS ATUAL — só marca "com atraso" aqui se o
+      // pagamento for desse mês. Se for de um mês passado, aparece ao navegar até ele.
+      const d = new Date()
+      if (mesSel === d.getMonth() + 1 && anoSel === d.getFullYear()) {
+        setEstaAtrasado(true)
+        setEstaPago(false)
+      }
       setModalAberto(false)
       setValorTexto('')
       router.refresh()
@@ -161,6 +174,13 @@ export default function ImovelCard({ imovel, empresaId, pago, atrasado, disponiv
             <p className="text-xs text-gray-400 mt-3">
               Aluguel cadastrado: R$ {brl(imovel.valor_aluguel ?? 0)}
             </p>
+            <label className="block text-xs font-medium text-gray-600 mt-3 mb-1">Referente ao mês</label>
+            <input
+              type="month"
+              value={mesAtraso}
+              onChange={e => setMesAtraso(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+            />
             <label className="block text-xs font-medium text-gray-600 mt-3 mb-1">Valor pago (com multa)</label>
             <input
               type="number"

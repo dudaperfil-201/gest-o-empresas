@@ -51,10 +51,19 @@ export async function alternarPagamento(imovelId: string, empresaId: string) {
 
 // Botão PAGOU COM ATRASO: registra o pagamento do mês corrente com um valor
 // digitado (aluguel + multa), que é diferente do valor cadastrado. Status 'atrasado'.
-export async function registrarPagamentoComAtraso(imovelId: string, empresaId: string, valorPago: number) {
+export async function registrarPagamentoComAtraso(
+  imovelId: string,
+  empresaId: string,
+  valorPago: number,
+  mes?: number,
+  ano?: number,
+) {
   const supabase = await createClient()
-  const mes = new Date().getMonth() + 1
-  const ano = new Date().getFullYear()
+  // Mês/ano a que o pagamento atrasado se refere (o usuário escolhe no modal).
+  // Sem eles, cai no mês atual (compatibilidade).
+  const agora = new Date()
+  mes = mes && mes >= 1 && mes <= 12 ? mes : agora.getMonth() + 1
+  ano = ano && ano >= 2000 ? ano : agora.getFullYear()
 
   const { data: imovel } = await supabase.from('imoveis').select('valor_aluguel').eq('id', imovelId).single()
   const valorOriginal = imovel?.valor_aluguel ?? 0
