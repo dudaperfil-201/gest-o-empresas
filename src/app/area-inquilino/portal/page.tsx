@@ -52,7 +52,7 @@ export default async function PortalInquilinoPage() {
   const contratos = await comUrl('contrato', contratoArqs)
   const boletos = (await comUrl('boletos', boletoArqs))
     .map(b => ({ ...b, mes: b.name.split('__')[0] }))
-    .sort((a, b) => b.mes.localeCompare(a.mes)) // mais recente primeiro
+    .sort((a, b) => a.mes.localeCompare(b.mes)) // ordem de vencimento (mais antigo → mais novo)
 
   return (
     <div className="min-h-screen bg-gray-50">

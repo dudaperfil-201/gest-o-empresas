@@ -45,7 +45,7 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
         const path = `${inquilino.id}/boletos/${a.name}`
         return { name: a.name, path, mes: a.name.split('__')[0], url: await assinar(path) }
       })
-    )).sort((a, b) => b.mes.localeCompare(a.mes))
+    )).sort((a, b) => a.mes.localeCompare(b.mes)) // ordem de vencimento (mais antigo → mais novo)
   }
 
   const { data: pagamentos } = await supabase
