@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { liberarAcessoInquilino, uploadDocumentoInquilino, removerDocumentoInquilino } from '@/app/actions/inquilinos'
+import { liberarAcessoInquilino, uploadDocumentoInquilino, uploadBoletosEmLote, removerDocumentoInquilino } from '@/app/actions/inquilinos'
 
 type Doc = { name: string; path: string; mes?: string }
 
@@ -12,7 +12,13 @@ function rotuloMes(yyyymm?: string): string {
   return m ? `${MESES[parseInt(m[2], 10)]}/${m[1]}` : (yyyymm ?? '')
 }
 function nomeLimpo(n: string): string {
-  return n.replace(/^\d{4}-\d{2}__/, '').replace(/^\d{13}_/, '')
+  return n.replace(/^\d{4}-\d{2}__/, '').replace(/^\d{13}_(\d+_)?/, '')
+}
+// "AAAA-MM" + i meses → "AAAA-MM"
+function mesMais(mesInicial: string, i: number): string {
+  const [a, m] = mesInicial.split('-').map(Number)
+  const d = new Date(a, m - 1 + i, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
 export default function DocumentosInquilino({
@@ -36,6 +42,8 @@ export default function DocumentosInquilino({
   })
   const contratoRef = useRef<HTMLInputElement>(null)
   const boletoRef = useRef<HTMLInputElement>(null)
+  const [boletoFiles, setBoletoFiles] = useState<File[]>([])
+  const boletosOrdenados = [...boletoFiles].sort((a, b) => a.name.localeCompare(b.name, 'pt', { numeric: true }))
 
   const portalUrl = typeof window !== 'undefined' ? `${window.location.origin}/area-inquilino` : '/area-inquilino'
 
@@ -62,6 +70,26 @@ export default function DocumentosInquilino({
     setBusy(false)
     if (r.ok) { if (ref.current) ref.current.value = ''; router.refresh() }
     else setMsg(r.erro ?? 'Erro ao enviar.')
+  }
+
+  async function enviarBoletos() {
+    if (boletoFiles.length === 0) { setMsg('Escolha os boletos primeiro.'); return }
+    setBusy(true); setMsg('')
+    const fd = new FormData()
+    fd.append('inquilino_id', inquilinoId)
+    fd.append('empresa_id', empresaId)
+    fd.append('imovel_id', imovelId)
+    fd.append('mes_inicial', mesBoleto)
+    for (const f of boletoFiles) fd.append('arquivos', f)
+    const r = await uploadBoletosEmLote(fd)
+    setBusy(false)
+    if (r.ok) {
+      setBoletoFiles([])
+      if (boletoRef.current) boletoRef.current.value = ''
+      router.refresh()
+    } else {
+      setMsg(r.erro ?? 'Erro ao enviar boletos.')
+    }
   }
 
   async function remover(path: string) {
@@ -136,13 +164,29 @@ export default function DocumentosInquilino({
             ))}
           </div>
         )}
-        <div className="flex gap-2 items-center flex-wrap">
-          <input type="month" value={mesBoleto} onChange={e => setMesBoleto(e.target.value)}
-            className="px-2 py-1.5 border border-gray-300 rounded-lg text-sm" title="Mês de referência" />
-          <input ref={boletoRef} type="file" accept=".pdf,image/*" className="text-sm flex-1 min-w-0" />
-          <button onClick={() => enviar('boleto', boletoRef)} disabled={busy}
-            className="shrink-0 px-3 py-1.5 bg-gray-700 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-60">
-            Enviar
+        <div className="space-y-2">
+          <div className="flex gap-2 items-center flex-wrap">
+            <label className="text-xs text-gray-500">Mês inicial:</label>
+            <input type="month" value={mesBoleto} onChange={e => setMesBoleto(e.target.value)}
+              className="px-2 py-1.5 border border-gray-300 rounded-lg text-sm" />
+            <input ref={boletoRef} type="file" multiple accept=".pdf,image/*"
+              onChange={e => setBoletoFiles(Array.from(e.target.files ?? []))}
+              className="text-sm flex-1 min-w-0" />
+          </div>
+          <p className="text-xs text-gray-400">Dica: selecione vários (ex.: os 12 do ano) — cada um vai para um mês em sequência, na ordem do nome do arquivo.</p>
+
+          {boletoFiles.length > 0 && (
+            <div className="bg-blue-50 border border-blue-100 rounded-lg p-2 text-xs text-gray-600 space-y-0.5">
+              <p className="font-medium text-gray-700">{boletoFiles.length} boleto(s) serão enviados assim:</p>
+              {boletosOrdenados.map((f, i) => (
+                <p key={f.name + i}>• <span className="font-medium capitalize">{rotuloMes(mesMais(mesBoleto, i))}</span> — {f.name}</p>
+              ))}
+            </div>
+          )}
+
+          <button onClick={enviarBoletos} disabled={busy || boletoFiles.length === 0}
+            className="px-3 py-1.5 bg-gray-700 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-60">
+            {busy ? 'Enviando...' : `Enviar ${boletoFiles.length || ''} boleto${boletoFiles.length === 1 ? '' : 's'}`.replace('  ', ' ').trim()}
           </button>
         </div>
       </div>
