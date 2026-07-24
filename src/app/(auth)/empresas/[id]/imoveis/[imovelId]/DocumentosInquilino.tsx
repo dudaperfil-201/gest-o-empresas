@@ -43,7 +43,19 @@ export default function DocumentosInquilino({
   const contratoRef = useRef<HTMLInputElement>(null)
   const boletoRef = useRef<HTMLInputElement>(null)
   const [boletoFiles, setBoletoFiles] = useState<File[]>([])
+  const [dragOver, setDragOver] = useState(false)
   const boletosOrdenados = [...boletoFiles].sort((a, b) => a.name.localeCompare(b.name, 'pt', { numeric: true }))
+
+  function adicionarBoletos(novos: File[]) {
+    const validos = novos.filter(f => f.size > 0 && (f.type === '' || /pdf|image/.test(f.type) || /\.(pdf|png|jpe?g|webp)$/i.test(f.name)))
+    if (validos.length === 0) return
+    // Evita duplicar o mesmo arquivo (mesmo nome + tamanho) se soltar duas vezes.
+    setBoletoFiles(prev => {
+      const chave = (f: File) => `${f.name}_${f.size}`
+      const existentes = new Set(prev.map(chave))
+      return [...prev, ...validos.filter(f => !existentes.has(chave(f)))]
+    })
+  }
 
   const portalUrl = typeof window !== 'undefined' ? `${window.location.origin}/area-inquilino` : '/area-inquilino'
 
@@ -169,24 +181,45 @@ export default function DocumentosInquilino({
             <label className="text-xs text-gray-500">Mês inicial:</label>
             <input type="month" value={mesBoleto} onChange={e => setMesBoleto(e.target.value)}
               className="px-2 py-1.5 border border-gray-300 rounded-lg text-sm" />
-            <input ref={boletoRef} type="file" multiple accept=".pdf,image/*"
-              onChange={e => setBoletoFiles(Array.from(e.target.files ?? []))}
-              className="text-sm flex-1 min-w-0" />
           </div>
-          <p className="text-xs text-gray-400">Dica: selecione vários (ex.: os 12 do ano) — cada um vai para um mês em sequência, na ordem do nome do arquivo.</p>
+
+          {/* Área de arrastar e soltar (também abre o seletor ao clicar) */}
+          <div
+            onClick={() => boletoRef.current?.click()}
+            onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+            onDragLeave={e => { e.preventDefault(); setDragOver(false) }}
+            onDrop={e => {
+              e.preventDefault(); setDragOver(false)
+              adicionarBoletos(Array.from(e.dataTransfer.files ?? []))
+            }}
+            className={`cursor-pointer border-2 border-dashed rounded-xl px-4 py-6 text-center transition-colors ${
+              dragOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50/40'
+            }`}
+          >
+            <p className="text-sm font-medium text-gray-700">📥 Arraste os boletos aqui</p>
+            <p className="text-xs text-gray-500 mt-0.5">ou clique para escolher (pode selecionar vários — ex.: os 12 do ano)</p>
+          </div>
+          <input ref={boletoRef} type="file" multiple accept=".pdf,image/*" className="hidden"
+            onChange={e => { adicionarBoletos(Array.from(e.target.files ?? [])); e.target.value = '' }} />
 
           {boletoFiles.length > 0 && (
             <div className="bg-blue-50 border border-blue-100 rounded-lg p-2 text-xs text-gray-600 space-y-0.5">
               <p className="font-medium text-gray-700">{boletoFiles.length} boleto(s) serão enviados assim:</p>
               {boletosOrdenados.map((f, i) => (
-                <p key={f.name + i}>• <span className="font-medium capitalize">{rotuloMes(mesMais(mesBoleto, i))}</span> — {f.name}</p>
+                <div key={f.name + f.size + i} className="flex items-center justify-between gap-2">
+                  <span>• <span className="font-medium capitalize">{rotuloMes(mesMais(mesBoleto, i))}</span> — {f.name}</span>
+                  <button
+                    onClick={() => setBoletoFiles(prev => prev.filter(x => !(x.name === f.name && x.size === f.size)))}
+                    className="text-red-400 hover:text-red-600 shrink-0" title="Remover da lista">✕</button>
+                </div>
               ))}
+              <button onClick={() => setBoletoFiles([])} className="text-gray-400 hover:text-gray-600 underline mt-1">limpar lista</button>
             </div>
           )}
 
           <button onClick={enviarBoletos} disabled={busy || boletoFiles.length === 0}
             className="px-3 py-1.5 bg-gray-700 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-60">
-            {busy ? 'Enviando...' : `Enviar ${boletoFiles.length || ''} boleto${boletoFiles.length === 1 ? '' : 's'}`.replace('  ', ' ').trim()}
+            {busy ? 'Enviando...' : boletoFiles.length > 0 ? `Enviar ${boletoFiles.length} boleto${boletoFiles.length === 1 ? '' : 's'}` : 'Enviar boletos'}
           </button>
         </div>
       </div>
