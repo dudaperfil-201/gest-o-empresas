@@ -110,6 +110,14 @@ export default async function EmpresaPage({ params }: { params: Promise<{ id: st
         <NovoImovelForm empresaId={id} />
       </div>
 
+      {(imoveis ?? []).length > 0 && (
+        <div className="flex items-stretch gap-3 mb-2 px-1">
+          <div className="flex-1" />
+          <div className="shrink-0 w-24 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide leading-tight">
+            Classificação
+          </div>
+        </div>
+      )}
       <div className="space-y-3 mb-8">
         {(imoveis ?? []).map(imovel => {
           const pag = pagMap[imovel.id]
