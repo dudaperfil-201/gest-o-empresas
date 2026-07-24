@@ -24,19 +24,28 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
     .maybeSingle()
 
   // Documentos do inquilino (contrato + boletos) para a Área do Inquilino.
-  let contratosDocs: { name: string; path: string }[] = []
-  let boletosDocs: { name: string; path: string; mes: string }[] = []
+  let contratosDocs: { name: string; path: string; url: string | null }[] = []
+  let boletosDocs: { name: string; path: string; mes: string; url: string | null }[] = []
   if (inquilino) {
     const admin = createAdminClient()
+    const bucket = admin.storage.from('documentos-inquilino')
     const [cRes, bRes] = await Promise.all([
-      admin.storage.from('documentos-inquilino').list(`${inquilino.id}/contrato`, { limit: 100 }),
-      admin.storage.from('documentos-inquilino').list(`${inquilino.id}/boletos`, { limit: 200 }),
+      bucket.list(`${inquilino.id}/contrato`, { limit: 100 }),
+      bucket.list(`${inquilino.id}/boletos`, { limit: 200 }),
     ])
-    contratosDocs = (cRes.data ?? []).filter(a => a.id !== null)
-      .map(a => ({ name: a.name, path: `${inquilino.id}/contrato/${a.name}` }))
-    boletosDocs = (bRes.data ?? []).filter(a => a.id !== null)
-      .map(a => ({ name: a.name, path: `${inquilino.id}/boletos/${a.name}`, mes: a.name.split('__')[0] }))
-      .sort((a, b) => b.mes.localeCompare(a.mes))
+    const assinar = async (path: string) => (await bucket.createSignedUrl(path, 3600)).data?.signedUrl ?? null
+    contratosDocs = await Promise.all(
+      (cRes.data ?? []).filter(a => a.id !== null).map(async a => {
+        const path = `${inquilino.id}/contrato/${a.name}`
+        return { name: a.name, path, url: await assinar(path) }
+      })
+    )
+    boletosDocs = (await Promise.all(
+      (bRes.data ?? []).filter(a => a.id !== null).map(async a => {
+        const path = `${inquilino.id}/boletos/${a.name}`
+        return { name: a.name, path, mes: a.name.split('__')[0], url: await assinar(path) }
+      })
+    )).sort((a, b) => b.mes.localeCompare(a.mes))
   }
 
   const { data: pagamentos } = await supabase

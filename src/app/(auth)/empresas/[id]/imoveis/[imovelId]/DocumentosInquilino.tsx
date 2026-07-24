@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { liberarAcessoInquilino, uploadDocumentoInquilino, uploadBoletosEmLote, removerDocumentoInquilino } from '@/app/actions/inquilinos'
 
-type Doc = { name: string; path: string; mes?: string }
+type Doc = { name: string; path: string; mes?: string; url?: string | null }
 
 const MESES = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 function rotuloMes(yyyymm?: string): string {
@@ -44,6 +44,7 @@ export default function DocumentosInquilino({
   const boletoRef = useRef<HTMLInputElement>(null)
   const [boletoFiles, setBoletoFiles] = useState<File[]>([])
   const [dragOver, setDragOver] = useState(false)
+  const [abrirBoletos, setAbrirBoletos] = useState(false)
   const boletosOrdenados = [...boletoFiles].sort((a, b) => a.name.localeCompare(b.name, 'pt', { numeric: true }))
 
   function adicionarBoletos(novos: File[]) {
@@ -148,7 +149,8 @@ export default function DocumentosInquilino({
           <div className="space-y-1 mb-2">
             {contratos.map(c => (
               <div key={c.path} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
-                <span className="text-gray-700 truncate">{nomeLimpo(c.name)}</span>
+                <a href={c.url ?? '#'} target="_blank" rel="noopener noreferrer"
+                  className="text-blue-700 hover:underline truncate flex items-center gap-1.5">📄 {nomeLimpo(c.name)}</a>
                 <button onClick={() => remover(c.path)} disabled={busy} className="text-red-400 hover:text-red-600 text-sm shrink-0 ml-2">✕</button>
               </div>
             ))}
@@ -165,17 +167,32 @@ export default function DocumentosInquilino({
 
       {/* Boletos */}
       <div>
-        <h4 className="text-sm font-semibold text-gray-800 mb-2">🧾 Boletos</h4>
-        {boletos.length > 0 && (
-          <div className="space-y-1 mb-2">
-            {boletos.map(b => (
-              <div key={b.path} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
-                <span className="text-gray-700"><span className="font-medium capitalize">{rotuloMes(b.mes)}</span> <span className="text-gray-400 text-xs">· {nomeLimpo(b.name)}</span></span>
-                <button onClick={() => remover(b.path)} disabled={busy} className="text-red-400 hover:text-red-600 text-sm shrink-0 ml-2">✕</button>
+        {/* Botão que abre/fecha a "pasta" com os boletos carregados */}
+        <button
+          onClick={() => setAbrirBoletos(v => !v)}
+          className="w-full flex items-center justify-between bg-gray-100 hover:bg-gray-200 rounded-lg px-3 py-2 text-sm font-semibold text-gray-800 transition-colors">
+          <span>🧾 Boletos {boletos.length > 0 && <span className="text-gray-500 font-normal">({boletos.length})</span>}</span>
+          <span className={`transition-transform ${abrirBoletos ? 'rotate-90' : ''}`}>▸</span>
+        </button>
+
+        {abrirBoletos && (
+          <div className="mt-2">
+            {boletos.length > 0 ? (
+              <div className="space-y-1 mb-3">
+                {boletos.map(b => (
+                  <div key={b.path} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
+                    <a href={b.url ?? '#'} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-2 min-w-0 text-blue-700 hover:underline">
+                      <span>🧾</span><span className="font-medium capitalize">{rotuloMes(b.mes)}</span>
+                    </a>
+                    <button onClick={() => remover(b.path)} disabled={busy} className="text-red-400 hover:text-red-600 text-sm shrink-0 ml-2">✕</button>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            ) : (
+              <p className="text-xs text-gray-400 mb-3 px-1">Nenhum boleto enviado ainda.</p>
+            )}
+
         <div className="space-y-2">
           <div className="flex gap-2 items-center flex-wrap">
             <label className="text-xs text-gray-500">Mês inicial:</label>
@@ -222,6 +239,8 @@ export default function DocumentosInquilino({
             {busy ? 'Enviando...' : boletoFiles.length > 0 ? `Enviar ${boletoFiles.length} boleto${boletoFiles.length === 1 ? '' : 's'}` : 'Enviar boletos'}
           </button>
         </div>
+          </div>
+        )}
       </div>
 
       {msg && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{msg}</p>}
