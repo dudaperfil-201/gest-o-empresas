@@ -11,13 +11,14 @@ export async function criarEmpresa(formData: FormData) {
   revalidatePath('/imoveis')
 }
 
-// Botão PAGOU: alterna o pagamento do mês corrente. Se ainda não está pago,
-// registra o pagamento com o valor do aluguel do imóvel; se já está pago,
-// desmarca (remove o registro).
-export async function alternarPagamento(imovelId: string, empresaId: string) {
+// Botão PAGOU: alterna o pagamento do mês SELECIONADO (mês exibido na tela). Se
+// ainda não está pago, registra o pagamento com o valor do aluguel do imóvel; se
+// já está pago, desmarca (remove o registro). Sem mês/ano, cai no mês atual.
+export async function alternarPagamento(imovelId: string, empresaId: string, mesSel?: number, anoSel?: number) {
   const supabase = await createClient()
-  const mes = new Date().getMonth() + 1
-  const ano = new Date().getFullYear()
+  const agora = new Date()
+  const mes = mesSel && mesSel >= 1 && mesSel <= 12 ? mesSel : agora.getMonth() + 1
+  const ano = anoSel && anoSel >= 2000 ? anoSel : agora.getFullYear()
 
   const { data: existente } = await supabase
     .from('pagamentos')
@@ -91,11 +92,14 @@ export async function adicionarExtra(
   imovelId: string,
   empresaId: string,
   descricao: string,
-  valor: number
+  valor: number,
+  mesSel?: number,
+  anoSel?: number,
 ): Promise<ExtraItem | null> {
   const supabase = await createClient()
-  const mes = new Date().getMonth() + 1
-  const ano = new Date().getFullYear()
+  const agora = new Date()
+  const mes = mesSel && mesSel >= 1 && mesSel <= 12 ? mesSel : agora.getMonth() + 1
+  const ano = anoSel && anoSel >= 2000 ? anoSel : agora.getFullYear()
 
   const { data } = await supabase
     .from('extras_itens')

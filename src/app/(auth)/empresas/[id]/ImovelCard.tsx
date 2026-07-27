@@ -10,6 +10,9 @@ type Classificacao = 'otimo' | 'bom' | 'ruim'
 interface Props {
   imovel: { id: string; endereco: string; valor_aluguel: number | null }
   empresaId: string
+  /** Mês/ano SELECIONADO na tela — todas as ações (PAGOU/ATRASO/EXTRAS) agem nele. */
+  mes: number
+  ano: number
   pago: boolean
   atrasado: boolean
   disponivel: boolean
@@ -26,7 +29,7 @@ const SELO: Record<Classificacao, { label: string; cls: string; title: string }>
   ruim: { label: 'RUIM', cls: 'bg-red-600', title: 'Mais de 2 atrasos ou boleto em aberto' },
 }
 
-export default function ImovelCard({ imovel, empresaId, pago, atrasado, disponivel, extras, classificacao }: Props) {
+export default function ImovelCard({ imovel, empresaId, mes, ano, pago, atrasado, disponivel, extras, classificacao }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [estaPago, setEstaPago] = useState(pago)
@@ -36,12 +39,11 @@ export default function ImovelCard({ imovel, empresaId, pago, atrasado, disponiv
 
   const [modalAberto, setModalAberto] = useState(false)
   const [valorTexto, setValorTexto] = useState('')
-  // Mês a que o pagamento atrasado se refere (padrão: mês atual). Formato "AAAA-MM".
-  const mesAtualStr = (() => {
-    const d = new Date()
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-  })()
-  const [mesAtraso, setMesAtraso] = useState(mesAtualStr)
+  // Mês a que o pagamento atrasado se refere (padrão: o mês SELECIONADO na tela).
+  // Formato "AAAA-MM". Reacompanha quando o usuário navega de mês.
+  const mesSelStr = `${ano}-${String(mes).padStart(2, '0')}`
+  const [mesAtraso, setMesAtraso] = useState(mesSelStr)
+  useEffect(() => setMesAtraso(mesSelStr), [mesSelStr])
 
   // Lista de extras (energia, condomínio, etc.) do imóvel no mês.
   const [itens, setItens] = useState<ExtraItem[]>(extras ?? [])
@@ -58,7 +60,7 @@ export default function ImovelCard({ imovel, empresaId, pago, atrasado, disponiv
     setEstaPago(v => !v)
     setEstaAtrasado(false)
     try {
-      await alternarPagamento(imovel.id, empresaId)
+      await alternarPagamento(imovel.id, empresaId, mes, ano)
       router.refresh()
     } catch {
       setEstaPago(pago)
@@ -76,10 +78,9 @@ export default function ImovelCard({ imovel, empresaId, pago, atrasado, disponiv
     setLoading(true)
     try {
       await registrarPagamentoComAtraso(imovel.id, empresaId, valor, mesSel, anoSel)
-      // O card reflete o status do MÊS ATUAL — só marca "com atraso" aqui se o
-      // pagamento for desse mês. Se for de um mês passado, aparece ao navegar até ele.
-      const d = new Date()
-      if (mesSel === d.getMonth() + 1 && anoSel === d.getFullYear()) {
+      // O card reflete o status do MÊS EXIBIDO na tela — só marca "com atraso" aqui
+      // se o pagamento for desse mês. Se for de outro mês, aparece ao navegar até ele.
+      if (mesSel === mes && anoSel === ano) {
         setEstaAtrasado(true)
         setEstaPago(false)
       }
@@ -96,7 +97,7 @@ export default function ImovelCard({ imovel, empresaId, pago, atrasado, disponiv
     if (isNaN(valor) || valor <= 0) return
     setLoading(true)
     try {
-      const item = await adicionarExtra(imovel.id, empresaId, novaDesc, valor)
+      const item = await adicionarExtra(imovel.id, empresaId, novaDesc, valor, mes, ano)
       if (item) setItens(prev => [...prev, item])
       setNovaDesc('')
       setNovoValor('')

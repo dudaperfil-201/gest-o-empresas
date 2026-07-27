@@ -120,7 +120,7 @@ export default async function ImoveisPage({ searchParams }: { searchParams: Prom
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {(resumos ?? []).map(e => (
-          <Link key={e.id} href={`/empresas/${e.id}`} className="bg-white border border-gray-200 rounded-xl p-5 hover:border-blue-300 hover:shadow-sm transition-all">
+          <Link key={e.id} href={`/empresas/${e.id}?mes=${mesAtual}&ano=${anoAtual}`} className="bg-white border border-gray-200 rounded-xl p-5 hover:border-blue-300 hover:shadow-sm transition-all">
             <h3 className="font-semibold text-gray-900 text-lg mb-4">{e.nome}</h3>
 
             <div className="grid grid-cols-2 gap-3">
