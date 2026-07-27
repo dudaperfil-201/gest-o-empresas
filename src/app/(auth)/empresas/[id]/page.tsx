@@ -107,6 +107,20 @@ export default async function EmpresaPage({ params, searchParams }: { params: Pr
     ;(extrasMap[e.imovel_id] ??= []).push({ id: e.id, descricao: e.descricao, valor: e.valor })
   }
 
+  // Lista de descontos concedidos no mês, agrupada por imóvel.
+  const { data: descontosRaw } = ids.length > 0 ? await supabase
+    .from('descontos_itens')
+    .select('id, imovel_id, descricao, valor')
+    .in('imovel_id', ids)
+    .eq('mes', mesAtual)
+    .eq('ano', anoAtual)
+    .order('created_at') : { data: [] }
+
+  const descontosMap: Record<string, { id: string; descricao: string | null; valor: number }[]> = {}
+  for (const d of descontosRaw ?? []) {
+    ;(descontosMap[d.imovel_id] ??= []).push({ id: d.id, descricao: d.descricao, valor: d.valor })
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
@@ -163,6 +177,7 @@ export default async function EmpresaPage({ params, searchParams }: { params: Pr
               atrasado={pag?.status === 'atrasado'}
               disponivel={disponivel}
               extras={extrasMap[imovel.id] ?? []}
+              descontos={descontosMap[imovel.id] ?? []}
               classificacao={temInquilino ? classificar(imovel.id) : null}
             />
           )

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { alternarPagamento, registrarPagamentoComAtraso, adicionarExtra, removerExtra, type ExtraItem } from '@/app/actions/empresas'
+import { alternarPagamento, registrarPagamentoComAtraso, adicionarExtra, removerExtra, adicionarDesconto, removerDesconto, type ExtraItem, type DescontoItem } from '@/app/actions/empresas'
 
 type Classificacao = 'otimo' | 'bom' | 'ruim'
 
@@ -17,6 +17,7 @@ interface Props {
   atrasado: boolean
   disponivel: boolean
   extras?: ExtraItem[]
+  descontos?: DescontoItem[]
   classificacao?: Classificacao | null
 }
 
@@ -29,7 +30,7 @@ const SELO: Record<Classificacao, { label: string; cls: string; title: string }>
   ruim: { label: 'RUIM', cls: 'bg-red-600', title: 'Mais de 2 atrasos ou boleto em aberto' },
 }
 
-export default function ImovelCard({ imovel, empresaId, mes, ano, pago, atrasado, disponivel, extras, classificacao }: Props) {
+export default function ImovelCard({ imovel, empresaId, mes, ano, pago, atrasado, disponivel, extras, descontos, classificacao }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [estaPago, setEstaPago] = useState(pago)
@@ -54,6 +55,16 @@ export default function ImovelCard({ imovel, empresaId, mes, ano, pago, atrasado
 
   const totalExtras = itens.reduce((s, i) => s + (i.valor ?? 0), 0)
   const temExtras = itens.length > 0
+
+  // Lista de descontos concedidos ao inquilino no mês (subtraem do total).
+  const [itensDesc, setItensDesc] = useState<DescontoItem[]>(descontos ?? [])
+  useEffect(() => setItensDesc(descontos ?? []), [descontos])
+  const [modalDescontos, setModalDescontos] = useState(false)
+  const [novaDescDesc, setNovaDescDesc] = useState('')
+  const [novoValorDesc, setNovoValorDesc] = useState('')
+
+  const totalDescontos = itensDesc.reduce((s, i) => s + (i.valor ?? 0), 0)
+  const temDescontos = itensDesc.length > 0
 
   async function handlePagou() {
     setLoading(true)
@@ -118,6 +129,32 @@ export default function ImovelCard({ imovel, empresaId, mes, ano, pago, atrasado
     }
   }
 
+  async function handleAdicionarDesconto() {
+    const valor = parseFloat(novoValorDesc.replace(',', '.'))
+    if (isNaN(valor) || valor <= 0) return
+    setLoading(true)
+    try {
+      const item = await adicionarDesconto(imovel.id, empresaId, novaDescDesc, valor, mes, ano)
+      if (item) setItensDesc(prev => [...prev, item])
+      setNovaDescDesc('')
+      setNovoValorDesc('')
+      router.refresh()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleRemoverDesconto(itemId: string) {
+    setLoading(true)
+    setItensDesc(prev => prev.filter(i => i.id !== itemId))
+    try {
+      await removerDesconto(itemId, empresaId)
+      router.refresh()
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="flex items-stretch gap-3">
     <div className={`flex-1 flex items-center justify-between border rounded-xl px-5 py-4 transition-all ${
@@ -133,6 +170,15 @@ export default function ImovelCard({ imovel, empresaId, mes, ano, pago, atrasado
             {itens.map(item => (
               <p key={item.id} className="text-xs text-indigo-600 font-medium truncate">
                 + {item.descricao || 'Extra'}: R$ {brl(item.valor ?? 0)}
+              </p>
+            ))}
+          </div>
+        )}
+        {temDescontos && (
+          <div className="mt-0.5 space-y-0.5">
+            {itensDesc.map(item => (
+              <p key={item.id} className="text-xs text-rose-600 font-medium truncate">
+                − {item.descricao || 'Desconto'}: R$ {brl(item.valor ?? 0)}
               </p>
             ))}
           </div>
@@ -177,6 +223,15 @@ export default function ImovelCard({ imovel, empresaId, mes, ano, pago, atrasado
             }`}
           >
             {temExtras ? `✓ EXTRAS (${itens.length})` : 'EXTRAS'}
+          </button>
+          <button
+            onClick={() => setModalDescontos(true)}
+            disabled={loading}
+            className={`text-sm font-semibold px-4 py-2 rounded-lg text-white transition-colors disabled:opacity-60 ${
+              temDescontos ? 'bg-rose-700 hover:bg-rose-800' : 'bg-rose-500 hover:bg-rose-600'
+            }`}
+          >
+            {temDescontos ? `✓ DESCONTOS (${itensDesc.length})` : 'DESCONTOS'}
           </button>
         </div>
       )}
@@ -321,6 +376,93 @@ export default function ImovelCard({ imovel, empresaId, mes, ano, pago, atrasado
             <div className="flex justify-end mt-4">
               <button
                 onClick={() => setModalExtras(false)}
+                disabled={loading}
+                className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalDescontos && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => !loading && setModalDescontos(false)}
+        >
+          <div className="bg-white rounded-xl p-5 w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-gray-900">Descontos concedidos</h3>
+            <p className="text-sm text-gray-500 mt-0.5 truncate">{imovel.endereco}</p>
+            <p className="text-xs text-gray-400 mt-2">
+              Descontos dados ao inquilino. Adicione quantos quiser — todos subtraem do total do mês.
+            </p>
+
+            {/* Lista de descontos já cadastrados */}
+            <div className="mt-4 space-y-1.5">
+              {itensDesc.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-3">Nenhum desconto cadastrado ainda.</p>
+              ) : (
+                itensDesc.map(item => (
+                  <div key={item.id} className="flex items-center justify-between gap-2 bg-rose-50 rounded-lg px-3 py-2">
+                    <span className="text-sm text-gray-700 truncate">{item.descricao || 'Desconto'}</span>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-sm font-medium text-rose-700">− R$ {brl(item.valor ?? 0)}</span>
+                      <button
+                        onClick={() => handleRemoverDesconto(item.id)}
+                        disabled={loading}
+                        className="text-red-400 hover:text-red-600 text-sm disabled:opacity-50"
+                        title="Remover"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {itensDesc.length > 0 && (
+              <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100 text-sm">
+                <span className="text-gray-500">Total dos descontos</span>
+                <span className="font-semibold text-rose-700">− R$ {brl(totalDescontos)}</span>
+              </div>
+            )}
+
+            {/* Adicionar novo desconto */}
+            <div className="mt-4 pt-3 border-t border-gray-200">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Adicionar desconto</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={novaDescDesc}
+                  onChange={e => setNovaDescDesc(e.target.value)}
+                  placeholder="Descrição (ex: cortesia)"
+                  className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                />
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={novoValorDesc}
+                  onChange={e => setNovoValorDesc(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleAdicionarDesconto() }}
+                  placeholder="R$"
+                  className="w-24 shrink-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500"
+                />
+                <button
+                  onClick={handleAdicionarDesconto}
+                  disabled={loading || parseFloat(novoValorDesc.replace(',', '.')) > 0 === false}
+                  className="shrink-0 px-3 py-2 bg-rose-600 text-white rounded-lg text-sm font-semibold hover:bg-rose-700 transition-colors disabled:opacity-60"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={() => setModalDescontos(false)}
                 disabled={loading}
                 className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition-colors"
               >

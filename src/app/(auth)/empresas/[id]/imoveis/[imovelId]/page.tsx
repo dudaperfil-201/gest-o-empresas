@@ -68,6 +68,18 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
     ;(extrasPorMes[`${e.ano}_${e.mes}`] ??= []).push({ descricao: e.descricao, valor: e.valor })
   }
 
+  // Descontos concedidos ao inquilino, agrupados por mês/ano.
+  const { data: descontosRaw } = await supabase
+    .from('descontos_itens')
+    .select('ano, mes, descricao, valor')
+    .eq('imovel_id', imovelId)
+    .order('created_at')
+
+  const descontosPorMes: Record<string, { descricao: string | null; valor: number }[]> = {}
+  for (const d of descontosRaw ?? []) {
+    ;(descontosPorMes[`${d.ano}_${d.mes}`] ??= []).push({ descricao: d.descricao, valor: d.valor })
+  }
+
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
@@ -128,6 +140,13 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
                         + Extras: R$ {(extrasPorMes[`${p.ano}_${p.mes}`].reduce((s, e) => s + (e.valor ?? 0), 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         {' · '}
                         {extrasPorMes[`${p.ano}_${p.mes}`].map(e => e.descricao || 'extra').join(', ')}
+                      </p>
+                    )}
+                    {(descontosPorMes[`${p.ano}_${p.mes}`] ?? []).length > 0 && (
+                      <p className="text-xs text-rose-600 font-medium">
+                        − Descontos: R$ {(descontosPorMes[`${p.ano}_${p.mes}`].reduce((s, d) => s + (d.valor ?? 0), 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        {' · '}
+                        {descontosPorMes[`${p.ano}_${p.mes}`].map(d => d.descricao || 'desconto').join(', ')}
                       </p>
                     )}
                     {p.observacao && <p className="text-xs text-gray-400">{p.observacao}</p>}

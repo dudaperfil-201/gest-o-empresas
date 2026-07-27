@@ -119,6 +119,42 @@ export async function removerExtra(itemId: string, empresaId: string) {
   revalidatePath('/imoveis')
 }
 
+// DESCONTOS = lista de descontos concedidos ao inquilino, por imóvel/mês. Espelha
+// os EXTRAS, mas o valor SUBTRAI do total recebido do mês (desconto reduz o que
+// entra). Ficam na tabela própria `descontos_itens`.
+export type DescontoItem = { id: string; descricao: string | null; valor: number }
+
+export async function adicionarDesconto(
+  imovelId: string,
+  empresaId: string,
+  descricao: string,
+  valor: number,
+  mesSel?: number,
+  anoSel?: number,
+): Promise<DescontoItem | null> {
+  const supabase = await createClient()
+  const agora = new Date()
+  const mes = mesSel && mesSel >= 1 && mesSel <= 12 ? mesSel : agora.getMonth() + 1
+  const ano = anoSel && anoSel >= 2000 ? anoSel : agora.getFullYear()
+
+  const { data } = await supabase
+    .from('descontos_itens')
+    .insert({ imovel_id: imovelId, ano, mes, descricao: descricao.trim() || null, valor: valor > 0 ? valor : 0 })
+    .select('id, descricao, valor')
+    .single()
+
+  revalidatePath(`/empresas/${empresaId}`)
+  revalidatePath('/imoveis')
+  return data ?? null
+}
+
+export async function removerDesconto(itemId: string, empresaId: string) {
+  const supabase = await createClient()
+  await supabase.from('descontos_itens').delete().eq('id', itemId)
+  revalidatePath(`/empresas/${empresaId}`)
+  revalidatePath('/imoveis')
+}
+
 export async function criarImovel(formData: FormData) {
   const supabase = await createClient()
   const empresa_id = formData.get('empresa_id') as string
