@@ -201,7 +201,7 @@ export default function ImovelCard({ imovel, empresaId, mes, ano, pago, atrasado
           DISPONÍVEL
         </span>
       ) : (
-        <div className="ml-4 shrink-0 flex flex-wrap gap-2 justify-end">
+        <div className="ml-4 shrink-0 flex flex-wrap items-center gap-2 justify-end">
           {/* Pagou em dia: mostra o "PAGO". Some se o pagamento foi com atraso. */}
           {!estaAtrasado && (
             <button
@@ -226,24 +226,28 @@ export default function ImovelCard({ imovel, empresaId, mes, ano, pago, atrasado
               {estaAtrasado ? '✓ COM ATRASO' : 'PAGOU COM ATRASO'}
             </button>
           )}
-          <button
-            onClick={() => setModalExtras(true)}
-            disabled={loading}
-            className={`text-sm font-semibold px-4 py-2 rounded-lg text-white transition-colors disabled:opacity-60 ${
-              temExtras ? 'bg-indigo-700 hover:bg-indigo-800' : 'bg-indigo-500 hover:bg-indigo-600'
-            }`}
-          >
-            {temExtras ? `✓ EXTRAS (${itens.length})` : 'EXTRAS'}
-          </button>
-          <button
-            onClick={() => setModalDescontos(true)}
-            disabled={loading}
-            className={`text-sm font-semibold px-4 py-2 rounded-lg text-white transition-colors disabled:opacity-60 ${
-              temDescontos ? 'bg-rose-700 hover:bg-rose-800' : 'bg-rose-500 hover:bg-rose-600'
-            }`}
-          >
-            {temDescontos ? `✓ DESCONTOS (${itensDesc.length})` : 'DESCONTOS'}
-          </button>
+          {/* EXTRAS e DESCONTOS: menos importantes → empilhados e menores (metade),
+              mesma função de antes. */}
+          <div className="flex flex-col gap-1">
+            <button
+              onClick={() => setModalExtras(true)}
+              disabled={loading}
+              className={`text-[10px] leading-none font-semibold px-2 py-1 rounded-md text-white transition-colors disabled:opacity-60 ${
+                temExtras ? 'bg-indigo-700 hover:bg-indigo-800' : 'bg-indigo-500 hover:bg-indigo-600'
+              }`}
+            >
+              {temExtras ? `✓ EXTRAS (${itens.length})` : 'EXTRAS'}
+            </button>
+            <button
+              onClick={() => setModalDescontos(true)}
+              disabled={loading}
+              className={`text-[10px] leading-none font-semibold px-2 py-1 rounded-md text-white transition-colors disabled:opacity-60 ${
+                temDescontos ? 'bg-rose-700 hover:bg-rose-800' : 'bg-rose-500 hover:bg-rose-600'
+              }`}
+            >
+              {temDescontos ? `✓ DESCONTOS (${itensDesc.length})` : 'DESCONTOS'}
+            </button>
+          </div>
         </div>
       )}
       </div>
