@@ -11,6 +11,10 @@ create table if not exists descontos_itens (
 );
 create index if not exists idx_descontos_itens_imovel_mes on descontos_itens(imovel_id, ano, mes);
 
--- Mesma postura de segurança das demais tabelas: RLS ligado, sem policies (o app
--- acessa via service_role no servidor, que bypassa o RLS).
+-- RLS ligado + política pro usuário logado (role authenticated), IGUAL às demais
+-- tabelas do app. IMPORTANTE: sem esta policy, o cliente do servidor (que age como
+-- o usuário logado, NÃO como service_role) fica bloqueado para LER e GRAVAR — foi
+-- o bug em que os descontos "sumiam" (não salvavam nem apareciam no total).
 alter table descontos_itens enable row level security;
+create policy "descontos_itens_auth_all" on descontos_itens
+  for all to authenticated using (true) with check (true);
