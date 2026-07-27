@@ -181,6 +181,22 @@ export default async function EmpresaPage({ params, searchParams }: { params: Pr
           </div>
         )}
       </div>
+
+      {/* Legenda dos selos de reputação do inquilino — tudo em uma linha. */}
+      {(imoveis ?? []).length > 0 && (
+        <div className="mt-2 mb-8 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-gray-500">
+          <span className="font-semibold text-gray-400 uppercase tracking-wide">Classificação do inquilino:</span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-green-600" /><b className="text-gray-700">ÓTIMO</b> sempre pagou em dia
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-orange-500" /><b className="text-gray-700">BOM</b> 1 ou 2 atrasos
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-600" /><b className="text-gray-700">RUIM</b> +2 atrasos ou boleto em aberto
+          </span>
+        </div>
+      )}
     </div>
   )
 }
