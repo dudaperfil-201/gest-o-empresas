@@ -162,9 +162,20 @@ export default function ImovelCard({ imovel, empresaId, mes, ano, pago, atrasado
     }`}>
       <Link href={`/empresas/${empresaId}/imoveis/${imovel.id}`} className="flex-1 min-w-0">
         <p className={`font-medium truncate ${disponivel ? 'text-red-700' : 'text-gray-900'}`}>{imovel.endereco}</p>
-        <p className={`text-sm mt-0.5 ${disponivel ? 'text-red-500' : 'text-gray-500'}`}>
-          R$ {brl(imovel.valor_aluguel ?? 0)}
-        </p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <p className={`text-sm ${disponivel ? 'text-red-500' : 'text-gray-500'}`}>
+            R$ {brl(imovel.valor_aluguel ?? 0)}
+          </p>
+          {/* Selo de reputação — pequeno, ao lado do valor do aluguel */}
+          {!disponivel && classificacao && (
+            <span
+              title={SELO[classificacao].title}
+              className={`shrink-0 text-[9px] leading-none font-bold px-2 py-1 rounded text-white ${SELO[classificacao].cls}`}
+            >
+              {SELO[classificacao].label}
+            </span>
+          )}
+        </div>
         {temExtras && (
           <div className="mt-0.5 space-y-0.5">
             {itens.map(item => (
@@ -235,18 +246,6 @@ export default function ImovelCard({ imovel, empresaId, mes, ano, pago, atrasado
           </button>
         </div>
       )}
-      </div>
-
-      {/* Coluna do selo de reputação — FORA do card, separada dos botões */}
-      <div className="shrink-0 w-24 flex items-center justify-center">
-        {!disponivel && classificacao && (
-          <span
-            title={SELO[classificacao].title}
-            className={`w-full text-center text-xs font-bold px-2 py-2.5 rounded-lg text-white ${SELO[classificacao].cls}`}
-          >
-            {SELO[classificacao].label}
-          </span>
-        )}
       </div>
 
       {modalAberto && (
