@@ -188,7 +188,7 @@ export default function DocumentosInquilino({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
 
         {/* ── BOLETOS (esquerda) — ocultos por padrão; clica no cabeçalho pra abrir ── */}
-        <div className="border border-gray-200 rounded-xl p-4">
+        <div className="bg-white border border-amber-200 rounded-xl p-4">
           <button
             onClick={() => setAbrirBoletos(v => !v)}
             className="w-full flex items-center justify-between text-sm font-semibold text-gray-800 hover:text-gray-900 transition-colors"
@@ -273,7 +273,7 @@ export default function DocumentosInquilino({
         </div>
 
         {/* ── CONTRATO (direita) ── */}
-        <div className="border border-gray-200 rounded-xl p-4">
+        <div className="bg-white border border-amber-200 rounded-xl p-4">
           <h4 className="text-sm font-semibold text-gray-800 mb-3">
             📄 Contrato {contratos.length > 0 && <span className="text-gray-400 font-normal">({contratos.length})</span>}
           </h4>
