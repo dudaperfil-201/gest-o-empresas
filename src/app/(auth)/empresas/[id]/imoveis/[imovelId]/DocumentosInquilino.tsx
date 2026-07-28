@@ -21,6 +21,28 @@ function mesMais(mesInicial: string, i: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
+// Tenta descobrir o mês de vencimento a partir do NOME do arquivo. Cobre os formatos
+// mais comuns dos boletos: "ABR_2027", "abril-2027", "04_2027", "2027-04", "2027_04".
+// Retorna "AAAA-MM" ou null se não reconhecer.
+const MESES_ABBR: Record<string, number> = {
+  jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, jun: 6, jul: 7, ago: 8, set: 9, out: 10, nov: 11, dez: 12,
+}
+function mesDoNome(nome: string): string | null {
+  const n = nome.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  // 1) MMM(+letras) + ano  → abr 2027 / abril_2027 / ago-2026
+  let m = n.match(/(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]*[ _\-.]*(20\d{2})/)
+  if (m) return `${m[2]}-${String(MESES_ABBR[m[1]]).padStart(2, '0')}`
+  // 2) AAAA-MM / AAAA_MM / AAAAMM
+  m = n.match(/(20\d{2})[ _\-.]?(0[1-9]|1[0-2])(?!\d)/)
+  if (m) return `${m[1]}-${m[2]}`
+  // 3) MM-AAAA / MM_AAAA
+  m = n.match(/(0[1-9]|1[0-2])[ _\-.](20\d{2})/)
+  if (m) return `${m[2]}-${m[1]}`
+  return null
+}
+
+type Pendente = { file: File; mes: string }
+
 export default function DocumentosInquilino({
   inquilinoId, empresaId, imovelId, inquilinoEmail, senhaAtual, contratos, boletos,
 }: {
@@ -36,26 +58,45 @@ export default function DocumentosInquilino({
   const [senha, setSenha] = useState<string | null>(senhaAtual)
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
+  // Mês "base" — usado só como palpite sequencial para arquivos cujo nome NÃO revela o mês.
   const [mesBoleto, setMesBoleto] = useState(() => {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   })
   const contratoRef = useRef<HTMLInputElement>(null)
   const boletoRef = useRef<HTMLInputElement>(null)
-  const [boletoFiles, setBoletoFiles] = useState<File[]>([])
+  // Boletos pendentes de envio, cada um com SEU mês (editável na lista de conferência).
+  const [pendentes, setPendentes] = useState<Pendente[]>([])
   const [dragOver, setDragOver] = useState(false)
   const [abrirBoletos, setAbrirBoletos] = useState(false)
-  const boletosOrdenados = [...boletoFiles].sort((a, b) => a.name.localeCompare(b.name, 'pt', { numeric: true }))
 
   function adicionarBoletos(novos: File[]) {
     const validos = novos.filter(f => f.size > 0 && (f.type === '' || /pdf|image/.test(f.type) || /\.(pdf|png|jpe?g|webp)$/i.test(f.name)))
     if (validos.length === 0) return
-    // Evita duplicar o mesmo arquivo (mesmo nome + tamanho) se soltar duas vezes.
-    setBoletoFiles(prev => {
-      const chave = (f: File) => `${f.name}_${f.size}`
-      const existentes = new Set(prev.map(chave))
-      return [...prev, ...validos.filter(f => !existentes.has(chave(f)))]
+    setPendentes(prev => {
+      const chave = (n: string, s: number) => `${n}_${s}`
+      const existentes = new Set(prev.map(p => chave(p.file.name, p.file.size)))
+      const novosFiles = validos
+        .filter(f => !existentes.has(chave(f.name, f.size)))
+        .sort((a, b) => a.name.localeCompare(b.name, 'pt', { numeric: true }))
+      // Palpite do mês: 1º tenta ler do nome; se não der, cai no sequencial a partir
+      // do "mês base" (contando só os que também não têm mês no nome).
+      let seq = prev.filter(p => !mesDoNome(p.file.name)).length
+      const itens: Pendente[] = novosFiles.map(f => {
+        const doNome = mesDoNome(f.name)
+        if (doNome) return { file: f, mes: doNome }
+        const mes = mesMais(mesBoleto, seq); seq++
+        return { file: f, mes }
+      })
+      return [...prev, ...itens]
     })
+  }
+
+  function setMesPendente(idx: number, mes: string) {
+    setPendentes(prev => prev.map((p, i) => (i === idx ? { ...p, mes } : p)))
+  }
+  function removerPendente(idx: number) {
+    setPendentes(prev => prev.filter((_, i) => i !== idx))
   }
 
   const portalUrl = typeof window !== 'undefined' ? `${window.location.origin}/area-inquilino` : '/area-inquilino'
@@ -86,18 +127,22 @@ export default function DocumentosInquilino({
   }
 
   async function enviarBoletos() {
-    if (boletoFiles.length === 0) { setMsg('Escolha os boletos primeiro.'); return }
+    if (pendentes.length === 0) { setMsg('Escolha os boletos primeiro.'); return }
+    if (pendentes.some(p => !/^\d{4}-\d{2}$/.test(p.mes))) { setMsg('Confira o mês de todos os boletos.'); return }
     setBusy(true); setMsg('')
     const fd = new FormData()
     fd.append('inquilino_id', inquilinoId)
     fd.append('empresa_id', empresaId)
     fd.append('imovel_id', imovelId)
-    fd.append('mes_inicial', mesBoleto)
-    for (const f of boletoFiles) fd.append('arquivos', f)
+    // Envia cada arquivo com o SEU mês, na mesma ordem.
+    for (const p of pendentes) {
+      fd.append('arquivos', p.file)
+      fd.append('meses', p.mes)
+    }
     const r = await uploadBoletosEmLote(fd)
     setBusy(false)
     if (r.ok) {
-      setBoletoFiles([])
+      setPendentes([])
       if (boletoRef.current) boletoRef.current.value = ''
       router.refresh()
     } else {
@@ -195,9 +240,10 @@ export default function DocumentosInquilino({
 
         <div className="space-y-2">
           <div className="flex gap-2 items-center flex-wrap">
-            <label className="text-xs text-gray-500">Mês inicial:</label>
+            <label className="text-xs text-gray-500">Mês base:</label>
             <input type="month" value={mesBoleto} onChange={e => setMesBoleto(e.target.value)}
               className="px-2 py-1.5 border border-gray-300 rounded-lg text-sm" />
+            <span className="text-[11px] text-gray-400">usado só quando o mês não aparece no nome do arquivo</span>
           </div>
 
           {/* Área de arrastar e soltar (também abre o seletor ao clicar) */}
@@ -219,24 +265,30 @@ export default function DocumentosInquilino({
           <input ref={boletoRef} type="file" multiple accept=".pdf,image/*" className="hidden"
             onChange={e => { adicionarBoletos(Array.from(e.target.files ?? [])); e.target.value = '' }} />
 
-          {boletoFiles.length > 0 && (
-            <div className="bg-blue-50 border border-blue-100 rounded-lg p-2 text-xs text-gray-600 space-y-0.5">
-              <p className="font-medium text-gray-700">{boletoFiles.length} boleto(s) serão enviados assim:</p>
-              {boletosOrdenados.map((f, i) => (
-                <div key={f.name + f.size + i} className="flex items-center justify-between gap-2">
-                  <span>• <span className="font-medium capitalize">{rotuloMes(mesMais(mesBoleto, i))}</span> — {f.name}</span>
+          {pendentes.length > 0 && (
+            <div className="bg-blue-50 border border-blue-100 rounded-lg p-2 text-xs text-gray-600 space-y-1">
+              <p className="font-medium text-gray-700">Confira o mês de cada boleto antes de enviar:</p>
+              {pendentes.map((p, i) => (
+                <div key={p.file.name + p.file.size + i} className="flex items-center gap-2">
+                  <input
+                    type="month"
+                    value={p.mes}
+                    onChange={e => setMesPendente(i, e.target.value)}
+                    className="px-2 py-1 border border-gray-300 rounded-md text-xs shrink-0"
+                  />
+                  <span className="truncate flex-1" title={p.file.name}>{p.file.name}</span>
                   <button
-                    onClick={() => setBoletoFiles(prev => prev.filter(x => !(x.name === f.name && x.size === f.size)))}
+                    onClick={() => removerPendente(i)}
                     className="text-red-400 hover:text-red-600 shrink-0" title="Remover da lista">✕</button>
                 </div>
               ))}
-              <button onClick={() => setBoletoFiles([])} className="text-gray-400 hover:text-gray-600 underline mt-1">limpar lista</button>
+              <button onClick={() => setPendentes([])} className="text-gray-400 hover:text-gray-600 underline mt-1">limpar lista</button>
             </div>
           )}
 
-          <button onClick={enviarBoletos} disabled={busy || boletoFiles.length === 0}
+          <button onClick={enviarBoletos} disabled={busy || pendentes.length === 0}
             className="px-3 py-1.5 bg-gray-700 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-60">
-            {busy ? 'Enviando...' : boletoFiles.length > 0 ? `Enviar ${boletoFiles.length} boleto${boletoFiles.length === 1 ? '' : 's'}` : 'Enviar boletos'}
+            {busy ? 'Enviando...' : pendentes.length > 0 ? `Enviar ${pendentes.length} boleto${pendentes.length === 1 ? '' : 's'}` : 'Enviar boletos'}
           </button>
         </div>
           </div>

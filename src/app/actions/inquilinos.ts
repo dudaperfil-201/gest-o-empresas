@@ -126,22 +126,24 @@ export async function uploadBoletosEmLote(formData: FormData): Promise<{ ok: boo
   const inquilinoId = formData.get('inquilino_id') as string
   const empresaId = formData.get('empresa_id') as string
   const imovelId = formData.get('imovel_id') as string
-  const mesInicial = (formData.get('mes_inicial') as string) ?? ''
   const files = formData.getAll('arquivos').filter((f): f is File => f instanceof File && f.size > 0)
+  // Um mês por arquivo, na MESMA ordem em que os arquivos foram anexados. Cada boleto
+  // carrega o mês do seu vencimento (definido/conferido pelo usuário na tela), em vez
+  // de um mês sequencial que dependia da ordem alfabética dos nomes (causava troca).
+  const meses = formData.getAll('meses').map(m => String(m))
 
-  if (!inquilinoId || files.length === 0 || !/^\d{4}-\d{2}$/.test(mesInicial)) {
-    return { ok: false, erro: 'Escolha o mês inicial e ao menos um arquivo.' }
+  if (!inquilinoId || files.length === 0) {
+    return { ok: false, erro: 'Escolha ao menos um arquivo.' }
   }
-  // Ordena por nome (numérico) para casar com a ordem dos meses.
-  files.sort((a, b) => a.name.localeCompare(b.name, 'pt', { numeric: true }))
+  if (meses.length !== files.length || meses.some(m => !/^\d{4}-\d{2}$/.test(m))) {
+    return { ok: false, erro: 'Mês inválido em algum boleto.' }
+  }
 
   const admin = createAdminClient()
-  const [ano0, mes0] = mesInicial.split('-').map(Number)
   let enviados = 0
   let primeiroErro = ''
   for (let i = 0; i < files.length; i++) {
-    const d = new Date(ano0, mes0 - 1 + i, 1)
-    const mesStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const mesStr = meses[i]
     const path = `${inquilinoId}/boletos/${mesStr}__${Date.now()}_${i}_${sanitizar(files[i].name || 'boleto.pdf')}`
     try {
       const bytes = new Uint8Array(await files[i].arrayBuffer())
