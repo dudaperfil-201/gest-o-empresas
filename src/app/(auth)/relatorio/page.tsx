@@ -18,21 +18,24 @@ export default async function RelatorioPage() {
       .order('endereco')
 
     const ids = (imoveis ?? []).map(i => i.id)
-    const [{ data: pagamentos }, { data: extrasRaw }] = ids.length > 0 ? await Promise.all([
+    const [{ data: pagamentos }, { data: extrasRaw }, { data: descontosRaw }] = ids.length > 0 ? await Promise.all([
       supabase.from('pagamentos').select('imovel_id, status, valor_original, valor_pago').in('imovel_id', ids).eq('mes', mesAtual).eq('ano', anoAtual),
       supabase.from('extras_itens').select('imovel_id, valor').in('imovel_id', ids).eq('mes', mesAtual).eq('ano', anoAtual),
-    ]) : [{ data: [] }, { data: [] }]
+      supabase.from('descontos_itens').select('imovel_id, valor').in('imovel_id', ids).eq('mes', mesAtual).eq('ano', anoAtual),
+    ]) : [{ data: [] }, { data: [] }, { data: [] }]
 
     const pagMap = Object.fromEntries((pagamentos ?? []).map(p => [p.imovel_id, p]))
     const extrasSum: Record<string, number> = {}
     for (const e of extrasRaw ?? []) extrasSum[e.imovel_id] = (extrasSum[e.imovel_id] ?? 0) + (e.valor ?? 0)
+    const descontosSum: Record<string, number> = {}
+    for (const d of descontosRaw ?? []) descontosSum[d.imovel_id] = (descontosSum[d.imovel_id] ?? 0) + (d.valor ?? 0)
 
     return {
       ...empresa,
       imoveis: (imoveis ?? []).map(imovel => {
         const pag = pagMap[imovel.id]
         const inquilino = Array.isArray(imovel.inquilinos) ? imovel.inquilinos[0] : imovel.inquilinos
-        return { ...imovel, pag, inquilino, extras: extrasSum[imovel.id] ?? 0 }
+        return { ...imovel, pag, inquilino, extras: extrasSum[imovel.id] ?? 0, descontos: descontosSum[imovel.id] ?? 0 }
       })
     }
   }))
@@ -40,10 +43,11 @@ export default async function RelatorioPage() {
   const nomeMes = new Date(anoAtual, mesAtual - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
 
   const totalEsperado = resultado.flatMap(e => e.imoveis).reduce((s, i) => s + (i.valor_aluguel ?? 0), 0)
-  // Recebido = aluguéis pagos (pago/atrasado) + todos os extras do mês.
+  // Recebido = aluguéis pagos (pago/atrasado) + extras − descontos do mês.
   const totalRecebidoAluguel = resultado.flatMap(e => e.imoveis).filter(i => i.pag?.status === 'pago' || i.pag?.status === 'atrasado').reduce((s, i) => s + (i.pag?.valor_pago ?? 0), 0)
   const totalExtras = resultado.flatMap(e => e.imoveis).reduce((s, i) => s + (i.extras ?? 0), 0)
-  const totalRecebido = totalRecebidoAluguel + totalExtras
+  const totalDescontos = resultado.flatMap(e => e.imoveis).reduce((s, i) => s + (i.descontos ?? 0), 0)
+  const totalRecebido = totalRecebidoAluguel + totalExtras - totalDescontos
   const totalPendente = totalEsperado - resultado.flatMap(e => e.imoveis).filter(i => i.pag?.status === 'pago' || i.pag?.status === 'atrasado').reduce((s, i) => s + (i.valor_aluguel ?? 0), 0)
 
   return (
@@ -100,7 +104,15 @@ export default async function RelatorioPage() {
                     <td className="px-5 py-3 text-gray-900">{imovel.endereco}</td>
                     <td className="px-5 py-3 text-gray-600">{imovel.inquilino?.nome ?? '—'}</td>
                     <td className="px-5 py-3 text-right text-gray-700">R$ {(imovel.valor_aluguel ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                    <td className="px-5 py-3 text-right text-gray-700">{imovel.pag?.valor_pago ? `R$ ${imovel.pag.valor_pago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}</td>
+                    <td className="px-5 py-3 text-right text-gray-700">
+                      {imovel.pag?.valor_pago ? `R$ ${imovel.pag.valor_pago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}
+                      {imovel.extras > 0 && (
+                        <div className="text-xs text-indigo-600 font-medium">+ Extras: R$ {imovel.extras.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                      )}
+                      {imovel.descontos > 0 && (
+                        <div className="text-xs text-rose-600 font-medium">− Descontos: R$ {imovel.descontos.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                      )}
+                    </td>
                     <td className="px-5 py-3 text-right">
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor}`}>{statusLabel}</span>
                     </td>
