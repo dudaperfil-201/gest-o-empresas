@@ -68,7 +68,6 @@ export default function DocumentosInquilino({
   // Boletos pendentes de envio, cada um com SEU mês (editável na lista de conferência).
   const [pendentes, setPendentes] = useState<Pendente[]>([])
   const [dragOver, setDragOver] = useState(false)
-  const [abrirBoletos, setAbrirBoletos] = useState(false)
 
   function adicionarBoletos(novos: File[]) {
     const validos = novos.filter(f => f.size > 0 && (f.type === '' || /pdf|image/.test(f.type) || /\.(pdf|png|jpe?g|webp)$/i.test(f.name)))
@@ -187,112 +186,112 @@ export default function DocumentosInquilino({
         )}
       </div>
 
-      {/* Contrato */}
-      <div>
-        <h4 className="text-sm font-semibold text-gray-800 mb-2">📄 Contrato</h4>
-        {contratos.length > 0 && (
-          <div className="space-y-1 mb-2">
-            {contratos.map(c => (
-              <div key={c.path} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
-                <a href={c.url ?? '#'} target="_blank" rel="noopener noreferrer"
-                  className="text-blue-700 hover:underline truncate flex items-center gap-1.5">📄 {nomeLimpo(c.name)}</a>
-                <button onClick={() => remover(c.path)} disabled={busy} className="text-red-400 hover:text-red-600 text-sm shrink-0 ml-2">✕</button>
-              </div>
-            ))}
-          </div>
-        )}
-        <div className="flex gap-2">
-          <input ref={contratoRef} type="file" accept=".pdf,.doc,.docx,image/*" className="text-sm flex-1 min-w-0" />
-          <button onClick={() => enviar('contrato', contratoRef)} disabled={busy}
-            className="shrink-0 px-3 py-1.5 bg-gray-700 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-60">
-            Enviar
-          </button>
-        </div>
-      </div>
+      {/* Documentos: BOLETOS (esquerda) | CONTRATO (direita) — dois quadrados lado a lado */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
 
-      {/* Boletos */}
-      <div>
-        {/* Botão que abre/fecha a "pasta" com os boletos carregados */}
-        <button
-          onClick={() => setAbrirBoletos(v => !v)}
-          className="w-full flex items-center justify-between bg-gray-100 hover:bg-gray-200 rounded-lg px-3 py-2 text-sm font-semibold text-gray-800 transition-colors">
-          <span>🧾 Boletos {boletos.length > 0 && <span className="text-gray-500 font-normal">({boletos.length})</span>}</span>
-          <span className={`transition-transform ${abrirBoletos ? 'rotate-90' : ''}`}>▸</span>
-        </button>
+        {/* ── BOLETOS (esquerda) ── */}
+        <div className="border border-gray-200 rounded-xl p-4">
+          <h4 className="text-sm font-semibold text-gray-800 mb-3">
+            🧾 Boletos {boletos.length > 0 && <span className="text-gray-400 font-normal">({boletos.length})</span>}
+          </h4>
 
-        {abrirBoletos && (
-          <div className="mt-2">
-            {boletos.length > 0 ? (
-              <div className="space-y-1 mb-3">
-                {boletos.map(b => (
-                  <div key={b.path} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
-                    <a href={b.url ?? '#'} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-2 min-w-0 text-blue-700 hover:underline">
-                      <span>🧾</span><span className="font-medium capitalize">{rotuloMes(b.mes)}</span>
-                    </a>
-                    <button onClick={() => remover(b.path)} disabled={busy} className="text-red-400 hover:text-red-600 text-sm shrink-0 ml-2">✕</button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-gray-400 mb-3 px-1">Nenhum boleto enviado ainda.</p>
-            )}
-
-        <div className="space-y-2">
-          <div className="flex gap-2 items-center flex-wrap">
-            <label className="text-xs text-gray-500">Mês base:</label>
-            <input type="month" value={mesBoleto} onChange={e => setMesBoleto(e.target.value)}
-              className="px-2 py-1.5 border border-gray-300 rounded-lg text-sm" />
-            <span className="text-[11px] text-gray-400">usado só quando o mês não aparece no nome do arquivo</span>
-          </div>
-
-          {/* Área de arrastar e soltar (também abre o seletor ao clicar) */}
-          <div
-            onClick={() => boletoRef.current?.click()}
-            onDragOver={e => { e.preventDefault(); setDragOver(true) }}
-            onDragLeave={e => { e.preventDefault(); setDragOver(false) }}
-            onDrop={e => {
-              e.preventDefault(); setDragOver(false)
-              adicionarBoletos(Array.from(e.dataTransfer.files ?? []))
-            }}
-            className={`cursor-pointer border-2 border-dashed rounded-xl px-4 py-6 text-center transition-colors ${
-              dragOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50/40'
-            }`}
-          >
-            <p className="text-sm font-medium text-gray-700">📥 Arraste os boletos aqui</p>
-            <p className="text-xs text-gray-500 mt-0.5">ou clique para escolher (pode selecionar vários — ex.: os 12 do ano)</p>
-          </div>
-          <input ref={boletoRef} type="file" multiple accept=".pdf,image/*" className="hidden"
-            onChange={e => { adicionarBoletos(Array.from(e.target.files ?? [])); e.target.value = '' }} />
-
-          {pendentes.length > 0 && (
-            <div className="bg-blue-50 border border-blue-100 rounded-lg p-2 text-xs text-gray-600 space-y-1">
-              <p className="font-medium text-gray-700">Confira o mês de cada boleto antes de enviar:</p>
-              {pendentes.map((p, i) => (
-                <div key={p.file.name + p.file.size + i} className="flex items-center gap-2">
-                  <input
-                    type="month"
-                    value={p.mes}
-                    onChange={e => setMesPendente(i, e.target.value)}
-                    className="px-2 py-1 border border-gray-300 rounded-md text-xs shrink-0"
-                  />
-                  <span className="truncate flex-1" title={p.file.name}>{p.file.name}</span>
-                  <button
-                    onClick={() => removerPendente(i)}
-                    className="text-red-400 hover:text-red-600 shrink-0" title="Remover da lista">✕</button>
+          {boletos.length > 0 ? (
+            <div className="space-y-1 mb-3 max-h-56 overflow-y-auto pr-1">
+              {boletos.map(b => (
+                <div key={b.path} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
+                  <a href={b.url ?? '#'} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 min-w-0 text-blue-700 hover:underline">
+                    <span>🧾</span><span className="font-medium capitalize">{rotuloMes(b.mes)}</span>
+                  </a>
+                  <button onClick={() => remover(b.path)} disabled={busy} className="text-red-400 hover:text-red-600 text-sm shrink-0 ml-2">✕</button>
                 </div>
               ))}
-              <button onClick={() => setPendentes([])} className="text-gray-400 hover:text-gray-600 underline mt-1">limpar lista</button>
             </div>
+          ) : (
+            <p className="text-xs text-gray-400 mb-3 px-1">Nenhum boleto enviado ainda.</p>
           )}
 
-          <button onClick={enviarBoletos} disabled={busy || pendentes.length === 0}
-            className="px-3 py-1.5 bg-gray-700 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-60">
-            {busy ? 'Enviando...' : pendentes.length > 0 ? `Enviar ${pendentes.length} boleto${pendentes.length === 1 ? '' : 's'}` : 'Enviar boletos'}
-          </button>
-        </div>
+          <div className="space-y-2">
+            <div className="flex gap-2 items-center flex-wrap">
+              <label className="text-xs text-gray-500">Mês base:</label>
+              <input type="month" value={mesBoleto} onChange={e => setMesBoleto(e.target.value)}
+                className="px-2 py-1.5 border border-gray-300 rounded-lg text-sm" />
+              <span className="text-[11px] text-gray-400">usado só quando o mês não aparece no nome do arquivo</span>
+            </div>
+
+            {/* Área de arrastar e soltar (também abre o seletor ao clicar) */}
+            <div
+              onClick={() => boletoRef.current?.click()}
+              onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+              onDragLeave={e => { e.preventDefault(); setDragOver(false) }}
+              onDrop={e => {
+                e.preventDefault(); setDragOver(false)
+                adicionarBoletos(Array.from(e.dataTransfer.files ?? []))
+              }}
+              className={`cursor-pointer border-2 border-dashed rounded-xl px-4 py-6 text-center transition-colors ${
+                dragOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50/40'
+              }`}
+            >
+              <p className="text-sm font-medium text-gray-700">📥 Arraste os boletos aqui</p>
+              <p className="text-xs text-gray-500 mt-0.5">ou clique para escolher (vários — ex.: os 12 do ano)</p>
+            </div>
+            <input ref={boletoRef} type="file" multiple accept=".pdf,image/*" className="hidden"
+              onChange={e => { adicionarBoletos(Array.from(e.target.files ?? [])); e.target.value = '' }} />
+
+            {pendentes.length > 0 && (
+              <div className="bg-blue-50 border border-blue-100 rounded-lg p-2 text-xs text-gray-600 space-y-1">
+                <p className="font-medium text-gray-700">Confira o mês de cada boleto antes de enviar:</p>
+                {pendentes.map((p, i) => (
+                  <div key={p.file.name + p.file.size + i} className="flex items-center gap-2">
+                    <input
+                      type="month"
+                      value={p.mes}
+                      onChange={e => setMesPendente(i, e.target.value)}
+                      className="px-2 py-1 border border-gray-300 rounded-md text-xs shrink-0"
+                    />
+                    <span className="truncate flex-1" title={p.file.name}>{p.file.name}</span>
+                    <button
+                      onClick={() => removerPendente(i)}
+                      className="text-red-400 hover:text-red-600 shrink-0" title="Remover da lista">✕</button>
+                  </div>
+                ))}
+                <button onClick={() => setPendentes([])} className="text-gray-400 hover:text-gray-600 underline mt-1">limpar lista</button>
+              </div>
+            )}
+
+            <button onClick={enviarBoletos} disabled={busy || pendentes.length === 0}
+              className="w-full px-3 py-1.5 bg-gray-700 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-60">
+              {busy ? 'Enviando...' : pendentes.length > 0 ? `Enviar ${pendentes.length} boleto${pendentes.length === 1 ? '' : 's'}` : 'Enviar boletos'}
+            </button>
           </div>
-        )}
+        </div>
+
+        {/* ── CONTRATO (direita) ── */}
+        <div className="border border-gray-200 rounded-xl p-4">
+          <h4 className="text-sm font-semibold text-gray-800 mb-3">
+            📄 Contrato {contratos.length > 0 && <span className="text-gray-400 font-normal">({contratos.length})</span>}
+          </h4>
+          {contratos.length > 0 ? (
+            <div className="space-y-1 mb-3">
+              {contratos.map(c => (
+                <div key={c.path} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
+                  <a href={c.url ?? '#'} target="_blank" rel="noopener noreferrer"
+                    className="text-blue-700 hover:underline truncate flex items-center gap-1.5">📄 {nomeLimpo(c.name)}</a>
+                  <button onClick={() => remover(c.path)} disabled={busy} className="text-red-400 hover:text-red-600 text-sm shrink-0 ml-2">✕</button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400 mb-3 px-1">Nenhum contrato enviado ainda.</p>
+          )}
+          <div className="flex gap-2">
+            <input ref={contratoRef} type="file" accept=".pdf,.doc,.docx,image/*" className="text-sm flex-1 min-w-0" />
+            <button onClick={() => enviar('contrato', contratoRef)} disabled={busy}
+              className="shrink-0 px-3 py-1.5 bg-gray-700 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-60">
+              Enviar
+            </button>
+          </div>
+        </div>
       </div>
 
       {msg && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{msg}</p>}

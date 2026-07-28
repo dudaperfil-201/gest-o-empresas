@@ -81,7 +81,7 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-4xl mx-auto">
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
         <Link href="/imoveis" className="hover:text-blue-600">Empresas</Link>
         <span>/</span>
@@ -102,22 +102,7 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
         <InquilinoForm imovelId={imovelId} empresaId={id} inquilino={inquilino} valorAluguel={imovel.valor_aluguel ?? 0} enderecoImovel={imovel.endereco} diaVencimento={imovel.dia_vencimento ?? null} />
       </div>
 
-      {inquilino && (
-        <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
-          <h3 className="font-medium text-gray-900 mb-4">Área do Inquilino — acesso e documentos</h3>
-          <DocumentosInquilino
-            inquilinoId={inquilino.id}
-            empresaId={id}
-            imovelId={imovelId}
-            inquilinoEmail={inquilino.email ?? null}
-            senhaAtual={inquilino.senha_acesso ?? null}
-            contratos={contratosDocs}
-            boletos={boletosDocs}
-          />
-        </div>
-      )}
-
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
+      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
         <h3 className="font-medium text-gray-900 mb-4">Histórico de pagamentos</h3>
         {(pagamentos ?? []).length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-4">Nenhum pagamento registrado.</p>
@@ -172,6 +157,21 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
           </div>
         )}
       </div>
+
+      {inquilino && (
+        <div className="bg-white border border-gray-200 rounded-xl p-5">
+          <h3 className="font-medium text-gray-900 mb-4">Área do Inquilino — acesso e documentos</h3>
+          <DocumentosInquilino
+            inquilinoId={inquilino.id}
+            empresaId={id}
+            imovelId={imovelId}
+            inquilinoEmail={inquilino.email ?? null}
+            senhaAtual={inquilino.senha_acesso ?? null}
+            contratos={contratosDocs}
+            boletos={boletosDocs}
+          />
+        </div>
+      )}
     </div>
   )
 }
