@@ -11,9 +11,6 @@ function rotuloMes(yyyymm?: string): string {
   const m = (yyyymm ?? '').match(/^(\d{4})-(\d{2})$/)
   return m ? `${MESES[parseInt(m[2], 10)]}/${m[1]}` : (yyyymm ?? '')
 }
-function nomeLimpo(n: string): string {
-  return n.replace(/^\d{4}-\d{2}__/, '').replace(/^\d{13}_(\d+_)?/, '')
-}
 // "AAAA-MM" + i meses → "AAAA-MM"
 function mesMais(mesInicial: string, i: number): string {
   const [a, m] = mesInicial.split('-').map(Number)
@@ -68,6 +65,7 @@ export default function DocumentosInquilino({
   // Boletos pendentes de envio, cada um com SEU mês (editável na lista de conferência).
   const [pendentes, setPendentes] = useState<Pendente[]>([])
   const [dragOver, setDragOver] = useState(false)
+  const [abrirBoletos, setAbrirBoletos] = useState(false) // boletos começam ocultos (comprime a tela)
 
   function adicionarBoletos(novos: File[]) {
     const validos = novos.filter(f => f.size > 0 && (f.type === '' || /pdf|image/.test(f.type) || /\.(pdf|png|jpe?g|webp)$/i.test(f.name)))
@@ -189,12 +187,18 @@ export default function DocumentosInquilino({
       {/* Documentos: BOLETOS (esquerda) | CONTRATO (direita) — dois quadrados lado a lado */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
 
-        {/* ── BOLETOS (esquerda) ── */}
+        {/* ── BOLETOS (esquerda) — ocultos por padrão; clica no cabeçalho pra abrir ── */}
         <div className="border border-gray-200 rounded-xl p-4">
-          <h4 className="text-sm font-semibold text-gray-800 mb-3">
-            🧾 Boletos {boletos.length > 0 && <span className="text-gray-400 font-normal">({boletos.length})</span>}
-          </h4>
+          <button
+            onClick={() => setAbrirBoletos(v => !v)}
+            className="w-full flex items-center justify-between text-sm font-semibold text-gray-800 hover:text-gray-900 transition-colors"
+          >
+            <span>🧾 Boletos {boletos.length > 0 && <span className="text-gray-400 font-normal">({boletos.length})</span>}</span>
+            <span className={`text-gray-400 transition-transform ${abrirBoletos ? 'rotate-90' : ''}`}>▸</span>
+          </button>
 
+          {abrirBoletos && (
+          <div className="mt-3">
           {boletos.length > 0 ? (
             <div className="space-y-1 mb-3 max-h-56 overflow-y-auto pr-1">
               {boletos.map(b => (
@@ -264,6 +268,8 @@ export default function DocumentosInquilino({
               {busy ? 'Enviando...' : pendentes.length > 0 ? `Enviar ${pendentes.length} boleto${pendentes.length === 1 ? '' : 's'}` : 'Enviar boletos'}
             </button>
           </div>
+          </div>
+          )}
         </div>
 
         {/* ── CONTRATO (direita) ── */}
@@ -276,7 +282,7 @@ export default function DocumentosInquilino({
               {contratos.map(c => (
                 <div key={c.path} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
                   <a href={c.url ?? '#'} target="_blank" rel="noopener noreferrer"
-                    className="text-blue-700 hover:underline truncate flex items-center gap-1.5">📄 {nomeLimpo(c.name)}</a>
+                    className="text-blue-700 hover:underline truncate flex items-center gap-1.5">📄 CONTRATO DE LOCAÇÃO</a>
                   <button onClick={() => remover(c.path)} disabled={busy} className="text-red-400 hover:text-red-600 text-sm shrink-0 ml-2">✕</button>
                 </div>
               ))}
