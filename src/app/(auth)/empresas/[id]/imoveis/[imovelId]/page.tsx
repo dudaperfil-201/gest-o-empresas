@@ -97,12 +97,12 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
         </p>
       </div>
 
-      <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-5 mb-4">
+      <div className="bg-blue-50/60 border-2 border-blue-300 rounded-xl p-5 mb-4">
         <h3 className="font-medium text-gray-900 mb-4">Cadastro do imóvel</h3>
         <InquilinoForm imovelId={imovelId} empresaId={id} inquilino={inquilino} valorAluguel={imovel.valor_aluguel ?? 0} enderecoImovel={imovel.endereco} diaVencimento={imovel.dia_vencimento ?? null} />
       </div>
 
-      <div className="bg-green-50/60 border border-green-100 rounded-xl p-5 mb-4">
+      <div className="bg-green-50/60 border-2 border-green-300 rounded-xl p-5 mb-4">
         <h3 className="font-medium text-gray-900 mb-4">Histórico de pagamentos</h3>
         {(pagamentos ?? []).length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-4">Nenhum pagamento registrado.</p>
@@ -159,7 +159,7 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
       </div>
 
       {inquilino && (
-        <div className="bg-amber-50/60 border border-amber-100 rounded-xl p-5">
+        <div className="bg-amber-50/60 border-2 border-amber-300 rounded-xl p-5">
           <h3 className="font-medium text-gray-900 mb-4">Área do Inquilino — acesso e documentos</h3>
           <DocumentosInquilino
             inquilinoId={inquilino.id}
