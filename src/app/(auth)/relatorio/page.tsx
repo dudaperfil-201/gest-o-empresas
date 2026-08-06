@@ -80,7 +80,16 @@ export default async function RelatorioPage() {
         </div>
       </div>
 
-      {resultado.map(empresa => (
+      {resultado.map(empresa => {
+        // Somatório da empresa: Valor = soma dos aluguéis; Recebido = aluguéis pagos
+        // (pago/atrasado) + extras − descontos (mesma regra do "Total recebido" geral).
+        const somaValor = empresa.imoveis.reduce((s, i) => s + (i.valor_aluguel ?? 0), 0)
+        const somaRecebido = empresa.imoveis
+          .filter(i => i.pag?.status === 'pago' || i.pag?.status === 'atrasado')
+          .reduce((s, i) => s + (i.pag?.valor_pago ?? 0), 0)
+          + empresa.imoveis.reduce((s, i) => s + (i.extras ?? 0), 0)
+          - empresa.imoveis.reduce((s, i) => s + (i.descontos ?? 0), 0)
+        return (
         <div key={empresa.id} className="bg-white border border-gray-200 rounded-xl mb-4 overflow-hidden">
           <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
             <h3 className="font-semibold text-gray-900">{empresa.nome}</h3>
@@ -120,9 +129,18 @@ export default async function RelatorioPage() {
                 )
               })}
             </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-gray-200 bg-gray-50 font-semibold text-gray-900">
+                <td className="px-5 py-3" colSpan={2}>Total</td>
+                <td className="px-5 py-3 text-right">R$ {somaValor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                <td className="px-5 py-3 text-right text-green-700">R$ {somaRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                <td className="px-5 py-3"></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
