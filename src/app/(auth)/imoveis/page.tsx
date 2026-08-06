@@ -50,11 +50,11 @@ export default async function ImoveisPage({ searchParams }: { searchParams: Prom
     const potencial = (imoveis ?? []).reduce((s, im) => estaLocado(im) ? s + (im.valor_aluguel ?? 0) : s, 0)
 
     const ids = (imoveis ?? []).map(i => i.id)
-    if (ids.length === 0) return { ...empresa, total: 0, locados: 0, disponiveis: 0, potencial: 0, pagamentos: 0 }
+    if (ids.length === 0) return { ...empresa, total: 0, locados: 0, disponiveis: 0, potencial: 0, pagamentos: 0, pagaram: 0 }
 
     // PAGAMENTOS = soma de tudo que foi recebido no mês (aluguel + extras − descontos).
     const [{ data: pagamentos }, { data: extras }, { data: descontos }] = await Promise.all([
-      supabase.from('pagamentos').select('valor_pago').in('imovel_id', ids).eq('mes', mesAtual).eq('ano', anoAtual),
+      supabase.from('pagamentos').select('imovel_id, valor_pago, status').in('imovel_id', ids).eq('mes', mesAtual).eq('ano', anoAtual),
       supabase.from('extras_itens').select('valor').in('imovel_id', ids).eq('mes', mesAtual).eq('ano', anoAtual),
       supabase.from('descontos_itens').select('valor').in('imovel_id', ids).eq('mes', mesAtual).eq('ano', anoAtual),
     ])
@@ -62,7 +62,12 @@ export default async function ImoveisPage({ searchParams }: { searchParams: Prom
     const totalPago = (pagamentos ?? []).reduce((s, p) => s + (p.valor_pago ?? 0), 0)
       + (extras ?? []).reduce((s, e) => s + (e.valor ?? 0), 0)
       - (descontos ?? []).reduce((s, d) => s + (d.valor ?? 0), 0)
-    return { ...empresa, total: ids.length, locados, disponiveis, potencial, pagamentos: totalPago }
+    // Quantos inquilinos PAGARAM no mês = imóveis distintos com status 'pago' (em dia) ou
+    // 'atrasado' (pagou com atraso) — mesma regra de "pagou" usada no resto do sistema.
+    const pagaram = new Set(
+      (pagamentos ?? []).filter(p => p.status === 'pago' || p.status === 'atrasado').map(p => p.imovel_id)
+    ).size
+    return { ...empresa, total: ids.length, locados, disponiveis, potencial, pagamentos: totalPago, pagaram }
   }))
 
   const nomeMes = new Date(anoAtual, mesAtual - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
@@ -133,6 +138,9 @@ export default async function ImoveisPage({ searchParams }: { searchParams: Prom
                   <span className="text-green-700">Locados: <b>{e.locados}</b></span>
                   <span className={e.disponiveis > 0 ? 'text-red-600 font-semibold' : 'text-gray-500'}>Disponíveis: <b>{e.disponiveis}</b></span>
                 </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  💰 Pagaram: <b className={e.pagaram >= e.locados && e.locados > 0 ? 'text-green-700' : 'text-gray-700'}>{e.pagaram}</b> de {e.locados}
+                </p>
               </div>
               <div className="text-center bg-green-50 rounded-lg py-4 px-2">
                 <p className="text-xl font-bold text-green-600">
