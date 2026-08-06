@@ -1,13 +1,16 @@
 import Link from 'next/link'
-import { MESES_2026, CARTEIRAS, saldoCarteira, brl, numMeses, contaTemMes, carteiraParcial } from '@/lib/financeiro/dados'
+import { saldoCarteira, brl, contaTemMes, carteiraParcial, carteiraTemMes, type Carteira } from '@/lib/financeiro/dados'
+import { carregarFinanceiro } from '@/lib/financeiro/carregar'
 import { exigirFinanceiro } from '@/lib/auth'
 
 export default async function FinanceiroPage({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
   await exigirFinanceiro()
   const sp = await searchParams
-  // Ao abrir, mostra o último mês com QUALQUER dado (o mês que está sendo
-  // cadastrado). As setas navegam por todos os meses disponíveis.
-  const ultimoNavegavel = Math.max(...CARTEIRAS.map(numMeses)) - 1
+  const { carteiras, meses } = await carregarFinanceiro()
+
+  // Último mês da lista (o mais recente, que está sendo cadastrado). As setas navegam
+  // por todos os meses disponíveis. `mes` da URL é 1-based (índice + 1).
+  const ultimoNavegavel = meses.length - 1
   let i = sp.mes ? parseInt(sp.mes, 10) - 1 : ultimoNavegavel
   if (isNaN(i) || i < 0) i = 0
   if (i > ultimoNavegavel) i = ultimoNavegavel
@@ -15,10 +18,18 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
   const mesAnterior = i > 0 ? i : null
   const mesProximo = i < ultimoNavegavel ? i + 2 : null
 
-  // Ordena por grandeza = tamanho real da carteira (último saldo conhecido),
-  // para que as maiores fiquem no topo mesmo quando o mês atual ainda está pendente.
-  const comSaldo = CARTEIRAS
-    .map(c => ({ ...c, saldo: saldoCarteira(c, i), temMes: numMeses(c) > i, magnitude: saldoCarteira(c, numMeses(c) - 1) }))
+  // Último mês COM DADO da carteira (para ordenar por grandeza real mesmo com o mês
+  // atual ainda pendente).
+  const ultimoComDado = (c: Carteira) => {
+    for (let k = meses.length - 1; k >= 0; k--) if (carteiraTemMes(c, k)) return k
+    return -1
+  }
+
+  const comSaldo = carteiras
+    .map(c => {
+      const k = ultimoComDado(c)
+      return { ...c, saldo: saldoCarteira(c, i), temMes: carteiraTemMes(c, i), magnitude: k >= 0 ? saldoCarteira(c, k) : 0 }
+    })
     .sort((a, b) => b.magnitude - a.magnitude)
 
   const brasil = comSaldo.filter(c => c.tipo === 'brasil')
@@ -32,17 +43,16 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
   const parcial = comSaldo.some(c => !c.temMes || carteiraParcial(c, i))
   const nPendentes = comSaldo.filter(c => !c.temMes || carteiraParcial(c, i)).length
 
-  // Variação do patrimônio total vs mês anterior — só quando ambos os meses
-  // estão 100% completos (mesmo critério dos cards, para não dar % falso).
-  const mesCompleto = (k: number) => k >= 0 && CARTEIRAS.every(c => numMeses(c) > k && !carteiraParcial(c, k))
+  // Variação do patrimônio total vs mês anterior — só quando ambos os meses estão
+  // 100% completos (mesmo critério dos cards, para não dar % falso).
+  const mesCompleto = (k: number) => k >= 0 && carteiras.every(c => carteiraTemMes(c, k) && !carteiraParcial(c, k))
   const podeVariacao = i > 0 && mesCompleto(i) && mesCompleto(i - 1)
-  const totalAnterior = podeVariacao ? CARTEIRAS.reduce((s, c) => s + saldoCarteira(c, i - 1), 0) : null
+  const totalAnterior = podeVariacao ? carteiras.reduce((s, c) => s + saldoCarteira(c, i - 1), 0) : null
   const variacaoPct = totalAnterior && totalAnterior !== 0 ? ((totalGeral - totalAnterior) / totalAnterior) * 100 : null
   const subiu = totalAnterior !== null && totalGeral >= totalAnterior
 
   const Card = (c: typeof comSaldo[number]) => {
-    // Variação vs mês anterior — só quando a comparação é justa (ambos completos).
-    const podeVariacao = c.temMes && i > 0 && !carteiraParcial(c, i) && !carteiraParcial(c, i - 1)
+    const podeVariacao = c.temMes && i > 0 && !carteiraParcial(c, i) && !carteiraParcial(c, i - 1) && carteiraTemMes(c, i - 1)
     const anterior = podeVariacao ? saldoCarteira(c, i - 1) : null
     const variacaoPct = anterior && anterior !== 0 ? ((c.saldo - anterior) / anterior) * 100 : null
     const subiu = anterior !== null && c.saldo >= anterior
@@ -56,10 +66,9 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
         {c.temMes
           ? <p className="text-2xl font-bold text-green-700">{brl(c.saldo)}</p>
           : <p className="text-sm font-medium text-gray-400">Aguardando extrato</p>}
-        {/* Mês anterior (fonte menor) + variação % */}
         {anterior !== null && (
           <p className="text-xs text-gray-500 mt-0.5">
-            {MESES_2026[i - 1].abrev}: {brl(anterior)}
+            {meses[i - 1].abrev}: {brl(anterior)}
             {variacaoPct !== null && (
               <span className={`ml-2 font-semibold ${subiu ? 'text-green-600' : 'text-red-500'}`}>
                 {subiu ? '▲' : '▼'} {subiu ? '+' : '−'}{Math.abs(variacaoPct).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%
@@ -67,7 +76,6 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
             )}
           </p>
         )}
-        {/* Bancos: em vermelho os que ainda não têm extrato do mês selecionado */}
         <p className="text-xs mt-1">
           {c.contas.map((ct, idx) => (
             <span key={ct.banco}>
@@ -88,12 +96,17 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
         <span className="text-gray-900 font-medium">Financeiro</span>
       </div>
 
-      <div className="flex items-center gap-3 mb-6">
-        <span className="text-3xl">💰</span>
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">Financeiro</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Carteiras de investimento — Brasil e Internacional</p>
+      <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
+        <div className="flex items-center gap-3">
+          <span className="text-3xl">💰</span>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">Financeiro</h2>
+            <p className="text-sm text-gray-500 mt-0.5">Carteiras de investimento — Brasil e Internacional</p>
+          </div>
         </div>
+        <Link href="/financeiro/editar" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+          ✏️ Lançar / editar mês
+        </Link>
       </div>
 
       {/* Banner com patrimônio total e navegação de mês */}
@@ -109,7 +122,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
           ) : (
             <span className="w-8 h-8 flex items-center justify-center rounded-full bg-green-700/40 text-2xl leading-none opacity-40">‹</span>
           )}
-          <span className="min-w-[9rem] text-center">{MESES_2026[i].nome}/2026</span>
+          <span className="min-w-[9rem] text-center">{meses[i].nome}/{meses[i].ano}</span>
           {mesProximo ? (
             <Link href={`/financeiro?mes=${mesProximo}`} aria-label="Próximo mês"
               className="w-8 h-8 flex items-center justify-center rounded-full bg-green-700 hover:bg-green-800 transition-colors text-2xl leading-none">›</Link>
@@ -121,7 +134,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
           <span>{brl(totalGeral)}</span>
           {podeVariacao && totalAnterior !== null && (
             <span className="text-xs font-normal text-white/85 mt-1">
-              {MESES_2026[i - 1].abrev}: {brl(totalAnterior)}
+              {meses[i - 1].abrev}: {brl(totalAnterior)}
               {variacaoPct !== null && (
                 <span className="ml-2 bg-green-800/60 rounded px-1.5 py-0.5">
                   {subiu ? '▲' : '▼'} {subiu ? '+' : '−'}{Math.abs(variacaoPct).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%

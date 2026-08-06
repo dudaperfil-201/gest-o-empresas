@@ -215,6 +215,10 @@ export const numMeses = (c: Carteira) =>
 export const contaTemMes = (ct: Conta, i: number) =>
   ct.investimentos.some(inv => inv.valores[i] !== undefined)
 
+// A carteira tem ALGUM extrato para o mês i? (pelo menos uma conta preenchida)
+export const carteiraTemMes = (c: Carteira, i: number) =>
+  c.contas.some(ct => contaTemMes(ct, i))
+
 export const saldoConta = (c: Conta, i: number) =>
   c.investimentos.reduce((s, inv) => s + (inv.valores[i] ?? 0), 0)
 

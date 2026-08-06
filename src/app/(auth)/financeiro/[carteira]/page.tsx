@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import {
-  MESES_2026, getCarteira, saldoConta, saldoCarteira, brl, fmtMoeda,
-  numMeses, contaTemMes, carteiraParcial, bancosPendentes,
+  saldoConta, saldoCarteira, brl, fmtMoeda,
+  contaTemMes, carteiraParcial, bancosPendentes,
 } from '@/lib/financeiro/dados'
+import { carregarFinanceiro } from '@/lib/financeiro/carregar'
 import { exigirFinanceiro } from '@/lib/auth'
 
 export default async function CarteiraPage({ params, searchParams }: {
@@ -12,11 +13,12 @@ export default async function CarteiraPage({ params, searchParams }: {
 }) {
   await exigirFinanceiro()
   const { carteira: slug } = await params
-  const carteira = getCarteira(slug)
+  const { carteiras, meses } = await carregarFinanceiro()
+  const carteira = carteiras.find(c => c.slug === slug)
   if (!carteira) notFound()
 
   const sp = await searchParams
-  const ultimo = numMeses(carteira) - 1
+  const ultimo = meses.length - 1
   let i = sp.mes ? parseInt(sp.mes, 10) - 1 : ultimo
   if (isNaN(i) || i < 0) i = 0
   if (i > ultimo) i = ultimo
@@ -63,7 +65,7 @@ export default async function CarteiraPage({ params, searchParams }: {
           ) : (
             <span className="w-8 h-8 flex items-center justify-center rounded-full bg-green-700/40 text-2xl leading-none opacity-40">‹</span>
           )}
-          <span className="min-w-[9rem] text-center">{MESES_2026[i].nome}/2026</span>
+          <span className="min-w-[9rem] text-center">{meses[i].nome}/{meses[i].ano}</span>
           {temProximo ? (
             <Link href={`/financeiro/${slug}?mes=${i + 2}`} aria-label="Próximo mês"
               className="w-8 h-8 flex items-center justify-center rounded-full bg-green-700 hover:bg-green-800 transition-colors text-2xl leading-none">›</Link>
@@ -101,7 +103,7 @@ export default async function CarteiraPage({ params, searchParams }: {
             return (
               <Link key={idx} href={`/financeiro/${slug}?mes=${idx + 1}`}
                 className={`rounded-lg py-3 px-1 transition-colors ${selecionado ? 'bg-green-50 ring-1 ring-green-300' : 'bg-gray-50 hover:bg-gray-100'}`}>
-                <p className="text-[11px] font-medium text-gray-400">{MESES_2026[idx].abrev}</p>
+                <p className="text-[11px] font-medium text-gray-400">{meses[idx].abrev}</p>
                 <p className="text-sm font-semibold text-gray-800 mt-1">{brl(v)}</p>
                 {p ? (
                   <p className="text-[10px] mt-0.5 text-yellow-600">parcial</p>
