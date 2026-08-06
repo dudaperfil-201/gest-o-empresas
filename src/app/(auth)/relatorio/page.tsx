@@ -94,10 +94,10 @@ export default async function RelatorioPage({ searchParams }: { searchParams: Pr
                 const statusLabel = !imovel.pag ? 'Sem registro' : imovel.pag.status === 'pago' ? 'Pago' : imovel.pag.status === 'atrasado' ? 'Atrasado' : 'Pendente'
                 return (
                   <tr key={imovel.id} className="border-b border-gray-50 last:border-0">
-                    <td className="px-5 py-3 text-gray-900">{imovel.endereco}</td>
-                    <td className="px-5 py-3 text-gray-600">{imovel.inquilino?.nome ?? '—'}</td>
-                    <td className="px-5 py-3 text-right text-gray-700">R$ {(imovel.valor_aluguel ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                    <td className="px-5 py-3 text-right text-gray-700">
+                    <td className="px-5 py-3 text-gray-900 align-top">{imovel.endereco}</td>
+                    <td className="px-5 py-3 text-gray-600 align-top">{imovel.inquilino?.nome ?? '—'}</td>
+                    <td className="px-5 py-3 text-right text-gray-700 align-top whitespace-nowrap">R$ {(imovel.valor_aluguel ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                    <td className="px-5 py-3 text-right text-gray-700 align-top whitespace-nowrap">
                       {imovel.pag?.valor_pago ? `R$ ${imovel.pag.valor_pago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}
                       {imovel.extras > 0 && (
                         <div className="text-xs text-indigo-600 font-medium">+ Extras: R$ {imovel.extras.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
@@ -106,8 +106,8 @@ export default async function RelatorioPage({ searchParams }: { searchParams: Pr
                         <div className="text-xs text-rose-600 font-medium">− Descontos: R$ {imovel.descontos.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
                       )}
                     </td>
-                    <td className="px-5 py-3 text-right">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor}`}>{statusLabel}</span>
+                    <td className="px-5 py-3 text-right align-top">
+                      <span className={`inline-block whitespace-nowrap text-xs font-medium px-2 py-0.5 rounded-full ${statusColor}`}>{statusLabel}</span>
                     </td>
                   </tr>
                 )
