@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { saldoCarteira, brl, contaTemMes, carteiraParcial, carteiraTemMes, type Carteira } from '@/lib/financeiro/dados'
-import { carregarFinanceiro } from '@/lib/financeiro/carregar'
+import { carregarFinanceiro, proximoMes } from '@/lib/financeiro/carregar'
 import { exigirFinanceiro } from '@/lib/auth'
 
 export default async function FinanceiroPage({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
@@ -8,10 +8,13 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
   const sp = await searchParams
   const { carteiras, meses } = await carregarFinanceiro()
 
-  // Último mês da lista (o mais recente, que está sendo cadastrado). As setas navegam
-  // por todos os meses disponíveis. `mes` da URL é 1-based (índice + 1).
-  const ultimoNavegavel = meses.length - 1
-  let i = sp.mes ? parseInt(sp.mes, 10) - 1 : ultimoNavegavel
+  // Navegação inclui UM mês ALÉM do último com dados: assim a seta › funciona mesmo sem
+  // dados e o mês novo aparece com as empresas zeradas (aguardando extrato). Abre, por
+  // padrão, no último mês COM dados. `mes` da URL é 1-based (índice + 1).
+  const navMeses = [...meses, proximoMes(meses)]
+  const ultimoReal = meses.length - 1
+  const ultimoNavegavel = navMeses.length - 1
+  let i = sp.mes ? parseInt(sp.mes, 10) - 1 : ultimoReal
   if (isNaN(i) || i < 0) i = 0
   if (i > ultimoNavegavel) i = ultimoNavegavel
 
@@ -68,7 +71,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
           : <p className="text-sm font-medium text-gray-400">Aguardando extrato</p>}
         {anterior !== null && (
           <p className="text-xs text-gray-500 mt-0.5">
-            {meses[i - 1].abrev}: {brl(anterior)}
+            {navMeses[i - 1].abrev}: {brl(anterior)}
             {variacaoPct !== null && (
               <span className={`ml-2 font-semibold ${subiu ? 'text-green-600' : 'text-red-500'}`}>
                 {subiu ? '▲' : '▼'} {subiu ? '+' : '−'}{Math.abs(variacaoPct).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%
@@ -122,7 +125,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
           ) : (
             <span className="w-8 h-8 flex items-center justify-center rounded-full bg-green-700/40 text-2xl leading-none opacity-40">‹</span>
           )}
-          <span className="min-w-[9rem] text-center">{meses[i].nome}/{meses[i].ano}</span>
+          <span className="min-w-[9rem] text-center">{navMeses[i].nome}/{navMeses[i].ano}</span>
           {mesProximo ? (
             <Link href={`/financeiro?mes=${mesProximo}`} aria-label="Próximo mês"
               className="w-8 h-8 flex items-center justify-center rounded-full bg-green-700 hover:bg-green-800 transition-colors text-2xl leading-none">›</Link>
@@ -134,7 +137,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
           <span>{brl(totalGeral)}</span>
           {podeVariacao && totalAnterior !== null && (
             <span className="text-xs font-normal text-white/85 mt-1">
-              {meses[i - 1].abrev}: {brl(totalAnterior)}
+              {navMeses[i - 1].abrev}: {brl(totalAnterior)}
               {variacaoPct !== null && (
                 <span className="ml-2 bg-green-800/60 rounded px-1.5 py-0.5">
                   {subiu ? '▲' : '▼'} {subiu ? '+' : '−'}{Math.abs(variacaoPct).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%

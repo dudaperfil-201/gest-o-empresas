@@ -34,7 +34,6 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
   // Seleção começa no último mês existente (junho). A seta › leva ao mês novo.
   const [sel, setSel] = useState(Math.max(0, meses.length - 1))
   const atual = navMeses[sel]
-  const baseIdx = atual.novo ? meses.length - 1 : sel // mês novo se baseia no último
 
   const [valores, setValores] = useState<Record<string, string>>({})
   const [valoresMoeda, setValoresMoeda] = useState<Record<string, string>>({})
@@ -42,16 +41,20 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
   const [salvando, setSalvando] = useState(false)
   const [msg, setMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null)
 
-  // Pré-preenche os inputs quando a seleção muda.
+  // Quando a seleção muda: mês existente carrega os valores dele; mês NOVO começa ZERADO
+  // (campos vazios), para preencher com os dados do extrato.
   if (iniciado !== sel) {
     const nv: Record<string, string> = {}
     const nvm: Record<string, string> = {}
     for (const it of itens) {
       const key = chave(it)
-      const v = baseIdx >= 0 ? it.valores[baseIdx] : null
-      nv[key] = v != null ? String(v) : ''
-      const vm = baseIdx >= 0 ? it.valoresMoeda[baseIdx] : null
-      nvm[key] = vm != null ? String(vm) : ''
+      if (atual.novo) { nv[key] = ''; nvm[key] = '' }
+      else {
+        const v = it.valores[sel]
+        nv[key] = v != null ? String(v) : ''
+        const vm = it.valoresMoeda[sel]
+        nvm[key] = vm != null ? String(vm) : ''
+      }
     }
     setValores(nv)
     setValoresMoeda(nvm)
@@ -107,7 +110,7 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
       </div>
 
       <h2 className="text-xl font-semibold text-gray-900 mb-1">Lançar / editar Financeiro</h2>
-      <p className="text-sm text-gray-500 mb-4">Use as setas para correr os meses. No mês novo, os valores vêm do mês anterior — ajuste o que mudou e salve.</p>
+      <p className="text-sm text-gray-500 mb-4">Use as setas para correr os meses. O mês novo vem zerado — preencha com os dados do extrato e salve.</p>
 
       {/* Faixa verde com navegação de mês (mesma cara do Financeiro) */}
       <div className="bg-green-600 text-white rounded-xl p-5 mb-4 flex items-center justify-between gap-3 text-xl font-bold tracking-wide">
@@ -130,7 +133,7 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
             <span className="w-8 h-8 flex items-center justify-center rounded-full bg-green-700/40 text-2xl leading-none opacity-40">›</span>
           )}
         </span>
-        <span className="text-sm font-normal">{atual.novo ? 'preenchido com o anterior' : 'editando'}</span>
+        <span className="text-sm font-normal">{atual.novo ? 'mês novo — zerado' : 'editando'}</span>
       </div>
 
       {msg && (

@@ -16,6 +16,15 @@ const NOMES_MES: [string, string][] = [
 
 type Row = { carteira_slug: string; banco: string; investimento: string; ano: number; mes: number; valor: number; valor_moeda: number | null }
 
+// O mês seguinte ao último da lista — usado para navegar "pra frente" mesmo antes de
+// haver dados (o mês novo aparece zerado/aguardando extrato).
+export function proximoMes(meses: Mes[]): Mes {
+  const u = meses[meses.length - 1]
+  const ano = u ? (u.mes === 12 ? u.ano + 1 : u.ano) : new Date().getFullYear()
+  const mes = u ? (u.mes === 12 ? 1 : u.mes + 1) : new Date().getMonth() + 1
+  return { abrev: NOMES_MES[mes - 1][0], nome: NOMES_MES[mes - 1][1], ano, mes }
+}
+
 export async function carregarFinanceiro(): Promise<{ carteiras: Carteira[]; meses: Mes[] }> {
   let rows: Row[] | null = null
   try {
