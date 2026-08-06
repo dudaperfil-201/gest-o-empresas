@@ -1,54 +1,26 @@
 import { createClient } from '@/lib/supabase/server'
+import { carregarRelatorio } from '@/lib/relatorio'
 import Link from 'next/link'
 
-export default async function RelatorioPage() {
+export default async function RelatorioPage({ searchParams }: { searchParams: Promise<{ mes?: string; ano?: string }> }) {
   const supabase = await createClient()
 
-  const mesAtual = new Date().getMonth() + 1
-  const anoAtual = new Date().getFullYear()
+  // Mês exibido: vem da URL (?mes=&ano=) ou, se não houver, o mês atual.
+  const sp = await searchParams
+  const agora = new Date()
+  const mesAtual = sp.mes ? parseInt(sp.mes, 10) : agora.getMonth() + 1
+  const anoAtual = sp.ano ? parseInt(sp.ano, 10) : agora.getFullYear()
 
-  const { data: empresas } = await supabase.from('empresas').select('id, nome').order('nome')
+  // Mês anterior / próximo para as setas de navegação
+  const mesAnterior = mesAtual === 1 ? 12 : mesAtual - 1
+  const anoAnterior = mesAtual === 1 ? anoAtual - 1 : anoAtual
+  const mesProximo = mesAtual === 12 ? 1 : mesAtual + 1
+  const anoProximo = mesAtual === 12 ? anoAtual + 1 : anoAtual
 
-  const resultado = await Promise.all((empresas ?? []).map(async empresa => {
-    const { data: imoveis } = await supabase
-      .from('imoveis')
-      .select('id, endereco, valor_aluguel, inquilinos(nome)')
-      .eq('empresa_id', empresa.id)
-      .eq('ativo', true)
-      .order('endereco')
-
-    const ids = (imoveis ?? []).map(i => i.id)
-    const [{ data: pagamentos }, { data: extrasRaw }, { data: descontosRaw }] = ids.length > 0 ? await Promise.all([
-      supabase.from('pagamentos').select('imovel_id, status, valor_original, valor_pago').in('imovel_id', ids).eq('mes', mesAtual).eq('ano', anoAtual),
-      supabase.from('extras_itens').select('imovel_id, valor').in('imovel_id', ids).eq('mes', mesAtual).eq('ano', anoAtual),
-      supabase.from('descontos_itens').select('imovel_id, valor').in('imovel_id', ids).eq('mes', mesAtual).eq('ano', anoAtual),
-    ]) : [{ data: [] }, { data: [] }, { data: [] }]
-
-    const pagMap = Object.fromEntries((pagamentos ?? []).map(p => [p.imovel_id, p]))
-    const extrasSum: Record<string, number> = {}
-    for (const e of extrasRaw ?? []) extrasSum[e.imovel_id] = (extrasSum[e.imovel_id] ?? 0) + (e.valor ?? 0)
-    const descontosSum: Record<string, number> = {}
-    for (const d of descontosRaw ?? []) descontosSum[d.imovel_id] = (descontosSum[d.imovel_id] ?? 0) + (d.valor ?? 0)
-
-    return {
-      ...empresa,
-      imoveis: (imoveis ?? []).map(imovel => {
-        const pag = pagMap[imovel.id]
-        const inquilino = Array.isArray(imovel.inquilinos) ? imovel.inquilinos[0] : imovel.inquilinos
-        return { ...imovel, pag, inquilino, extras: extrasSum[imovel.id] ?? 0, descontos: descontosSum[imovel.id] ?? 0 }
-      })
-    }
-  }))
+  const { resultado, totalEsperado, totalRecebido, totalPendente } = await carregarRelatorio(supabase, mesAtual, anoAtual)
 
   const nomeMes = new Date(anoAtual, mesAtual - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-
-  const totalEsperado = resultado.flatMap(e => e.imoveis).reduce((s, i) => s + (i.valor_aluguel ?? 0), 0)
-  // Recebido = aluguéis pagos (pago/atrasado) + extras − descontos do mês.
-  const totalRecebidoAluguel = resultado.flatMap(e => e.imoveis).filter(i => i.pag?.status === 'pago' || i.pag?.status === 'atrasado').reduce((s, i) => s + (i.pag?.valor_pago ?? 0), 0)
-  const totalExtras = resultado.flatMap(e => e.imoveis).reduce((s, i) => s + (i.extras ?? 0), 0)
-  const totalDescontos = resultado.flatMap(e => e.imoveis).reduce((s, i) => s + (i.descontos ?? 0), 0)
-  const totalRecebido = totalRecebidoAluguel + totalExtras - totalDescontos
-  const totalPendente = totalEsperado - resultado.flatMap(e => e.imoveis).filter(i => i.pag?.status === 'pago' || i.pag?.status === 'atrasado').reduce((s, i) => s + (i.valor_aluguel ?? 0), 0)
+  const mesAnoFormatado = `${new Date(anoAtual, mesAtual - 1).toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase()}/${anoAtual}`
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -60,9 +32,30 @@ export default async function RelatorioPage() {
         <span className="text-gray-900 font-medium">Relatório</span>
       </div>
 
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Relatório Mensal</h2>
-        <p className="text-sm text-gray-500 capitalize mt-0.5">{nomeMes}</p>
+      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Relatório Mensal</h2>
+          <p className="text-sm text-gray-500 capitalize mt-0.5">{nomeMes}</p>
+        </div>
+        <a
+          href={`/api/relatorio/export?mes=${mesAtual}&ano=${anoAtual}`}
+          className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+        >
+          📥 Exportar Excel
+        </a>
+      </div>
+
+      {/* Navegação de meses */}
+      <div className="bg-gray-100 rounded-xl p-3 mb-6 flex items-center justify-center gap-4">
+        <Link href={`/relatorio?mes=${mesAnterior}&ano=${anoAnterior}`} aria-label="Mês anterior"
+          className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-200 hover:bg-gray-50 text-xl leading-none">
+          ‹
+        </Link>
+        <span className="min-w-[10rem] text-center font-semibold text-gray-800">{mesAnoFormatado}</span>
+        <Link href={`/relatorio?mes=${mesProximo}&ano=${anoProximo}`} aria-label="Próximo mês"
+          className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-gray-200 hover:bg-gray-50 text-xl leading-none">
+          ›
+        </Link>
       </div>
 
       <div className="grid grid-cols-3 gap-4 mb-8">
@@ -80,16 +73,7 @@ export default async function RelatorioPage() {
         </div>
       </div>
 
-      {resultado.map(empresa => {
-        // Somatório da empresa: Valor = soma dos aluguéis; Recebido = aluguéis pagos
-        // (pago/atrasado) + extras − descontos (mesma regra do "Total recebido" geral).
-        const somaValor = empresa.imoveis.reduce((s, i) => s + (i.valor_aluguel ?? 0), 0)
-        const somaRecebido = empresa.imoveis
-          .filter(i => i.pag?.status === 'pago' || i.pag?.status === 'atrasado')
-          .reduce((s, i) => s + (i.pag?.valor_pago ?? 0), 0)
-          + empresa.imoveis.reduce((s, i) => s + (i.extras ?? 0), 0)
-          - empresa.imoveis.reduce((s, i) => s + (i.descontos ?? 0), 0)
-        return (
+      {resultado.map(empresa => (
         <div key={empresa.id} className="bg-white border border-gray-200 rounded-xl mb-4 overflow-hidden">
           <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
             <h3 className="font-semibold text-gray-900">{empresa.nome}</h3>
@@ -132,15 +116,14 @@ export default async function RelatorioPage() {
             <tfoot>
               <tr className="border-t-2 border-gray-200 bg-gray-50 font-semibold text-gray-900">
                 <td className="px-5 py-3" colSpan={2}>Total</td>
-                <td className="px-5 py-3 text-right">R$ {somaValor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                <td className="px-5 py-3 text-right text-green-700">R$ {somaRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                <td className="px-5 py-3 text-right">R$ {empresa.somaValor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                <td className="px-5 py-3 text-right text-green-700">R$ {empresa.somaRecebido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                 <td className="px-5 py-3"></td>
               </tr>
             </tfoot>
           </table>
         </div>
-        )
-      })}
+      ))}
     </div>
   )
 }
