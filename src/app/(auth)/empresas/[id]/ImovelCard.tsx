@@ -52,6 +52,10 @@ export default function ImovelCard({ imovel, empresaId, mes, ano, pago, atrasado
   const [modalExtras, setModalExtras] = useState(false)
   const [novaDesc, setNovaDesc] = useState('')
   const [novoValor, setNovoValor] = useState('')
+  // Mês a que o extra se refere. Começa no mês exibido, mas pode ser um mês passado
+  // (extra pago com atraso). Reacompanha a navegação de meses.
+  const [extraMes, setExtraMes] = useState(mesSelStr)
+  useEffect(() => setExtraMes(mesSelStr), [mesSelStr])
 
   const totalExtras = itens.reduce((s, i) => s + (i.valor ?? 0), 0)
   const temExtras = itens.length > 0
@@ -106,10 +110,14 @@ export default function ImovelCard({ imovel, empresaId, mes, ano, pago, atrasado
   async function handleAdicionarExtra() {
     const valor = parseFloat(novoValor.replace(',', '.'))
     if (isNaN(valor) || valor <= 0) return
+    const [anoSel, mesSel] = extraMes.split('-').map(Number)
+    if (!anoSel || !mesSel) return
     setLoading(true)
     try {
-      const item = await adicionarExtra(imovel.id, empresaId, novaDesc, valor, mes, ano)
-      if (item) setItens(prev => [...prev, item])
+      const item = await adicionarExtra(imovel.id, empresaId, novaDesc, valor, mesSel, anoSel)
+      // O modal lista os extras do MÊS EXIBIDO — só adiciona na lista local se o extra
+      // for desse mês. Se for de outro mês (pago atrasado), aparece ao navegar até ele.
+      if (item && mesSel === mes && anoSel === ano) setItens(prev => [...prev, item])
       setNovaDesc('')
       setNovoValor('')
       router.refresh()
@@ -348,6 +356,18 @@ export default function ImovelCard({ imovel, empresaId, mes, ano, pago, atrasado
             {/* Adicionar novo item */}
             <div className="mt-4 pt-3 border-t border-gray-200">
               <label className="block text-xs font-medium text-gray-600 mb-1">Adicionar extra</label>
+              <label className="block text-[11px] text-gray-500 mb-1">Referente ao mês (se pago atrasado, escolha o mês certo)</label>
+              <input
+                type="month"
+                value={extraMes}
+                onChange={e => setExtraMes(e.target.value)}
+                className="w-full mb-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              {extraMes !== mesSelStr && (
+                <p className="text-[11px] text-amber-600 mb-2">
+                  ⚠️ Este extra será lançado em {(() => { const [a, m] = extraMes.split('-').map(Number); return new Date(a, m - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }) })()}, não no mês exibido.
+                </p>
+              )}
               <div className="flex gap-2">
                 <input
                   type="text"
