@@ -3,6 +3,7 @@ import { logout } from '@/app/actions/auth'
 import { getSessao } from '@/lib/auth'
 import Link from 'next/link'
 import IndicadoresPanel from './IndicadoresPanel'
+import BreakEven from './BreakEven'
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const sessao = await getSessao()
@@ -46,6 +47,8 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
 
           {/* Quadro de indicadores (câmbio, juros, CUB) abaixo dos botões */}
           <IndicadoresPanel />
+          {/* Break Even: distribuição de lucros (10% ÷ 3) */}
+          <BreakEven />
         </nav>
 
         <main className="flex-1 min-w-0">{children}</main>
