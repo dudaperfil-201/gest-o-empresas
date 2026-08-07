@@ -1,11 +1,12 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import {
-  saldoConta, saldoCarteira, brl, fmtMoeda,
+  saldoConta, saldoCarteira, brl,
   contaTemMes, carteiraParcial, bancosPendentes,
 } from '@/lib/financeiro/dados'
 import { carregarFinanceiro, proximoMes } from '@/lib/financeiro/carregar'
 import { exigirFinanceiro } from '@/lib/auth'
+import CarteiraContas from './CarteiraContas'
 
 export default async function CarteiraPage({ params, searchParams }: {
   params: Promise<{ carteira: string }>
@@ -121,42 +122,25 @@ export default async function CarteiraPage({ params, searchParams }: {
         </div>
       </div>
 
-      {/* Contas por banco (posição do mês selecionado) */}
-      <div className="space-y-3">
-        {carteira.contas.map(conta => {
-          const temMes = contaTemMes(conta, i)
-          const inv0 = conta.investimentos[0]
-          const single = conta.investimentos.length === 1 && inv0.nome === 'Saldo'
-          return (
-            <div key={conta.banco} className={`border rounded-xl p-5 ${temMes ? 'bg-white border-gray-200' : 'bg-gray-50 border-dashed border-gray-300'}`}>
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-gray-900">{conta.banco}</h3>
-                {temMes
-                  ? <span className="text-lg font-bold text-green-700">{brl(saldoConta(conta, i))}</span>
-                  : <span className="text-sm font-medium text-gray-400">Aguardando extrato</span>}
-              </div>
-              {temMes && !single && (
-                <div className="space-y-1.5 mt-3">
-                  {conta.investimentos.map(inv => (
-                    <div key={inv.nome} className="flex items-center justify-between text-sm border-b border-gray-50 last:border-0 pb-1.5 last:pb-0">
-                      <span className="text-gray-600">{inv.nome}</span>
-                      <span className="text-right">
-                        <span className="text-gray-800 font-medium">{brl(inv.valores[i] ?? 0)}</span>
-                        {inv.moeda && inv.valoresMoeda && (
-                          <span className="block text-xs text-gray-400">{fmtMoeda(inv.moeda, inv.valoresMoeda[i] ?? 0)}</span>
-                        )}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {temMes && single && inv0.moeda && inv0.valoresMoeda && (
-                <p className="text-xs text-gray-400 mt-1 text-right">{fmtMoeda(inv0.moeda, inv0.valoresMoeda[i] ?? 0)}</p>
-              )}
-            </div>
-          )
-        })}
-      </div>
+      {/* Contas por banco — editáveis no próprio perfil da empresa (mês selecionado) */}
+      <CarteiraContas
+        key={`${navMeses[i].ano}-${navMeses[i].mes}`}
+        slug={slug}
+        mesNome={navMeses[i].nome}
+        ano={navMeses[i].ano}
+        mes={navMeses[i].mes}
+        contas={carteira.contas.map(conta => ({
+          banco: conta.banco,
+          temMes: contaTemMes(conta, i),
+          saldo: saldoConta(conta, i),
+          investimentos: conta.investimentos.map(inv => ({
+            nome: inv.nome,
+            moeda: inv.moeda ?? null,
+            valor: inv.valores[i] ?? null,
+            valorMoeda: inv.valoresMoeda?.[i] ?? null,
+          })),
+        }))}
+      />
     </div>
   )
 }
