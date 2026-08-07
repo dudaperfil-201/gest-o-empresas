@@ -19,25 +19,24 @@ function toNum(s: string): number {
 
 const CHAVE = 'breakeven-rendimentos'
 
-export default function BreakEven() {
+// rnxRendimento vem do servidor: diferença dos 2 últimos meses da carteira RNX (auto).
+export default function BreakEven({ rnxRendimento }: { rnxRendimento: number }) {
   const [serginho, setSerginho] = useState('')
   const [eduardo, setEduardo] = useState('')
-  const [rnx, setRnx] = useState('')
 
-  // Carrega o que foi digitado da última vez.
+  // Carrega o que foi digitado da última vez (só Serginho e Eduardo — RNX é automático).
   useEffect(() => {
     try {
       const s = JSON.parse(localStorage.getItem(CHAVE) || '{}')
       if (s.serginho) setSerginho(s.serginho)
       if (s.eduardo) setEduardo(s.eduardo)
-      if (s.rnx) setRnx(s.rnx)
     } catch { /* ignora */ }
   }, [])
   useEffect(() => {
-    try { localStorage.setItem(CHAVE, JSON.stringify({ serginho, eduardo, rnx })) } catch { /* ignora */ }
-  }, [serginho, eduardo, rnx])
+    try { localStorage.setItem(CHAVE, JSON.stringify({ serginho, eduardo })) } catch { /* ignora */ }
+  }, [serginho, eduardo])
 
-  const total = toNum(serginho) + toNum(eduardo) + toNum(rnx)
+  const total = toNum(serginho) + toNum(eduardo) + rnxRendimento
   const dezPct = total * 0.10
   const porPessoa = dezPct / 3
 
@@ -59,7 +58,12 @@ export default function BreakEven() {
       <div className="space-y-1.5">
         {campo('Itaú Serginho', serginho, setSerginho)}
         {campo('Itaú Eduardo', eduardo, setEduardo)}
-        {campo('RNX', rnx, setRnx)}
+        <div>
+          <label className="block text-[10px] text-gray-500 mb-0.5">RNX <span className="text-purple-500">(auto)</span></label>
+          <div className="w-full px-2 py-1 bg-gray-50 border border-gray-200 rounded text-xs text-right font-semibold text-gray-700">
+            {brl(rnxRendimento)}
+          </div>
+        </div>
       </div>
       <div className="mt-2 pt-2 border-t border-gray-100 space-y-1 text-xs">
         <div className="flex justify-between text-gray-500">

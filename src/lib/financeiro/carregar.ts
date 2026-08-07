@@ -16,6 +16,29 @@ const NOMES_MES: [string, string][] = [
 
 type Row = { carteira_slug: string; banco: string; investimento: string; ano: number; mes: number; valor: number; valor_moeda: number | null }
 
+// Rendimento da RNX = quanto a carteira cresceu do penúltimo para o último mês com dado
+// (soma dos investimentos por mês, diferença dos 2 últimos). Usado no quadro Break Even.
+export async function getRnxRendimento(): Promise<number> {
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('financeiro_valores')
+      .select('ano,mes,valor')
+      .eq('carteira_slug', 'rnx')
+    if (!data || data.length === 0) return 0
+    const porMes = new Map<number, number>()
+    for (const r of data) {
+      const k = r.ano * 100 + r.mes
+      porMes.set(k, (porMes.get(k) ?? 0) + Number(r.valor))
+    }
+    const chaves = [...porMes.keys()].sort((a, b) => a - b)
+    if (chaves.length < 2) return 0
+    return (porMes.get(chaves[chaves.length - 1]) ?? 0) - (porMes.get(chaves[chaves.length - 2]) ?? 0)
+  } catch {
+    return 0
+  }
+}
+
 // O mês seguinte ao último da lista — usado para navegar "pra frente" mesmo antes de
 // haver dados (o mês novo aparece zerado/aguardando extrato).
 export function proximoMes(meses: Mes[]): Mes {

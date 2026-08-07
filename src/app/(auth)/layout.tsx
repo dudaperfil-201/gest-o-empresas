@@ -4,12 +4,15 @@ import { getSessao } from '@/lib/auth'
 import Link from 'next/link'
 import IndicadoresPanel from './IndicadoresPanel'
 import BreakEven from './BreakEven'
+import { getRnxRendimento } from '@/lib/financeiro/carregar'
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const sessao = await getSessao()
   if (!sessao) redirect('/login')
   const ehAdmin = sessao.ehAdmin
   const podeFinanceiro = sessao.podeFinanceiro
+  // Rendimento da RNX (diferença dos 2 últimos meses) — só para quem vê o Financeiro.
+  const rnxRendimento = podeFinanceiro ? await getRnxRendimento() : 0
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -47,8 +50,8 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
 
           {/* Quadro de indicadores (câmbio, juros, CUB) abaixo dos botões */}
           <IndicadoresPanel />
-          {/* Break Even: distribuição de lucros (10% ÷ 3) */}
-          <BreakEven />
+          {/* Break Even: distribuição de lucros (10% ÷ 3) — só quem vê o Financeiro */}
+          {podeFinanceiro && <BreakEven rnxRendimento={rnxRendimento} />}
         </nav>
 
         <main className="flex-1 min-w-0">{children}</main>
