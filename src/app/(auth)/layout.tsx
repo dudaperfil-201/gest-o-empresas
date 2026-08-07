@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { logout } from '@/app/actions/auth'
 import { getSessao } from '@/lib/auth'
 import Link from 'next/link'
+import IndicadoresPanel from './IndicadoresPanel'
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const sessao = await getSessao()
@@ -42,6 +43,9 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
               Sair
             </button>
           </form>
+
+          {/* Quadro de indicadores (câmbio, juros, CUB) abaixo dos botões */}
+          <IndicadoresPanel />
         </nav>
 
         <main className="flex-1 min-w-0">{children}</main>
