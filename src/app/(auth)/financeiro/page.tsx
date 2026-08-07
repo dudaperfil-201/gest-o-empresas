@@ -54,6 +54,23 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
   const variacaoPct = totalAnterior && totalAnterior !== 0 ? ((totalGeral - totalAnterior) / totalAnterior) * 100 : null
   const subiu = totalAnterior !== null && totalGeral >= totalAnterior
 
+  // Câmbio EFETIVAMENTE usado no mês = R$ ÷ moeda original de algum ativo internacional.
+  // Fica registrado ao lado do "Internacional" — mostra qual dólar/euro foi aplicado.
+  let cambioDolar: number | null = null
+  let cambioEuro: number | null = null
+  for (const c of internacional) {
+    for (const ct of c.contas) {
+      for (const inv of ct.investimentos) {
+        const vR = inv.valores?.[i]
+        const vM = inv.valoresMoeda?.[i]
+        if (!vR || !vM) continue
+        if (inv.moeda === 'US$' && cambioDolar === null) cambioDolar = vR / vM
+        if (inv.moeda === '€' && cambioEuro === null) cambioEuro = vR / vM
+      }
+    }
+  }
+  const fmtCambio = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+
   const Card = (c: typeof comSaldo[number]) => {
     const podeVariacao = c.temMes && i > 0 && !carteiraParcial(c, i) && !carteiraParcial(c, i - 1) && carteiraTemMes(c, i - 1)
     const anterior = podeVariacao ? saldoCarteira(c, i - 1) : null
@@ -173,7 +190,17 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
         {brasil.map(Card)}
       </div>
 
-      <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">🌎 Internacional</h3>
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-x-3 gap-y-1">
+        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">🌎 Internacional</h3>
+        {(cambioDolar || cambioEuro) && (
+          <span className="text-xs font-medium text-gray-600 bg-gray-100 rounded-full px-3 py-1">
+            💵 Câmbio do mês:
+            {cambioDolar && <> US$&nbsp;1&nbsp;=&nbsp;R$&nbsp;{fmtCambio(cambioDolar)}</>}
+            {cambioDolar && cambioEuro && <span className="text-gray-300"> · </span>}
+            {cambioEuro && <> €&nbsp;1&nbsp;=&nbsp;R$&nbsp;{fmtCambio(cambioEuro)}</>}
+          </span>
+        )}
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {internacional.map(Card)}
       </div>
