@@ -16,26 +16,47 @@ const NOMES_MES: [string, string][] = [
 
 type Row = { carteira_slug: string; banco: string; investimento: string; ano: number; mes: number; valor: number; valor_moeda: number | null }
 
-// Rendimento da RNX = quanto a carteira cresceu do penúltimo para o último mês com dado
-// (soma dos investimentos por mês, diferença dos 2 últimos). Usado no quadro Break Even.
-export async function getRnxRendimento(): Promise<number> {
+// Dados do Break Even do MÊS CORRENTE (o último mês com dados no Financeiro):
+//  - mês/ano;  - rnxRendimento (auto: diferença dos 2 últimos meses da RNX);
+//  - serginho/eduardo já salvos daquele mês (ou 0/vazio se for mês novo).
+// Cada mês tem seu registro na tabela break_even → o mês novo começa em branco e os
+// anteriores ficam guardados.
+export type BreakEvenMes = { ano: number; mes: number; rnxRendimento: number; serginho: number; eduardo: number }
+
+export async function getBreakEven(): Promise<BreakEvenMes | null> {
   try {
     const supabase = await createClient()
     const { data } = await supabase
       .from('financeiro_valores')
       .select('ano,mes,valor')
       .eq('carteira_slug', 'rnx')
-    if (!data || data.length === 0) return 0
-    const porMes = new Map<number, number>()
+    if (!data || data.length === 0) return null
+    const porMes = new Map<number, { ano: number; mes: number; total: number }>()
     for (const r of data) {
       const k = r.ano * 100 + r.mes
-      porMes.set(k, (porMes.get(k) ?? 0) + Number(r.valor))
+      const e = porMes.get(k) ?? { ano: r.ano, mes: r.mes, total: 0 }
+      e.total += Number(r.valor)
+      porMes.set(k, e)
     }
     const chaves = [...porMes.keys()].sort((a, b) => a - b)
-    if (chaves.length < 2) return 0
-    return (porMes.get(chaves[chaves.length - 1]) ?? 0) - (porMes.get(chaves[chaves.length - 2]) ?? 0)
+    const ult = porMes.get(chaves[chaves.length - 1])!
+    const rnxRendimento = chaves.length >= 2 ? ult.total - porMes.get(chaves[chaves.length - 2])!.total : 0
+
+    // Valores salvos do Break Even daquele mês (try próprio: se a tabela ainda não existir,
+    // o quadro segue funcionando com Serginho/Eduardo em branco).
+    let serginho = 0, eduardo = 0
+    try {
+      const { data: be } = await supabase
+        .from('break_even')
+        .select('serginho,eduardo')
+        .eq('ano', ult.ano).eq('mes', ult.mes)
+        .maybeSingle()
+      if (be) { serginho = Number(be.serginho) || 0; eduardo = Number(be.eduardo) || 0 }
+    } catch { /* tabela ainda não criada */ }
+
+    return { ano: ult.ano, mes: ult.mes, rnxRendimento, serginho, eduardo }
   } catch {
-    return 0
+    return null
   }
 }
 

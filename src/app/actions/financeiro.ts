@@ -43,3 +43,19 @@ export async function salvarMesFinanceiro(
   if (error) return { ok: false, erro: error.message }
   return { ok: true, gravados: rows.length }
 }
+
+// Salva (upsert) o Break Even de um mês: os rendimentos digitados (Serginho/Eduardo) e o
+// rendimento automático da RNX congelado. Um registro por (ano, mes).
+export async function salvarBreakEven(
+  ano: number, mes: number, serginho: number, eduardo: number, rnx: number,
+): Promise<{ ok: true } | { ok: false; erro: string }> {
+  await exigirFinanceiro()
+  if (!ano || !mes) return { ok: false, erro: 'Mês/ano inválido.' }
+  const supabase = await createClient()
+  const { error } = await supabase.from('break_even').upsert(
+    { ano, mes, serginho, eduardo, rnx, atualizado_em: new Date().toISOString() },
+    { onConflict: 'ano,mes' },
+  )
+  if (error) return { ok: false, erro: error.message }
+  return { ok: true }
+}
