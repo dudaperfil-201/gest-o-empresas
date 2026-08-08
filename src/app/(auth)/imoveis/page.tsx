@@ -126,12 +126,6 @@ export default async function ImoveisPage({ searchParams }: { searchParams: Prom
         <span>R$ {totalGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
       </div>
 
-      {/* Gráfico: potencial de ganho × recebido, uma dupla de barras por empresa */}
-      <GraficoImoveis
-        dados={(resumos ?? []).map(e => ({ nome: e.nome, potencial: e.potencial, recebido: e.pagamentos }))}
-        mesLabel={nomeMes}
-      />
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {(resumos ?? []).map(e => (
           <Link key={e.id} href={`/empresas/${e.id}?mes=${mesAtual}&ano=${anoAtual}`} className="bg-white border border-gray-200 rounded-xl p-5 hover:border-blue-300 hover:shadow-sm transition-all">
@@ -161,6 +155,14 @@ export default async function ImoveisPage({ searchParams }: { searchParams: Prom
             </div>
           </Link>
         ))}
+      </div>
+
+      {/* Gráfico: potencial de ganho × recebido, uma dupla de barras por empresa */}
+      <div className="mt-4">
+        <GraficoImoveis
+          dados={(resumos ?? []).map(e => ({ nome: e.nome, potencial: e.potencial, recebido: e.pagamentos }))}
+          mesLabel={nomeMes}
+        />
       </div>
     </div>
   )
