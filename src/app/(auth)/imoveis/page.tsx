@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { contarWhatsAppPendentes } from '@/lib/lembretes'
+import GraficoImoveis from './GraficoImoveis'
 
 export default async function ImoveisPage({ searchParams }: { searchParams: Promise<{ mes?: string; ano?: string }> }) {
   const supabase = await createClient()
@@ -124,6 +125,12 @@ export default async function ImoveisPage({ searchParams }: { searchParams: Prom
         </span>
         <span>R$ {totalGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
       </div>
+
+      {/* Gráfico: potencial de ganho × recebido, uma dupla de barras por empresa */}
+      <GraficoImoveis
+        dados={(resumos ?? []).map(e => ({ nome: e.nome, potencial: e.potencial, recebido: e.pagamentos }))}
+        mesLabel={nomeMes}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {(resumos ?? []).map(e => (
