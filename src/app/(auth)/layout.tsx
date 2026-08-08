@@ -4,7 +4,8 @@ import { getSessao } from '@/lib/auth'
 import Link from 'next/link'
 import IndicadoresPanel from './IndicadoresPanel'
 import BreakEven from './BreakEven'
-import { getBreakEven } from '@/lib/financeiro/carregar'
+import GraficoEvolucao from './GraficoEvolucao'
+import { getBreakEven, getEvolucaoPatrimonio } from '@/lib/financeiro/carregar'
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const sessao = await getSessao()
@@ -13,6 +14,8 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
   const podeFinanceiro = sessao.podeFinanceiro
   // Break Even do mês corrente (RNX auto + valores salvos) — só para quem vê o Financeiro.
   const breakEven = podeFinanceiro ? await getBreakEven() : null
+  // Evolução do patrimônio total (gráfico) — só para quem vê o Financeiro.
+  const evolucao = podeFinanceiro ? await getEvolucaoPatrimonio() : []
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -55,6 +58,8 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
             <BreakEven ano={breakEven.ano} mes={breakEven.mes} rnxRendimento={breakEven.rnxRendimento}
               serginho={breakEven.serginho} eduardo={breakEven.eduardo} />
           )}
+          {/* Gráfico da evolução do patrimônio total — abaixo do Break Even */}
+          {podeFinanceiro && evolucao.length >= 2 && <GraficoEvolucao pontos={evolucao} />}
         </nav>
 
         <main className="flex-1 min-w-0">{children}</main>

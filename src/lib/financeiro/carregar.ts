@@ -4,7 +4,7 @@
 // REDE DE SEGURANÇA: se o banco falhar/estiver vazio, cai no código (dados.ts).
 
 import { createClient } from '@/lib/supabase/server'
-import { CARTEIRAS, MESES_2026, type Carteira } from './dados'
+import { CARTEIRAS, MESES_2026, saldoCarteira, type Carteira } from './dados'
 
 export type Mes = { abrev: string; nome: string; ano: number; mes: number }
 
@@ -67,6 +67,21 @@ export function proximoMes(meses: Mes[]): Mes {
   const ano = u ? (u.mes === 12 ? u.ano + 1 : u.ano) : new Date().getFullYear()
   const mes = u ? (u.mes === 12 ? 1 : u.mes + 1) : new Date().getMonth() + 1
   return { abrev: NOMES_MES[mes - 1][0], nome: NOMES_MES[mes - 1][1], ano, mes }
+}
+
+// Evolução do PATRIMÔNIO TOTAL: para cada mês, soma o saldo de todas as carteiras
+// (só as contas que já têm extrato daquele mês). É o que alimenta o gráfico.
+export type PontoEvolucao = { abrev: string; nome: string; ano: number; mes: number; total: number }
+
+export async function getEvolucaoPatrimonio(): Promise<PontoEvolucao[]> {
+  const { carteiras, meses } = await carregarFinanceiro()
+  return meses.map((m, i) => ({
+    abrev: m.abrev,
+    nome: m.nome,
+    ano: m.ano,
+    mes: m.mes,
+    total: carteiras.reduce((s, c) => s + saldoCarteira(c, i), 0),
+  }))
 }
 
 export async function carregarFinanceiro(): Promise<{ carteiras: Carteira[]; meses: Mes[] }> {
