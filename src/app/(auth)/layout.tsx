@@ -5,6 +5,7 @@ import Link from 'next/link'
 import IndicadoresPanel from './IndicadoresPanel'
 import BreakEven from './BreakEven'
 import GraficoEvolucao from './GraficoEvolucao'
+import SoNoFinanceiro from './SoNoFinanceiro'
 import { getBreakEven, getEvolucaoPatrimonio } from '@/lib/financeiro/carregar'
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -51,15 +52,20 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
             </button>
           </form>
 
-          {/* Quadro de indicadores (câmbio, juros, CUB) abaixo dos botões */}
-          <IndicadoresPanel />
-          {/* Break Even: distribuição de lucros (10% ÷ 3) — só quem vê o Financeiro */}
-          {breakEven && (
-            <BreakEven ano={breakEven.ano} mes={breakEven.mes} rnxRendimento={breakEven.rnxRendimento}
-              serginho={breakEven.serginho} eduardo={breakEven.eduardo} />
+          {/* Indicadores, Break Even e Gráfico: só na seção Financeiro (não no Início/Imóveis) */}
+          {podeFinanceiro && (
+            <SoNoFinanceiro>
+              {/* Quadro de indicadores (câmbio, juros, CUB) */}
+              <IndicadoresPanel />
+              {/* Break Even: distribuição de lucros (10% ÷ 3) */}
+              {breakEven && (
+                <BreakEven ano={breakEven.ano} mes={breakEven.mes} rnxRendimento={breakEven.rnxRendimento}
+                  serginho={breakEven.serginho} eduardo={breakEven.eduardo} />
+              )}
+              {/* Gráfico da evolução do patrimônio total */}
+              {evolucao.length >= 2 && <GraficoEvolucao pontos={evolucao} />}
+            </SoNoFinanceiro>
           )}
-          {/* Gráfico da evolução do patrimônio total — abaixo do Break Even */}
-          {podeFinanceiro && evolucao.length >= 2 && <GraficoEvolucao pontos={evolucao} />}
         </nav>
 
         <main className="flex-1 min-w-0">{children}</main>
