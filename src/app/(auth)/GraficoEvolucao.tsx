@@ -43,12 +43,12 @@ export default function GraficoEvolucao({ pontos }: { pontos: Ponto[] }) {
   const varPct = anterior && anterior.total ? ((sel.total - anterior.total) / anterior.total) * 100 : null
 
   return (
-    <div className="mt-4 bg-white border border-gray-200 rounded-lg p-3 w-44 shrink-0">
-      <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1">📈 Evolução da Carteira</h3>
+    <div className="mt-4 bg-white border border-gray-200 rounded-lg p-4 w-56 shrink-0 shadow-sm">
+      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">📈 Evolução da Carteira</h3>
 
       {/* Valor do mês selecionado (último por padrão) */}
       <div className="mb-1.5">
-        <div className="text-sm font-bold text-gray-800 leading-tight">{compacto(sel.total)}</div>
+        <div className="text-base font-bold text-gray-800 leading-tight">{compacto(sel.total)}</div>
         <div className="flex items-center gap-1.5 text-[10px]">
           <span className="text-gray-400 capitalize">{sel.nome.toLowerCase()}/{sel.ano}</span>
           {varPct != null && (

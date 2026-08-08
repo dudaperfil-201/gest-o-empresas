@@ -3,12 +3,14 @@
 // Quadro BREAK EVEN: distribuição de lucros do MÊS CORRENTE. Serginho e Eduardo são
 // digitados; RNX vem automático (diferença dos 2 últimos meses). Calcula 10% ÷ 3.
 // Cada mês é salvo no banco (tabela break_even) — o mês novo começa em branco e os
-// anteriores ficam guardados. Salva automaticamente ao sair do campo (onBlur).
+// anteriores ficam guardados. Salva no botão Salvar (e também ao sair do campo).
 
 import { useState, useEffect } from 'react'
 import { salvarBreakEven } from '@/app/actions/financeiro'
 
-const brl = (n: number) => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+const brl = (n: number) => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+// só o número, com milhar (o "R$" fica fixo antes do campo).
+const num = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 function toNum(s: string): number {
   const c = (s ?? '').trim().replace(/\s/g, '')
@@ -17,8 +19,8 @@ function toNum(s: string): number {
   const n = parseFloat(norm)
   return isFinite(n) ? n : 0
 }
-// número salvo → texto editável (vazio se 0).
-const paraTexto = (n: number) => (n && n !== 0 ? String(n).replace('.', ',') : '')
+// número salvo → texto editável já com milhar (vazio se 0).
+const paraTexto = (n: number) => (n && n !== 0 ? num(n) : '')
 
 type Props = { ano: number; mes: number; rnxRendimento: number; serginho: number; eduardo: number }
 
@@ -40,62 +42,75 @@ export default function BreakEven({ ano, mes, rnxRendimento, serginho: serginhoS
     setStatus(r.ok ? 'salvo' : 'erro')
   }
 
+  // Ao editar: guarda o texto cru e marca "pendente".
+  function editar(set: (v: string) => void, v: string) {
+    set(v)
+    setStatus('pendente')
+  }
+  // Ao sair do campo: reformata bonito (com milhar) e salva.
+  function sairCampo(valor: string, set: (v: string) => void) {
+    set(paraTexto(toNum(valor)))
+    salvar()
+  }
+
   const total = toNum(serginho) + toNum(eduardo) + rnxRendimento
   const dezPct = total * 0.10
   const porPessoa = dezPct / 3
   const nomeMes = new Date(ano, mes - 1).toLocaleDateString('pt-BR', { month: 'long' })
 
-  // Ao editar um campo, marca que há alteração ainda não salva.
-  function editar(set: (v: string) => void, v: string) {
-    set(v)
-    setStatus('pendente')
-  }
-
+  // Linha com rótulo à esquerda e campo (R$ + input) à direita, tudo na mesma linha.
   const campo = (label: string, valor: string, set: (v: string) => void) => (
-    <div>
-      <label className="block text-[10px] text-gray-500 mb-0.5">{label}</label>
-      <input
-        type="text" inputMode="decimal" value={valor}
-        onChange={e => editar(set, e.target.value)}
-        onBlur={salvar}
-        placeholder="0,00"
-        className="w-full px-2 py-1 border border-gray-300 rounded text-xs text-right focus:outline-none focus:ring-2 focus:ring-purple-200"
-      />
+    <div className="flex items-center justify-between gap-2">
+      <label className="text-xs text-gray-600 shrink-0">{label}</label>
+      <div className="flex items-center gap-1 flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 focus-within:ring-2 focus-within:ring-purple-200 focus-within:border-purple-300">
+        <span className="text-xs text-gray-400 shrink-0">R$</span>
+        <input
+          type="text" inputMode="decimal" value={valor}
+          onChange={e => editar(set, e.target.value)}
+          onBlur={() => sairCampo(valor, set)}
+          placeholder="0,00"
+          className="w-full min-w-0 text-sm text-right text-gray-800 bg-transparent outline-none"
+        />
+      </div>
     </div>
   )
 
   return (
-    <div className="mt-4 bg-white border border-gray-200 rounded-lg p-3 w-44 shrink-0">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">💸 Break Even</h3>
-        <span className="text-[9px] text-gray-400 capitalize">{nomeMes}/{ano}</span>
+    <div className="mt-4 bg-white border border-gray-200 rounded-lg p-4 w-56 shrink-0 shadow-sm">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">💸 Break Even</h3>
+        <span className="text-[10px] text-gray-400 capitalize">{nomeMes}/{ano}</span>
       </div>
-      <div className="space-y-1.5">
+
+      <div className="space-y-2">
         {campo('Itaú Serginho', serginho, setSerginho)}
         {campo('Itaú Eduardo', eduardo, setEduardo)}
-        <div>
-          <label className="block text-[10px] text-gray-500 mb-0.5">RNX <span className="text-purple-500">(auto)</span></label>
-          <div className="w-full px-2 py-1 bg-gray-50 border border-gray-200 rounded text-xs text-right font-semibold text-gray-700">
-            {brl(rnxRendimento)}
+        <div className="flex items-center justify-between gap-2">
+          <label className="text-xs text-gray-600 shrink-0">RNX <span className="text-purple-500">(auto)</span></label>
+          <div className="flex items-center gap-1 flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded px-2 py-1">
+            <span className="text-xs text-gray-400 shrink-0">R$</span>
+            <span className="w-full text-sm text-right font-semibold text-gray-700 truncate">{num(rnxRendimento)}</span>
           </div>
         </div>
       </div>
-      <div className="mt-2 pt-2 border-t border-gray-100 space-y-1 text-xs">
-        <div className="flex justify-between text-gray-500">
-          <span>Total rendido</span><span className="font-semibold text-gray-700">{brl(total)}</span>
+
+      <div className="mt-3 pt-3 border-t border-gray-100 space-y-1.5 text-sm">
+        <div className="flex justify-between items-baseline text-gray-500">
+          <span className="text-xs">Total rendido</span><span className="font-semibold text-gray-800">{brl(total)}</span>
         </div>
-        <div className="flex justify-between text-gray-500">
-          <span>10%</span><span className="font-semibold text-gray-700">{brl(dezPct)}</span>
+        <div className="flex justify-between items-baseline text-gray-500">
+          <span className="text-xs">10%</span><span className="font-semibold text-gray-800">{brl(dezPct)}</span>
         </div>
-        <div className="flex justify-between items-baseline bg-purple-50 rounded px-2 py-1 mt-1">
-          <span className="text-[11px] font-semibold text-purple-700">Cada um (÷3)</span>
-          <span className="text-sm font-bold text-purple-700">{brl(porPessoa)}</span>
+        <div className="flex justify-between items-center bg-purple-50 rounded-md px-2.5 py-2 mt-1.5">
+          <span className="text-xs font-semibold text-purple-700">Cada um (÷3)</span>
+          <span className="text-base font-bold text-purple-700">{brl(porPessoa)}</span>
         </div>
       </div>
+
       <button
         onClick={salvar}
         disabled={status === 'salvando'}
-        className={`w-full mt-2 px-2 py-1.5 rounded text-xs font-semibold transition-colors disabled:opacity-60 ${
+        className={`w-full mt-3 px-3 py-2 rounded-md text-sm font-semibold transition-colors disabled:opacity-60 ${
           status === 'pendente'
             ? 'bg-purple-600 text-white hover:bg-purple-700'
             : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
@@ -103,7 +118,7 @@ export default function BreakEven({ ano, mes, rnxRendimento, serginho: serginhoS
       >
         {status === 'salvando' ? 'Salvando…' : status === 'salvo' ? '✓ Salvo' : '💾 Salvar'}
       </button>
-      <p className="text-[9px] mt-1 h-3 text-right">
+      <p className="text-[10px] mt-1 h-3 text-right">
         {status === 'pendente' && <span className="text-purple-500">alterações não salvas</span>}
         {status === 'erro' && <span className="text-red-500">erro ao salvar — tente de novo</span>}
       </p>

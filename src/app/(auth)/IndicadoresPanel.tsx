@@ -18,8 +18,8 @@ async function fetchJson(url: string, revalidate = 3600): Promise<any | null> {
 
 function Linha({ icone, label, valor, sub }: { icone: string; label: string; valor: string; sub?: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-1">
-      <span className="text-gray-500 truncate">{icone} {label}</span>
+    <div className="flex items-baseline justify-between gap-2">
+      <span className="text-gray-600 whitespace-nowrap">{icone} {label}</span>
       <span className="text-right whitespace-nowrap">
         <span className="font-semibold text-gray-800">{valor}</span>
         {sub && <span className="ml-1 text-[10px] text-gray-400">{sub}</span>}
@@ -47,19 +47,19 @@ export default async function IndicadoresPanel() {
   const pctAA = (arr: any) => arr?.[0]?.valor ? Number(arr[0].valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '%' : '—'
 
   return (
-    <div className="mt-4 bg-white border border-gray-200 rounded-lg p-3 w-44 shrink-0">
-      <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">📊 Indicadores</h3>
-      <div className="space-y-1.5 text-xs">
+    <div className="mt-4 bg-white border border-gray-200 rounded-lg p-4 w-56 shrink-0 shadow-sm">
+      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">📊 Indicadores</h3>
+      <div className="space-y-2 text-sm">
         <Linha icone="💵" label="Dólar" valor={brl(usdBrl)} />
         <Linha icone="💶" label="Euro" valor={brl(eurBrl)} />
         <Linha icone="🇨🇭" label="Franco" valor={brl(chfBrl)} />
-        <div className="border-t border-gray-100 my-1.5" />
+        <div className="border-t border-gray-100 my-2" />
         <Linha icone="🏗️" label="CUB-SC" valor={`R$ ${CUB_SC.valor}`} sub={CUB_SC.ref} />
         <Linha icone="📈" label="CDI" valor={pctAA(cdi)} sub="a.a." />
         <Linha icone="🏦" label="Selic" valor={pctAA(selic)} sub="a.a." />
         <Linha icone="📊" label="IPCA" valor={pctAA(ipca)} sub="12m" />
       </div>
-      <p className="text-[9px] text-gray-300 mt-2 leading-tight">Câmbio e juros ao vivo · CUB manual</p>
+      <p className="text-[9px] text-gray-300 mt-3 leading-tight">Câmbio e juros ao vivo · CUB manual</p>
     </div>
   )
 }
