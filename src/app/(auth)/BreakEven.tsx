@@ -25,7 +25,7 @@ type Props = { ano: number; mes: number; rnxRendimento: number; serginho: number
 export default function BreakEven({ ano, mes, rnxRendimento, serginho: serginhoSalvo, eduardo: eduardoSalvo }: Props) {
   const [serginho, setSerginho] = useState(paraTexto(serginhoSalvo))
   const [eduardo, setEduardo] = useState(paraTexto(eduardoSalvo))
-  const [status, setStatus] = useState<'' | 'salvando' | 'salvo' | 'erro'>('')
+  const [status, setStatus] = useState<'' | 'pendente' | 'salvando' | 'salvo' | 'erro'>('')
 
   // Ao trocar de mês (props mudam), recarrega os valores daquele mês (em branco se novo).
   useEffect(() => {
@@ -45,12 +45,18 @@ export default function BreakEven({ ano, mes, rnxRendimento, serginho: serginhoS
   const porPessoa = dezPct / 3
   const nomeMes = new Date(ano, mes - 1).toLocaleDateString('pt-BR', { month: 'long' })
 
+  // Ao editar um campo, marca que há alteração ainda não salva.
+  function editar(set: (v: string) => void, v: string) {
+    set(v)
+    setStatus('pendente')
+  }
+
   const campo = (label: string, valor: string, set: (v: string) => void) => (
     <div>
       <label className="block text-[10px] text-gray-500 mb-0.5">{label}</label>
       <input
         type="text" inputMode="decimal" value={valor}
-        onChange={e => set(e.target.value)}
+        onChange={e => editar(set, e.target.value)}
         onBlur={salvar}
         placeholder="0,00"
         className="w-full px-2 py-1 border border-gray-300 rounded text-xs text-right focus:outline-none focus:ring-2 focus:ring-purple-200"
@@ -86,10 +92,20 @@ export default function BreakEven({ ano, mes, rnxRendimento, serginho: serginhoS
           <span className="text-sm font-bold text-purple-700">{brl(porPessoa)}</span>
         </div>
       </div>
-      <p className="text-[9px] mt-1.5 h-3 text-right">
-        {status === 'salvando' && <span className="text-gray-400">salvando…</span>}
-        {status === 'salvo' && <span className="text-green-600">✓ salvo</span>}
-        {status === 'erro' && <span className="text-red-500">erro ao salvar</span>}
+      <button
+        onClick={salvar}
+        disabled={status === 'salvando'}
+        className={`w-full mt-2 px-2 py-1.5 rounded text-xs font-semibold transition-colors disabled:opacity-60 ${
+          status === 'pendente'
+            ? 'bg-purple-600 text-white hover:bg-purple-700'
+            : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+        }`}
+      >
+        {status === 'salvando' ? 'Salvando…' : status === 'salvo' ? '✓ Salvo' : '💾 Salvar'}
+      </button>
+      <p className="text-[9px] mt-1 h-3 text-right">
+        {status === 'pendente' && <span className="text-purple-500">alterações não salvas</span>}
+        {status === 'erro' && <span className="text-red-500">erro ao salvar — tente de novo</span>}
       </p>
     </div>
   )
