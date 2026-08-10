@@ -15,7 +15,7 @@ export const MESES_2026 = [
 // Cada carteira/conta pode ter menos meses que o total (dados chegam por extrato,
 // mês a mês). valores[i] === undefined = "ainda sem extrato" para aquele mês.
 
-export interface Investimento { nome: string; valores: number[]; moeda?: string; valoresMoeda?: number[] }
+export interface Investimento { nome: string; valores: number[]; moeda?: string; valoresMoeda?: number[]; variacoes?: number[] }
 export interface Conta { banco: string; investimentos: Investimento[] }
 export interface Carteira { slug: string; nome: string; tipo: 'brasil' | 'internacional'; contas: Conta[] }
 

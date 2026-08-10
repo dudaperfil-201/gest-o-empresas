@@ -14,7 +14,7 @@ const NOMES_MES: [string, string][] = [
   ['SET', 'SETEMBRO'], ['OUT', 'OUTUBRO'], ['NOV', 'NOVEMBRO'], ['DEZ', 'DEZEMBRO'],
 ]
 
-type Row = { carteira_slug: string; banco: string; investimento: string; ano: number; mes: number; valor: number; valor_moeda: number | null }
+type Row = { carteira_slug: string; banco: string; investimento: string; ano: number; mes: number; valor: number; valor_moeda: number | null; variacao_pct?: number | null }
 
 // Dados do Break Even do MÊS CORRENTE (o último mês com dados no Financeiro):
 //  - mês/ano;  - rnxRendimento (auto: diferença dos 2 últimos meses da RNX);
@@ -88,9 +88,11 @@ export async function carregarFinanceiro(): Promise<{ carteiras: Carteira[]; mes
   let rows: Row[] | null = null
   try {
     const supabase = await createClient()
-    const { data, error } = await supabase
-      .from('financeiro_valores')
-      .select('carteira_slug,banco,investimento,ano,mes,valor,valor_moeda')
+    const COLS = 'carteira_slug,banco,investimento,ano,mes,valor,valor_moeda'
+    // Tenta com variacao_pct; se a coluna ainda não existir (migração não rodada),
+    // busca sem ela para não quebrar o financeiro.
+    let { data, error } = await supabase.from('financeiro_valores').select(`${COLS},variacao_pct`)
+    if (error) ({ data, error } = await supabase.from('financeiro_valores').select(COLS))
     if (!error && data && data.length > 0) rows = data as Row[]
   } catch {
     rows = null
@@ -123,12 +125,17 @@ export async function carregarFinanceiro(): Promise<{ carteiras: Carteira[]; mes
           const r = val(cart.slug, conta.banco, inv.nome, m.ano, m.mes)
           return r ? Number(r.valor) : undefined
         }) as unknown as number[]
-        if (!inv.moeda) return { ...inv, valores }
+        // Variação % do ativo no mês (pode faltar em meses antigos → undefined).
+        const variacoes = meses.map(m => {
+          const r = val(cart.slug, conta.banco, inv.nome, m.ano, m.mes)
+          return r && r.variacao_pct != null ? Number(r.variacao_pct) : undefined
+        }) as unknown as number[]
+        if (!inv.moeda) return { ...inv, valores, variacoes }
         const valoresMoeda = meses.map(m => {
           const r = val(cart.slug, conta.banco, inv.nome, m.ano, m.mes)
           return r && r.valor_moeda != null ? Number(r.valor_moeda) : undefined
         }) as unknown as number[]
-        return { ...inv, valores, valoresMoeda }
+        return { ...inv, valores, valoresMoeda, variacoes }
       }),
     })),
   }))

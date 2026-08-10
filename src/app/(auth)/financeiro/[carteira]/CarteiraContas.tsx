@@ -4,7 +4,10 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { salvarMesFinanceiro, type ItemMes } from '@/app/actions/financeiro'
 
-type Inv = { nome: string; moeda: string | null; valor: number | null; valorMoeda: number | null }
+type Inv = { nome: string; moeda: string | null; valor: number | null; valorMoeda: number | null; variacao: number | null }
+
+// Variação % colorida (verde sobe / vermelho cai). "—" quando não há dado.
+const fmtPct = (n: number) => `${n >= 0 ? '▲ +' : '▼ '}${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
 type Conta = { banco: string; temMes: boolean; saldo: number; investimentos: Inv[] }
 
 const brl = (n: number) => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
@@ -152,9 +155,15 @@ export default function CarteiraContas({ slug, mesNome, ano, mes, contas }: {
             ) : conta.temMes && aberta && (
               <div className="space-y-1.5 mt-3">
                 {conta.investimentos.filter(inv => !(conta.investimentos.length === 1 && inv.nome === 'Saldo')).map(inv => (
-                  <div key={inv.nome} className="flex items-center justify-between text-sm border-b border-gray-50 last:border-0 pb-1.5 last:pb-0">
-                    <span className="text-gray-600">{inv.nome}</span>
-                    <span className="text-right">
+                  <div key={inv.nome} className="flex items-center justify-between gap-2 text-sm border-b border-gray-50 last:border-0 pb-1.5 last:pb-0">
+                    <span className="text-gray-600 flex-1 min-w-0 truncate">{inv.nome}</span>
+                    {/* Variação % no mês */}
+                    <span className={`w-20 text-right text-xs font-semibold shrink-0 ${
+                      inv.variacao == null ? 'text-gray-300' : inv.variacao >= 0 ? 'text-green-600' : 'text-red-500'
+                    }`}>
+                      {inv.variacao == null ? '—' : fmtPct(inv.variacao)}
+                    </span>
+                    <span className="text-right shrink-0">
                       <span className="text-gray-800 font-medium">{brl(inv.valor ?? 0)}</span>
                       {inv.moeda && inv.valorMoeda != null && (
                         <span className="block text-xs text-gray-400">{fmtMoeda(inv.moeda, inv.valorMoeda)}</span>
