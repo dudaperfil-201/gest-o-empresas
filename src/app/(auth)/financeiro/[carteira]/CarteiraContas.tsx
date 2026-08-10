@@ -18,6 +18,13 @@ export default function CarteiraContas({ slug, mesNome, ano, mes, contas }: {
   const [editando, setEditando] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
+  // Quais classes estão expandidas (mostrando os ativos). Começa tudo fechado.
+  const [abertas, setAbertas] = useState<Set<string>>(new Set())
+  const alternar = (banco: string) => setAbertas(prev => {
+    const n = new Set(prev)
+    if (n.has(banco)) n.delete(banco); else n.add(banco)
+    return n
+  })
 
   const init = (pick: (i: Inv) => number | null) => {
     const o: Record<string, string> = {}
@@ -84,10 +91,25 @@ export default function CarteiraContas({ slug, mesNome, ano, mes, contas }: {
           const totalMoeda = simbolo
             ? conta.investimentos.reduce((s, i) => s + (i.moeda === simbolo ? (i.valorMoeda ?? 0) : 0), 0)
             : null
+          // Ativos exibíveis (a conta histórica de linha única "Saldo" não conta).
+          const temAtivos = conta.investimentos.filter(inv => !(conta.investimentos.length === 1 && inv.nome === 'Saldo')).length > 0
+          // Classe é "clicável" (expansível) fora do modo de edição, com extrato e com ativos.
+          const expansivel = !editando && conta.temMes && temAtivos
+          const aberta = abertas.has(conta.banco)
           return (
           <div key={conta.banco} className={`border rounded-xl p-5 ${editando || conta.temMes ? 'bg-white border-gray-200' : 'bg-gray-50 border-dashed border-gray-300'}`}>
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900">{conta.banco}</h3>
+            <div
+              className={`flex items-center justify-between ${expansivel ? 'cursor-pointer select-none' : ''}`}
+              onClick={expansivel ? () => alternar(conta.banco) : undefined}
+              role={expansivel ? 'button' : undefined}
+              aria-expanded={expansivel ? aberta : undefined}
+            >
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                {expansivel && (
+                  <span className="text-gray-400 text-xs w-3 inline-block">{aberta ? '▾' : '▸'}</span>
+                )}
+                {conta.banco}
+              </h3>
               {!editando && (conta.temMes
                 ? <span className="text-right">
                     <span className="block text-lg font-bold text-green-700 leading-tight">{brl(conta.saldo)}</span>
@@ -127,7 +149,7 @@ export default function CarteiraContas({ slug, mesNome, ano, mes, contas }: {
                   )
                 })}
               </div>
-            ) : conta.temMes && (
+            ) : conta.temMes && aberta && (
               <div className="space-y-1.5 mt-3">
                 {conta.investimentos.filter(inv => !(conta.investimentos.length === 1 && inv.nome === 'Saldo')).map(inv => (
                   <div key={inv.nome} className="flex items-center justify-between text-sm border-b border-gray-50 last:border-0 pb-1.5 last:pb-0">
