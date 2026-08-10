@@ -94,6 +94,12 @@ export default function CarteiraContas({ slug, mesNome, ano, mes, contas }: {
           const totalMoeda = simbolo
             ? conta.investimentos.reduce((s, i) => s + (i.moeda === simbolo ? (i.valorMoeda ?? 0) : 0), 0)
             : null
+          // Variação da CLASSE = média das variações dos ativos ponderada pelo valor (R$).
+          const comVar = conta.investimentos.filter(i => i.variacao != null && (i.valor ?? 0) !== 0)
+          const pesoTotal = comVar.reduce((s, i) => s + (i.valor ?? 0), 0)
+          const variacaoClasse = pesoTotal > 0
+            ? comVar.reduce((s, i) => s + (i.valor ?? 0) * (i.variacao ?? 0), 0) / pesoTotal
+            : null
           // Ativos exibíveis (a conta histórica de linha única "Saldo" não conta).
           const temAtivos = conta.investimentos.filter(inv => !(conta.investimentos.length === 1 && inv.nome === 'Saldo')).length > 0
           // Classe é "clicável" (expansível) fora do modo de edição, com extrato e com ativos.
@@ -112,6 +118,11 @@ export default function CarteiraContas({ slug, mesNome, ano, mes, contas }: {
                   <span className="text-gray-400 text-xs w-3 inline-block">{aberta ? '▾' : '▸'}</span>
                 )}
                 {conta.banco}
+                {!editando && conta.temMes && variacaoClasse != null && (
+                  <span className={`text-xs font-bold ${variacaoClasse >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                    {fmtPct(variacaoClasse)}
+                  </span>
+                )}
               </h3>
               {!editando && (conta.temMes
                 ? <span className="text-right">
