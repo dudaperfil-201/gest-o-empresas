@@ -174,19 +174,57 @@ export const CARTEIRAS: Carteira[] = [
   {
     slug: 'la-jolla', nome: 'La Jolla', tipo: 'internacional', contas: [
       // Itaú Private Banking (Itaú Miami). Até JUNHO: 1 linha "Saldo" (Total Net Worth).
-      // A partir de JULHO/2026 a carteira passa a ser DETALHADA em 6 classes de ativos
-      // (relatório Portfolio Itaú). O "Saldo" guarda só o histórico Jan–Jun; os valores
-      // mensais das classes vêm do banco (financeiro_valores).
+      // De JULHO/2026 em diante a carteira é DETALHADA: cada CLASSE de ativo vira uma
+      // "conta" e, dentro dela, os ATIVOS individuais (relatório Portfolio Itaú). O
+      // "Saldo" guarda só o histórico Jan–Jun; os valores mensais dos ativos vêm do
+      // banco (financeiro_valores). Nomes aqui têm de casar exatamente com o banco.
       { banco: 'Itaú Miami (EUA)', investimentos: [
         { nome: 'Saldo', moeda: 'US$',
           valores: [7694225.69, 7542882.64, 7343371.82, 7507906.03, 7785361.64, 8408793.31],
           valoresMoeda: [1476818.75, 1439481.42, 1425897.44, 1532225.72, 1541655.77, 1645556.42] },
-        { nome: 'Ações e ETFs', moeda: 'US$', valores: [], valoresMoeda: [] },
-        { nome: 'Renda Fixa', moeda: 'US$', valores: [], valoresMoeda: [] },
-        { nome: 'Notas Estruturadas', moeda: 'US$', valores: [], valoresMoeda: [] },
-        { nome: 'Caixa', moeda: 'US$', valores: [], valoresMoeda: [] },
-        { nome: 'Private Equity', moeda: 'US$', valores: [], valoresMoeda: [] },
-        { nome: 'Hedge Funds', moeda: 'US$', valores: [], valoresMoeda: [] },
+      ] },
+      { banco: 'Renda Fixa', investimentos: [
+        { nome: 'XP Incorporation 6,75% 02/07/29', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'Vale Overseas 6,875% 21/11/36', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'Oracle 2,875% 25/03/31', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'Morgan Stanley 5,297% 20/04/37', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'Itaú Unibanco 6,0% 27/02/30', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'Citigroup 6,27% 17/11/33', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'Banco Bradesco 6,5% 22/01/30', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: '3M Co 3,7% 15/04/50', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'T-Note EUA 4,125% 15/02/36', moeda: 'US$', valores: [], valoresMoeda: [] },
+      ] },
+      { banco: 'Ações e ETFs', investimentos: [
+        { nome: 'WisdomTree Floating Rate (USFR)', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'Vanguard Short-Term Bond (BSV)', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'iShares US Treasury 1-3Y (IBTC)', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'iShares MSCI EMU CHF (EMUC)', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'iShares Russell 2000 (IWM)', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'iShares MSCI ACWI (ACWI)', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'Visa (V)', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'Walt Disney (DIS)', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'Microsoft (MSFT)', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'JPMorgan Chase (JPM)', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'Danaher (DHR)', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'Berkshire Hathaway (BRK.B)', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'Apple (AAPL)', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'Alphabet (GOOGL)', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'Taiwan Semiconductor (TSM)', moeda: 'US$', valores: [], valoresMoeda: [] },
+      ] },
+      { banco: 'Notas Estruturadas', investimentos: [
+        { nome: 'Itaú AMS Equity', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'Itaú AMS Credit', moeda: 'US$', valores: [], valoresMoeda: [] },
+      ] },
+      { banco: 'Caixa', investimentos: [
+        { nome: 'Conta USD (MM)', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'Conta USD (DDA)', moeda: 'US$', valores: [], valoresMoeda: [] },
+        { nome: 'Conta CHF', moeda: 'US$', valores: [], valoresMoeda: [] },
+      ] },
+      { banco: 'Private Equity', investimentos: [
+        { nome: 'Kinea US PE SP I-B', moeda: 'US$', valores: [], valoresMoeda: [] },
+      ] },
+      { banco: 'Hedge Funds', investimentos: [
+        { nome: 'KKR Infrastructure Fund N1A', moeda: 'US$', valores: [], valoresMoeda: [] },
       ] },
     ],
   },
