@@ -118,17 +118,21 @@ export default function CarteiraContas({ slug, mesNome, ano, mes, contas }: {
                   <span className="text-gray-400 text-xs w-3 inline-block">{aberta ? '▾' : '▸'}</span>
                 )}
                 {conta.banco}
-                {!editando && conta.temMes && variacaoClasse != null && (
-                  <span className={`text-xs font-bold ${variacaoClasse >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                    {fmtPct(variacaoClasse)}
-                  </span>
-                )}
               </h3>
               {!editando && (conta.temMes
                 ? <span className="text-right">
                     <span className="block text-lg font-bold text-green-700 leading-tight">{brl(conta.saldo)}</span>
-                    {totalMoeda != null && simbolo && (
-                      <span className="block text-xs font-semibold text-gray-400">{fmtMoeda(simbolo, totalMoeda)}</span>
+                    {((totalMoeda != null && simbolo) || variacaoClasse != null) && (
+                      <span className="flex items-center justify-end gap-2">
+                        {variacaoClasse != null && (
+                          <span className={`text-xs font-bold ${variacaoClasse >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                            {fmtPct(variacaoClasse)}
+                          </span>
+                        )}
+                        {totalMoeda != null && simbolo && (
+                          <span className="text-xs font-semibold text-gray-400">{fmtMoeda(simbolo, totalMoeda)}</span>
+                        )}
+                      </span>
                     )}
                   </span>
                 : <span className="text-sm font-medium text-gray-400">Aguardando extrato</span>)}
