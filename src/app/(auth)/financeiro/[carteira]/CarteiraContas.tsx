@@ -116,21 +116,42 @@ export default function CarteiraContas({ slug, mesNome, ano, mes, contas }: {
                   )
                 })}
               </div>
-            ) : conta.temMes && (
-              <div className="space-y-1.5 mt-3">
-                {conta.investimentos.filter(inv => !(conta.investimentos.length === 1 && inv.nome === 'Saldo')).map(inv => (
-                  <div key={inv.nome} className="flex items-center justify-between text-sm border-b border-gray-50 last:border-0 pb-1.5 last:pb-0">
-                    <span className="text-gray-600">{inv.nome}</span>
+            ) : conta.temMes && (() => {
+              // Lista os ativos e, no fim, o TOTAL da classe (em moeda e em R$).
+              // A conta histórica de linha única "Saldo" não entra (nada a totalizar).
+              const visiveis = conta.investimentos.filter(inv => !(conta.investimentos.length === 1 && inv.nome === 'Saldo'))
+              if (visiveis.length === 0) return null
+              const totalBrl = visiveis.reduce((s, i) => s + (i.valor ?? 0), 0)
+              const simbolo = visiveis.find(i => i.moeda)?.moeda ?? null
+              const totalMoeda = simbolo
+                ? visiveis.reduce((s, i) => s + (i.moeda === simbolo ? (i.valorMoeda ?? 0) : 0), 0)
+                : null
+              return (
+                <div className="space-y-1.5 mt-3">
+                  {visiveis.map(inv => (
+                    <div key={inv.nome} className="flex items-center justify-between text-sm border-b border-gray-50 pb-1.5">
+                      <span className="text-gray-600">{inv.nome}</span>
+                      <span className="text-right">
+                        <span className="text-gray-800 font-medium">{brl(inv.valor ?? 0)}</span>
+                        {inv.moeda && inv.valorMoeda != null && (
+                          <span className="block text-xs text-gray-400">{fmtMoeda(inv.moeda, inv.valorMoeda)}</span>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                  {/* Total da classe */}
+                  <div className="flex items-center justify-between pt-2 mt-1 border-t-2 border-gray-200 text-sm">
+                    <span className="font-bold text-gray-700 uppercase tracking-wide text-xs">Total {conta.banco}</span>
                     <span className="text-right">
-                      <span className="text-gray-800 font-medium">{brl(inv.valor ?? 0)}</span>
-                      {inv.moeda && inv.valorMoeda != null && (
-                        <span className="block text-xs text-gray-400">{fmtMoeda(inv.moeda, inv.valorMoeda)}</span>
+                      <span className="font-bold text-gray-900">{brl(totalBrl)}</span>
+                      {totalMoeda != null && simbolo && (
+                        <span className="block text-xs font-semibold text-gray-500">{fmtMoeda(simbolo, totalMoeda)}</span>
                       )}
                     </span>
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              )
+            })()}
           </div>
         ))}
       </div>
