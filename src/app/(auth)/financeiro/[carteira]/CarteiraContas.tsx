@@ -64,6 +64,10 @@ export default function CarteiraContas({ slug, mesNome, ano, mes, contas }: {
     }
   }
 
+  // Total da carteira no mês (soma das contas com dado) — base do % de cada classe.
+  const totalCarteira = contas.reduce((s, c) => s + (c.temMes ? c.saldo : 0), 0)
+  const mostrarPct = contas.length > 1 && totalCarteira > 0
+
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
@@ -113,12 +117,19 @@ export default function CarteiraContas({ slug, mesNome, ano, mes, contas }: {
               role={expansivel ? 'button' : undefined}
               aria-expanded={expansivel ? aberta : undefined}
             >
-              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                {expansivel && (
-                  <span className="text-gray-400 text-xs w-3 inline-block">{aberta ? '▾' : '▸'}</span>
+              <div>
+                <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                  {expansivel && (
+                    <span className="text-gray-400 text-xs w-3 inline-block">{aberta ? '▾' : '▸'}</span>
+                  )}
+                  {conta.banco}
+                </h3>
+                {mostrarPct && conta.temMes && (
+                  <p className={`text-[11px] text-gray-400 ${expansivel ? 'ml-5' : ''}`}>
+                    {((conta.saldo / totalCarteira) * 100).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}% da carteira
+                  </p>
                 )}
-                {conta.banco}
-              </h3>
+              </div>
               {!editando && (conta.temMes
                 ? <span className="text-right">
                     <span className="block text-lg font-bold text-green-700 leading-tight">{brl(conta.saldo)}</span>
