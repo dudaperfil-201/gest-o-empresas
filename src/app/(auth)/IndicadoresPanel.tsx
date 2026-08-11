@@ -84,10 +84,13 @@ export default async function IndicadoresPanel() {
     getTesouroIpca(),
   ])
 
-  // Tesouro IPCA+ "principal" (sem juros semestrais), só vencimentos futuros, mais curto → mais longo.
-  const hojeISO = new Date().toISOString().slice(0, 10)
+  // Tesouro IPCA+ "principal" (sem juros semestrais), do mais curto ao mais longo.
+  // Ignora os que vencem em menos de ~6 meses: título quase vencendo tem taxa/PU
+  // distorcidos (artefato de resgate) e polui o painel.
+  const corte = new Date(); corte.setDate(corte.getDate() + 180)
+  const corteISO = corte.toISOString().slice(0, 10)
   const ipcaBonds = (tesouroIpca ?? [])
-    .filter(t => t.titulo === 'Tesouro IPCA+' && t.vencimento > hojeISO)
+    .filter(t => t.titulo === 'Tesouro IPCA+' && t.vencimento > corteISO)
     .sort((a, b) => a.vencimento.localeCompare(b.vencimento))
   const dataBaseIpca = ipcaBonds[0]?.data_base ?? tesouroIpca[0]?.data_base ?? null
   const fmtBRL = (n: number | null) => n != null ? 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
