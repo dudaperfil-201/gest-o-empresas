@@ -16,7 +16,10 @@ export const MESES_2026 = [
 // mês a mês). valores[i] === undefined = "ainda sem extrato" para aquele mês.
 
 export interface Investimento { nome: string; valores: number[]; moeda?: string; valoresMoeda?: number[]; variacoes?: number[] }
-export interface Conta { banco: string; investimentos: Investimento[] }
+// `historico: true` = conta "aposentada" (foi substituída por outras contas). Ela só
+// aparece/conta nos meses em que realmente tem dado; nunca é cobrada como "aguardando
+// extrato" nos meses seguintes. Ex.: o "Saldo" único da La Jolla, trocado pelas 6 classes.
+export interface Conta { banco: string; investimentos: Investimento[]; historico?: boolean }
 export interface Carteira { slug: string; nome: string; tipo: 'brasil' | 'internacional'; contas: Conta[] }
 
 export const CARTEIRAS: Carteira[] = [
@@ -178,7 +181,7 @@ export const CARTEIRAS: Carteira[] = [
       // "conta" e, dentro dela, os ATIVOS individuais (relatório Portfolio Itaú). O
       // "Saldo" guarda só o histórico Jan–Jun; os valores mensais dos ativos vêm do
       // banco (financeiro_valores). Nomes aqui têm de casar exatamente com o banco.
-      { banco: 'Itaú Miami (EUA)', investimentos: [
+      { banco: 'Itaú Miami (EUA)', historico: true, investimentos: [
         { nome: 'Saldo', moeda: 'US$',
           valores: [7694225.69, 7542882.64, 7343371.82, 7507906.03, 7785361.64, 8408793.31],
           valoresMoeda: [1476818.75, 1439481.42, 1425897.44, 1532225.72, 1541655.77, 1645556.42] },
@@ -261,6 +264,16 @@ export const numMeses = (c: Carteira) =>
 export const contaTemMes = (ct: Conta, i: number) =>
   ct.investimentos.some(inv => inv.valores[i] !== undefined)
 
+// A conta já "começou" até o mês i (tem dado em i ou em algum mês anterior)?
+const contaComecouAte = (ct: Conta, i: number) =>
+  ct.investimentos.some(inv => inv.valores.slice(0, i + 1).some(v => v != null))
+
+// A conta é RELEVANTE no mês i (deve aparecer e entrar na conta de parcial/pendente)?
+//  - precisa já ter começado (some contas de classe só nascem em julho → some do passado);
+//  - conta `historico` que não tem dado no mês foi aposentada → não é cobrada.
+export const contaRelevanteNoMes = (ct: Conta, i: number) =>
+  contaComecouAte(ct, i) && !(ct.historico && !contaTemMes(ct, i))
+
 // A carteira tem ALGUM extrato para o mês i? (pelo menos uma conta preenchida)
 export const carteiraTemMes = (c: Carteira, i: number) =>
   c.contas.some(ct => contaTemMes(ct, i))
@@ -272,13 +285,15 @@ export const saldoConta = (c: Conta, i: number) =>
 export const saldoCarteira = (c: Carteira, i: number) =>
   c.contas.reduce((s, ct) => s + (contaTemMes(ct, i) ? saldoConta(ct, i) : 0), 0)
 
-// Mês i é parcial: parte das contas tem extrato e parte ainda não.
-export const carteiraParcial = (c: Carteira, i: number) =>
-  c.contas.some(ct => contaTemMes(ct, i)) && c.contas.some(ct => !contaTemMes(ct, i))
+// Mês i é parcial: entre as contas RELEVANTES do mês, parte tem extrato e parte não.
+export const carteiraParcial = (c: Carteira, i: number) => {
+  const rel = c.contas.filter(ct => contaRelevanteNoMes(ct, i))
+  return rel.some(ct => contaTemMes(ct, i)) && rel.some(ct => !contaTemMes(ct, i))
+}
 
-// Bancos ainda sem extrato para o mês i.
+// Bancos relevantes ainda sem extrato para o mês i.
 export const bancosPendentes = (c: Carteira, i: number) =>
-  c.contas.filter(ct => !contaTemMes(ct, i)).map(ct => ct.banco)
+  c.contas.filter(ct => contaRelevanteNoMes(ct, i) && !contaTemMes(ct, i)).map(ct => ct.banco)
 
 export const getCarteira = (slug: string) => CARTEIRAS.find(c => c.slug === slug)
 

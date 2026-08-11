@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import {
   saldoConta, saldoCarteira, brl,
-  contaTemMes, carteiraParcial, bancosPendentes,
+  contaTemMes, carteiraParcial, bancosPendentes, contaRelevanteNoMes,
 } from '@/lib/financeiro/dados'
 import { carregarFinanceiro, proximoMes } from '@/lib/financeiro/carregar'
 import { exigirFinanceiro } from '@/lib/auth'
@@ -129,7 +129,7 @@ export default async function CarteiraPage({ params, searchParams }: {
         mesNome={navMeses[i].nome}
         ano={navMeses[i].ano}
         mes={navMeses[i].mes}
-        contas={carteira.contas.map(conta => ({
+        contas={carteira.contas.filter(conta => contaRelevanteNoMes(conta, i)).map(conta => ({
           banco: conta.banco,
           temMes: contaTemMes(conta, i),
           saldo: saldoConta(conta, i),
