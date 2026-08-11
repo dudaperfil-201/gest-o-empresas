@@ -295,6 +295,21 @@ export const carteiraParcial = (c: Carteira, i: number) => {
 export const bancosPendentes = (c: Carteira, i: number) =>
   c.contas.filter(ct => contaRelevanteNoMes(ct, i) && !contaTemMes(ct, i)).map(ct => ct.banco)
 
+// Câmbio do DÓLAR implícito no fechamento do mês i = soma R$ ÷ soma US$ dos ativos em
+// US$ (deriva a cotação usada, sem precisar guardá-la à parte). null se não houver US$.
+export const cambioUsdCarteira = (c: Carteira, i: number): number | null => {
+  let rs = 0, usd = 0
+  for (const ct of c.contas) {
+    if (!contaTemMes(ct, i)) continue
+    for (const inv of ct.investimentos) {
+      if (inv.moeda === 'US$' && inv.valores[i] != null && inv.valoresMoeda?.[i] != null) {
+        rs += inv.valores[i]; usd += inv.valoresMoeda[i]
+      }
+    }
+  }
+  return usd > 0 ? rs / usd : null
+}
+
 export const getCarteira = (slug: string) => CARTEIRAS.find(c => c.slug === slug)
 
 export const brl = (n: number) => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2 })

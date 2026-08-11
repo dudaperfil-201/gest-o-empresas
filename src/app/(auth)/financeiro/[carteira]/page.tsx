@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import {
   saldoConta, saldoCarteira, brl,
-  contaTemMes, carteiraParcial, bancosPendentes, contaRelevanteNoMes,
+  contaTemMes, carteiraParcial, bancosPendentes, contaRelevanteNoMes, cambioUsdCarteira,
 } from '@/lib/financeiro/dados'
 import { carregarFinanceiro, proximoMes } from '@/lib/financeiro/carregar'
 import { exigirFinanceiro } from '@/lib/auth'
@@ -104,11 +104,17 @@ export default async function CarteiraPage({ params, searchParams }: {
             const p = carteiraParcial(carteira, idx)
             const delta = idx > 0 && !p && !carteiraParcial(carteira, idx - 1) ? v - saldoCarteira(carteira, idx - 1) : null
             const selecionado = idx === i
+            // Câmbio do dólar usado no fechamento — só internacional e de julho/2026 em diante.
+            const mDetalhe = navMeses[idx].ano > 2026 || (navMeses[idx].ano === 2026 && navMeses[idx].mes >= 7)
+            const cambio = carteira.tipo === 'internacional' && mDetalhe ? cambioUsdCarteira(carteira, idx) : null
             return (
               <Link key={idx} href={`/financeiro/${slug}?mes=${idx + 1}`}
                 className={`rounded-lg py-3 px-1 transition-colors ${selecionado ? 'bg-green-50 ring-1 ring-green-300' : 'bg-gray-50 hover:bg-gray-100'}`}>
                 <p className="text-[11px] font-medium text-gray-400">{navMeses[idx].abrev}</p>
                 <p className="text-sm font-semibold text-gray-800 mt-1">{brl(v)}</p>
+                {cambio && (
+                  <p className="text-[10px] text-gray-400 mt-0.5">💵 {cambio.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                )}
                 {p ? (
                   <p className="text-[10px] mt-0.5 text-yellow-600">parcial</p>
                 ) : delta !== null && (
