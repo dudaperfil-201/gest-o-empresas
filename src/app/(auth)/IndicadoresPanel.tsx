@@ -79,6 +79,15 @@ export default async function IndicadoresPanel() {
 
   const pctAA = (arr: any) => arr?.[0]?.valor ? Number(arr[0].valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '%' : '—'
 
+  // Vencimento de cada ponto da curva = data de referência + os anos (ex.: 2 anos → 08/2028).
+  const refTreasury = treasury ? new Date(treasury.data + 'T12:00:00') : null
+  const vencimento = (anos: number) => {
+    if (!refTreasury) return ''
+    const d = new Date(refTreasury)
+    d.setFullYear(d.getFullYear() + anos)
+    return `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+  }
+
   return (
     <div className="mt-4 bg-white border border-gray-200 rounded-lg p-4 w-56 shrink-0 shadow-sm">
       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">📊 Indicadores</h3>
@@ -100,10 +109,17 @@ export default async function IndicadoresPanel() {
         </div>
         {treasury ? (
           <>
-            <Linha label="2 anos" valor={treasury.y['2']} sub="a.a." />
-            <Linha label="5 anos" valor={treasury.y['5']} sub="a.a." />
-            <Linha label="10 anos" valor={treasury.y['10']} sub="a.a." />
-            <Linha label="30 anos" valor={treasury.y['30']} sub="a.a." />
+            {([['2', 2], ['5', 5], ['10', 10], ['30', 30]] as const).map(([k, anos]) => (
+              <div key={k} className="flex items-baseline justify-between gap-2">
+                <span className="text-gray-600 whitespace-nowrap">
+                  {anos} anos <span className="text-[9px] text-gray-400">· {vencimento(anos)}</span>
+                </span>
+                <span className="text-right whitespace-nowrap">
+                  <span className="font-semibold text-gray-800">{treasury.y[k]}</span>
+                  <span className="ml-1 text-[10px] text-gray-400">a.a.</span>
+                </span>
+              </div>
+            ))}
           </>
         ) : (
           <p className="text-[10px] text-gray-300">indisponível</p>
