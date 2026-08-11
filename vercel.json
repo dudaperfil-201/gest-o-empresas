@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/lajolla-variacao",
       "schedule": "0 9 1 * *"
+    },
+    {
+      "path": "/api/cron/tesouro-ipca",
+      "schedule": "0 22 * * *"
     }
   ]
 }

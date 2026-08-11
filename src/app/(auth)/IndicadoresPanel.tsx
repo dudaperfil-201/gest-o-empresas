@@ -4,7 +4,21 @@
 // page load. Fontes que falham mostram "—" sem quebrar o layout.
 // CUB-SC não tem API pública → último valor conhecido (atualizado junto do robô do CUB).
 
+import { createClient } from '@/lib/supabase/server'
+
 const CUB_SC = { valor: '3.121,62', ref: 'jul/26' }
+
+// Tesouro IPCA+ (preços/taxas) — lê o resumo gravado pelo robô diário (tabela tesouro_ipca).
+type TesouroRow = { titulo: string; vencimento: string; taxa: number | null; pu: number | null; data_base: string | null }
+async function getTesouroIpca(): Promise<TesouroRow[]> {
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase.from('tesouro_ipca').select('titulo,vencimento,taxa,pu,data_base').order('vencimento')
+    return (data as TesouroRow[]) ?? []
+  } catch {
+    return []
+  }
+}
 
 async function fetchJson(url: string, revalidate = 3600): Promise<any | null> {
   try {
@@ -61,13 +75,23 @@ function Linha({ icone, label, valor, sub }: { icone?: string; label: string; va
 }
 
 export default async function IndicadoresPanel() {
-  const [cambio, cdi, selic, ipca, treasury] = await Promise.all([
+  const [cambio, cdi, selic, ipca, treasury, tesouroIpca] = await Promise.all([
     fetchJson('https://open.er-api.com/v6/latest/USD', 1800),
     fetchJson('https://api.bcb.gov.br/dados/serie/bcdata.sgs.4389/dados/ultimos/1?formato=json'),
     fetchJson('https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json'),
     fetchJson('https://api.bcb.gov.br/dados/serie/bcdata.sgs.13522/dados/ultimos/1?formato=json'),
     fetchTreasury(),
+    getTesouroIpca(),
   ])
+
+  // Tesouro IPCA+ "principal" (sem juros semestrais), só vencimentos futuros, mais curto → mais longo.
+  const hojeISO = new Date().toISOString().slice(0, 10)
+  const ipcaBonds = (tesouroIpca ?? [])
+    .filter(t => t.titulo === 'Tesouro IPCA+' && t.vencimento > hojeISO)
+    .sort((a, b) => a.vencimento.localeCompare(b.vencimento))
+  const dataBaseIpca = ipcaBonds[0]?.data_base ?? tesouroIpca[0]?.data_base ?? null
+  const fmtBRL = (n: number | null) => n != null ? 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
+  const fmtTaxa = (n: number | null) => n != null ? n.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '%' : '—'
 
   // Câmbio: base USD → taxas cruzadas para R$ por Dólar/Euro/Franco.
   const r = cambio?.rates
@@ -124,8 +148,27 @@ export default async function IndicadoresPanel() {
         ) : (
           <p className="text-[10px] text-gray-300">indisponível</p>
         )}
+
+        {/* Tesouro Direto — títulos atrelados à inflação (IPCA+), preço unitário e taxa */}
+        {ipcaBonds.length > 0 && (
+          <>
+            <div className="border-t border-gray-100 my-2" />
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">🇧🇷 Tesouro IPCA+</span>
+              {dataBaseIpca && <span className="text-[9px] text-gray-300">{new Date(dataBaseIpca + 'T12:00:00').toLocaleDateString('pt-BR')}</span>}
+            </div>
+            {ipcaBonds.map(t => (
+              <div key={t.vencimento} className="flex items-baseline justify-between gap-2">
+                <span className="text-gray-600 whitespace-nowrap">
+                  {t.vencimento.slice(0, 4)} <span className="text-[9px] text-gray-400">IPCA+{fmtTaxa(t.taxa)}</span>
+                </span>
+                <span className="font-semibold text-gray-800 whitespace-nowrap">{fmtBRL(t.pu)}</span>
+              </div>
+            ))}
+          </>
+        )}
       </div>
-      <p className="text-[9px] text-gray-300 mt-3 leading-tight">Câmbio, juros e Treasury ao vivo · CUB manual</p>
+      <p className="text-[9px] text-gray-300 mt-3 leading-tight">Câmbio, juros, Treasury e Tesouro IPCA+ ao vivo · CUB manual</p>
     </div>
   )
 }
