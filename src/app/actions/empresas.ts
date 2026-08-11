@@ -83,6 +83,51 @@ export async function registrarPagamentoComAtraso(
   revalidatePath('/imoveis')
 }
 
+// Corrige um registro do HISTÓRICO de pagamentos (quando algum dado foi lançado errado):
+// status, valor pago, valor original (aluguel base), data do pagamento e observação.
+export async function editarPagamento(
+  pagamentoId: string,
+  empresaId: string,
+  imovelId: string,
+  dados: {
+    status: string
+    valor_pago: number | null
+    valor_original: number | null
+    data_pagamento: string | null
+    observacao: string | null
+  },
+): Promise<{ ok: true } | { ok: false; erro: string }> {
+  const supabase = await createClient()
+  const status = ['pago', 'atrasado', 'pendente'].includes(dados.status) ? dados.status : 'pago'
+  const { error } = await supabase.from('pagamentos').update({
+    status,
+    valor_pago: Number.isFinite(dados.valor_pago as number) ? dados.valor_pago : null,
+    valor_original: Number.isFinite(dados.valor_original as number) ? dados.valor_original : null,
+    data_pagamento: dados.data_pagamento || null,
+    observacao: dados.observacao?.trim() || null,
+  }).eq('id', pagamentoId)
+  if (error) return { ok: false, erro: error.message }
+  revalidatePath(`/empresas/${empresaId}/imoveis/${imovelId}`)
+  revalidatePath(`/empresas/${empresaId}`)
+  revalidatePath('/imoveis')
+  return { ok: true }
+}
+
+// Remove por completo um registro do histórico (lançado por engano).
+export async function excluirPagamento(
+  pagamentoId: string,
+  empresaId: string,
+  imovelId: string,
+): Promise<{ ok: true } | { ok: false; erro: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase.from('pagamentos').delete().eq('id', pagamentoId)
+  if (error) return { ok: false, erro: error.message }
+  revalidatePath(`/empresas/${empresaId}/imoveis/${imovelId}`)
+  revalidatePath(`/empresas/${empresaId}`)
+  revalidatePath('/imoveis')
+  return { ok: true }
+}
+
 // EXTRAS = lista de itens (energia, condomínio, etc.) pagos ALÉM do aluguel, por
 // imóvel/mês. Cada item tem descrição + valor. Somam no montante total do mês e
 // convivem com PAGOU/PAGOU COM ATRASO. Ficam na tabela própria `extras_itens`.

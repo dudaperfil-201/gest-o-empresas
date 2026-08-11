@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import InquilinoForm from './InquilinoForm'
 import DocumentosInquilino from './DocumentosInquilino'
+import HistoricoPagamentos from './HistoricoPagamentos'
 
 export default async function ImovelPage({ params }: { params: Promise<{ id: string; imovelId: string }> }) {
   const { id, imovelId } = await params
@@ -104,58 +105,22 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
 
       <div className="bg-green-50/60 border-2 border-green-300 rounded-xl p-5 mb-4">
         <h3 className="font-medium text-gray-900 mb-4">Histórico de pagamentos</h3>
-        {(pagamentos ?? []).length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-4">Nenhum pagamento registrado.</p>
-        ) : (
-          <div className="space-y-2">
-            {(pagamentos ?? []).map(p => {
-              const statusColor = p.status === 'pago' ? 'bg-green-100 text-green-700' : p.status === 'atrasado' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
-              const nomeMes = new Date(p.ano, p.mes - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-              return (
-                <div key={p.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900 capitalize">{nomeMes}</p>
-                    {p.data_pagamento && (
-                      <p className="text-xs text-gray-400">
-                        Pago em {new Date(p.data_pagamento + 'T12:00:00').toLocaleDateString('pt-BR')}
-                      </p>
-                    )}
-                    {(extrasPorMes[`${p.ano}_${p.mes}`] ?? []).length > 0 && (
-                      <p className="text-xs text-indigo-600 font-medium">
-                        + Extras: R$ {(extrasPorMes[`${p.ano}_${p.mes}`].reduce((s, e) => s + (e.valor ?? 0), 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        {' · '}
-                        {extrasPorMes[`${p.ano}_${p.mes}`].map(e => e.descricao || 'extra').join(', ')}
-                      </p>
-                    )}
-                    {(descontosPorMes[`${p.ano}_${p.mes}`] ?? []).length > 0 && (
-                      <p className="text-xs text-rose-600 font-medium">
-                        − Descontos: R$ {(descontosPorMes[`${p.ano}_${p.mes}`].reduce((s, d) => s + (d.valor ?? 0), 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        {' · '}
-                        {descontosPorMes[`${p.ano}_${p.mes}`].map(d => d.descricao || 'desconto').join(', ')}
-                      </p>
-                    )}
-                    {p.observacao && <p className="text-xs text-gray-400">{p.observacao}</p>}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900">
-                        R$ {(p.valor_pago ?? p.valor_original ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </p>
-                      {p.valor_pago && p.valor_original && p.valor_pago > p.valor_original && (
-                        <p className="text-xs text-red-500">
-                          +R$ {(p.valor_pago - p.valor_original).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} juros
-                        </p>
-                      )}
-                    </div>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor}`}>
-                      {p.status === 'pago' ? 'Pago' : p.status === 'atrasado' ? 'Atrasado' : 'Pendente'}
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+        <HistoricoPagamentos
+          empresaId={id}
+          imovelId={imovelId}
+          pagamentos={(pagamentos ?? []).map(p => ({
+            id: p.id,
+            ano: p.ano,
+            mes: p.mes,
+            status: p.status,
+            valor_original: p.valor_original ?? null,
+            valor_pago: p.valor_pago ?? null,
+            data_pagamento: p.data_pagamento ?? null,
+            observacao: p.observacao ?? null,
+            extras: extrasPorMes[`${p.ano}_${p.mes}`] ?? [],
+            descontos: descontosPorMes[`${p.ano}_${p.mes}`] ?? [],
+          }))}
+        />
       </div>
 
       {inquilino && (
