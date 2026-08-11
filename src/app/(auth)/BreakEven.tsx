@@ -76,11 +76,8 @@ export default function BreakEven({ ano, mes, rnxRendimento, serginho: serginhoS
   )
 
   return (
-    <div className="mt-4 bg-white border border-gray-200 rounded-lg p-4 w-56 shrink-0 shadow-sm">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">💸 Break Even</h3>
-        <span className="text-[10px] text-gray-400 capitalize">{nomeMes}/{ano}</span>
-      </div>
+    <>
+      <p className="text-[10px] text-gray-400 capitalize text-right mb-2">{nomeMes}/{ano}</p>
 
       <div className="space-y-2">
         {campo('Itaú Serginho', serginho, setSerginho)}
@@ -122,6 +119,6 @@ export default function BreakEven({ ano, mes, rnxRendimento, serginho: serginhoS
         {status === 'pendente' && <span className="text-purple-500">alterações não salvas</span>}
         {status === 'erro' && <span className="text-red-500">erro ao salvar — tente de novo</span>}
       </p>
-    </div>
+    </>
   )
 }

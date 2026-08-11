@@ -6,6 +6,7 @@ import IndicadoresPanel from './IndicadoresPanel'
 import BreakEven from './BreakEven'
 import GraficoEvolucao from './GraficoEvolucao'
 import SoNoFinanceiro from './SoNoFinanceiro'
+import PainelColapsavel from './PainelColapsavel'
 import { getBreakEven, getEvolucaoPatrimonio } from '@/lib/financeiro/carregar'
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -55,12 +56,16 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
           {/* Indicadores, Break Even e Gráfico: só na seção Financeiro (não no Início/Imóveis) */}
           {podeFinanceiro && (
             <SoNoFinanceiro>
-              {/* Quadro de indicadores (câmbio, juros, CUB) */}
-              <IndicadoresPanel />
-              {/* Break Even: distribuição de lucros (10% ÷ 3) */}
+              {/* Indicadores (câmbio, juros, CUB, Treasury, Tesouro IPCA+) — sanfona */}
+              <PainelColapsavel titulo="📊 Indicadores">
+                <IndicadoresPanel />
+              </PainelColapsavel>
+              {/* Break Even: distribuição de lucros (10% ÷ 3) — sanfona */}
               {breakEven && (
-                <BreakEven ano={breakEven.ano} mes={breakEven.mes} rnxRendimento={breakEven.rnxRendimento}
-                  serginho={breakEven.serginho} eduardo={breakEven.eduardo} />
+                <PainelColapsavel titulo="💸 Break Even">
+                  <BreakEven ano={breakEven.ano} mes={breakEven.mes} rnxRendimento={breakEven.rnxRendimento}
+                    serginho={breakEven.serginho} eduardo={breakEven.eduardo} />
+                </PainelColapsavel>
               )}
               {/* Gráfico da evolução do patrimônio total */}
               {evolucao.length >= 2 && <GraficoEvolucao pontos={evolucao} />}

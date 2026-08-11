@@ -116,8 +116,7 @@ export default async function IndicadoresPanel() {
   }
 
   return (
-    <div className="mt-4 bg-white border border-gray-200 rounded-lg p-4 w-56 shrink-0 shadow-sm">
-      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">📊 Indicadores</h3>
+    <>
       <div className="space-y-2 text-sm">
         <Linha icone="💵" label="Dólar" valor={brl(usdBrl)} />
         <Linha icone="💶" label="Euro" valor={brl(eurBrl)} />
@@ -172,6 +171,6 @@ export default async function IndicadoresPanel() {
         )}
       </div>
       <p className="text-[9px] text-gray-300 mt-3 leading-tight">Câmbio, juros, Treasury e Tesouro IPCA+ ao vivo · CUB manual</p>
-    </div>
+    </>
   )
 }
