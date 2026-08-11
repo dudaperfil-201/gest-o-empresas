@@ -16,10 +16,42 @@ async function fetchJson(url: string, revalidate = 3600): Promise<any | null> {
   }
 }
 
-function Linha({ icone, label, valor, sub }: { icone: string; label: string; valor: string; sub?: string }) {
+// Curva de juros do Tesouro americano (par yield curve), fonte oficial do US Treasury.
+// Atualiza todo dia útil (~meio da tarde ET) → cache de 6h. Retorna o dado mais recente.
+type Treasury = { data: string; y: Record<string, string> }
+async function fetchTreasury(revalidate = 21600): Promise<Treasury | null> {
+  const yyyymm = (d: Date) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`
+  const agora = new Date()
+  // Tenta o mês atual; se ainda não houver dado (começo de mês), cai no mês anterior.
+  for (const ref of [agora, new Date(agora.getFullYear(), agora.getMonth() - 1, 1)]) {
+    try {
+      const url = `https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value_month=${yyyymm(ref)}`
+      const resp = await fetch(url, { next: { revalidate } })
+      if (!resp.ok) continue
+      const xml = await resp.text()
+      const blocos = [...xml.matchAll(/<m:properties>([\s\S]*?)<\/m:properties>/g)].map(m => m[1])
+      if (blocos.length === 0) continue
+      const pega = (b: string, tag: string) => b.match(new RegExp(`<d:${tag}[^>]*>([^<]+)<`))?.[1] ?? ''
+      // O dado mais recente = maior NEW_DATE.
+      let melhor = blocos[0], melhorData = pega(blocos[0], 'NEW_DATE')
+      for (const b of blocos) { const d = pega(b, 'NEW_DATE'); if (d > melhorData) { melhorData = d; melhor = b } }
+      const pct = (tag: string) => {
+        const v = pega(melhor, tag)
+        return v ? Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '%' : '—'
+      }
+      return {
+        data: melhorData.slice(0, 10),
+        y: { '2': pct('BC_2YEAR'), '5': pct('BC_5YEAR'), '10': pct('BC_10YEAR'), '30': pct('BC_30YEAR') },
+      }
+    } catch { /* tenta o mês anterior */ }
+  }
+  return null
+}
+
+function Linha({ icone, label, valor, sub }: { icone?: string; label: string; valor: string; sub?: string }) {
   return (
     <div className="flex items-baseline justify-between gap-2">
-      <span className="text-gray-600 whitespace-nowrap">{icone} {label}</span>
+      <span className="text-gray-600 whitespace-nowrap">{icone ? `${icone} ` : ''}{label}</span>
       <span className="text-right whitespace-nowrap">
         <span className="font-semibold text-gray-800">{valor}</span>
         {sub && <span className="ml-1 text-[10px] text-gray-400">{sub}</span>}
@@ -29,11 +61,12 @@ function Linha({ icone, label, valor, sub }: { icone: string; label: string; val
 }
 
 export default async function IndicadoresPanel() {
-  const [cambio, cdi, selic, ipca] = await Promise.all([
+  const [cambio, cdi, selic, ipca, treasury] = await Promise.all([
     fetchJson('https://open.er-api.com/v6/latest/USD', 1800),
     fetchJson('https://api.bcb.gov.br/dados/serie/bcdata.sgs.4389/dados/ultimos/1?formato=json'),
     fetchJson('https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json'),
     fetchJson('https://api.bcb.gov.br/dados/serie/bcdata.sgs.13522/dados/ultimos/1?formato=json'),
+    fetchTreasury(),
   ])
 
   // Câmbio: base USD → taxas cruzadas para R$ por Dólar/Euro/Franco.
@@ -58,8 +91,25 @@ export default async function IndicadoresPanel() {
         <Linha icone="📈" label="CDI" valor={pctAA(cdi)} sub="a.a." />
         <Linha icone="🏦" label="Selic" valor={pctAA(selic)} sub="a.a." />
         <Linha icone="📊" label="IPCA" valor={pctAA(ipca)} sub="12m" />
+
+        {/* Curva do Tesouro americano (T-Notes/T-Bond) — dado público ao vivo */}
+        <div className="border-t border-gray-100 my-2" />
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">🇺🇸 Treasury EUA</span>
+          {treasury && <span className="text-[9px] text-gray-300">{new Date(treasury.data + 'T12:00:00').toLocaleDateString('pt-BR')}</span>}
+        </div>
+        {treasury ? (
+          <>
+            <Linha label="2 anos" valor={treasury.y['2']} sub="a.a." />
+            <Linha label="5 anos" valor={treasury.y['5']} sub="a.a." />
+            <Linha label="10 anos" valor={treasury.y['10']} sub="a.a." />
+            <Linha label="30 anos" valor={treasury.y['30']} sub="a.a." />
+          </>
+        ) : (
+          <p className="text-[10px] text-gray-300">indisponível</p>
+        )}
       </div>
-      <p className="text-[9px] text-gray-300 mt-3 leading-tight">Câmbio e juros ao vivo · CUB manual</p>
+      <p className="text-[9px] text-gray-300 mt-3 leading-tight">Câmbio, juros e Treasury ao vivo · CUB manual</p>
     </div>
   )
 }
