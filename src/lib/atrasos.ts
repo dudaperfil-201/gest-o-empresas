@@ -4,6 +4,12 @@ type Supabase = Awaited<ReturnType<typeof createClient>>
 
 const MES_ABREV = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
 
+// Primeiro mês CONSIDERADO neste relatório de atrasos = julho/2026. Junho/2026 foi o
+// primeiro mês de uso do sistema e não teve tudo registrado, então é desconsiderado
+// AQUI (só neste relatório de cobrança) — os demais relatórios não são afetados.
+// Chave contínua = ano*12 + (mes-1); julho/2026 = 2026*12 + 6.
+const PRIMEIRO_MES_ATRASO = 2026 * 12 + 6
+
 export type ItemAtraso = {
   imovelId: string
   endereco: string
@@ -55,9 +61,6 @@ export async function carregarAtrasos(supabase: Supabase) {
     if (!inqAtivo[t.imovel_id]) inqAtivo[t.imovel_id] = { nome: t.nome, telefone: t.telefone, data_inicio: t.data_inicio, juros_mes: t.juros_mes }
   }
 
-  // Mês em que o sistema começou (menor competência já lançada em pagamentos).
-  const keys = (pagamentos ?? []).map(p => p.ano * 12 + (p.mes - 1))
-  const sysStart = keys.length ? Math.min(...keys) : hojeKey
   // Meses JÁ PAGOS (pago/atrasado): `${imovel}|${chaveMes}`.
   const pagos = new Set(
     (pagamentos ?? []).filter(p => p.status === 'pago' || p.status === 'atrasado').map(p => `${p.imovel_id}|${p.ano * 12 + (p.mes - 1)}`)
@@ -70,8 +73,9 @@ export async function carregarAtrasos(supabase: Supabase) {
     for (const im of seus) {
       const t = inqAtivo[im.id]
       if (!t) continue // imóvel sem inquilino ativo — ninguém a cobrar
-      const diKey = t.data_inicio ? (() => { const d = new Date(t.data_inicio + 'T12:00:00'); return d.getFullYear() * 12 + d.getMonth() })() : sysStart
-      const startKey = Math.max(sysStart, diKey)
+      const diKey = t.data_inicio ? (() => { const d = new Date(t.data_inicio + 'T12:00:00'); return d.getFullYear() * 12 + d.getMonth() })() : PRIMEIRO_MES_ATRASO
+      // Nunca antes de julho/2026 (junho é desconsiderado neste relatório).
+      const startKey = Math.max(PRIMEIRO_MES_ATRASO, diKey)
       const diaVenc = Math.min(im.dia_vencimento || 10, 28)
       const jurosPct = t.juros_mes ?? 1
       const valor = im.valor_aluguel ?? 0
@@ -114,7 +118,7 @@ export async function carregarAtrasos(supabase: Supabase) {
   const totalAberto = empresasOut.reduce((s, e) => s + e.subtotal, 0)
   const totalAtual = empresasOut.reduce((s, e) => s + e.subtotalAtual, 0)
 
-  return { empresas: empresasOut, totalItens, totalAberto, totalAtual, desde: MES_ABREV[(sysStart % 12)] + '/' + Math.floor(sysStart / 12) }
+  return { empresas: empresasOut, totalItens, totalAberto, totalAtual, desde: MES_ABREV[(PRIMEIRO_MES_ATRASO % 12)] + '/' + Math.floor(PRIMEIRO_MES_ATRASO / 12) }
 }
 
 export type DadosAtrasos = Awaited<ReturnType<typeof carregarAtrasos>>

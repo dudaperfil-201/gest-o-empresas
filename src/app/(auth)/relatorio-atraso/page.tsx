@@ -117,7 +117,7 @@ export default async function RelatorioAtrasoPage() {
       )}
 
       <p className="text-xs text-gray-400 mt-4">
-        Considera aluguéis a partir de {desde} (início dos registros no sistema) e da data de início de cada inquilino.
+        Considera aluguéis a partir de {desde} e da data de início de cada inquilino. <strong>Junho/2026 é desconsiderado</strong> (primeiro mês de uso, com registros incompletos).
         O mês corrente <strong>não</strong> é considerado (ainda está no prazo de pagamento). Valor atualizado = aluguel + juros estimado (juros/mês do inquilino × meses de atraso).
       </p>
     </div>
