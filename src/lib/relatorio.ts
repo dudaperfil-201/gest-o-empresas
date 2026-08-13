@@ -2,9 +2,21 @@ import type { createClient } from '@/lib/supabase/server'
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
 
+const MES_ABREV = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+
 // Dados do relatório mensal de UM mês/ano — usado pela tela e pela exportação Excel,
 // para as duas ficarem sempre iguais.
+//
+// REGIME DE CAIXA (regra fiscal): o aluguel entra no relatório do mês em que foi
+// EFETIVAMENTE PAGO (data_pagamento), NUNCA no mês de vencimento/competência. Assim um
+// aluguel jamais aparece em dois meses — se aparecesse, geraria imposto em duplicidade.
+// Ex.: aluguel de competência julho pago em agosto → conta em AGOSTO. Extras/descontos
+// acompanham o aluguel: entram no mês em que o aluguel daquela competência foi pago.
 export async function carregarRelatorio(supabase: Supabase, mes: number, ano: number) {
+  // Janela do mês pela DATA DE PAGAMENTO: [inicio, fimExcl).
+  const inicio = `${ano}-${String(mes).padStart(2, '0')}-01`
+  const fimExcl = mes === 12 ? `${ano + 1}-01-01` : `${ano}-${String(mes + 1).padStart(2, '0')}-01`
+
   const { data: empresas } = await supabase.from('empresas').select('id, nome').order('nome')
 
   const resultado = await Promise.all((empresas ?? []).map(async empresa => {
@@ -16,43 +28,61 @@ export async function carregarRelatorio(supabase: Supabase, mes: number, ano: nu
       .order('endereco')
 
     const ids = (imoveis ?? []).map(i => i.id)
-    const [{ data: pagamentos }, { data: extrasRaw }, { data: descontosRaw }] = ids.length > 0 ? await Promise.all([
-      supabase.from('pagamentos').select('imovel_id, status, valor_original, valor_pago').in('imovel_id', ids).eq('mes', mes).eq('ano', ano),
-      supabase.from('extras_itens').select('imovel_id, valor').in('imovel_id', ids).eq('mes', mes).eq('ano', ano),
-      supabase.from('descontos_itens').select('imovel_id, valor').in('imovel_id', ids).eq('mes', mes).eq('ano', ano),
-    ]) : [{ data: [] }, { data: [] }, { data: [] }]
+    if (ids.length === 0) return { ...empresa, imoveis: [], somaValor: 0, somaRecebido: 0 }
 
-    const pagMap = Object.fromEntries((pagamentos ?? []).map(p => [p.imovel_id, p]))
+    // Aluguéis RECEBIDOS neste mês (pela data_pagamento; só pago/atrasado). Extras e
+    // descontos são puxados de TODAS as competências e filtrados abaixo pelas que foram
+    // pagas neste mês (seguem o aluguel).
+    const [{ data: pagosRaw }, { data: extrasRaw }, { data: descontosRaw }] = await Promise.all([
+      supabase.from('pagamentos').select('imovel_id, status, valor_pago, mes, ano, data_pagamento')
+        .in('imovel_id', ids).in('status', ['pago', 'atrasado'])
+        .gte('data_pagamento', inicio).lt('data_pagamento', fimExcl),
+      supabase.from('extras_itens').select('imovel_id, valor, mes, ano').in('imovel_id', ids),
+      supabase.from('descontos_itens').select('imovel_id, valor, mes, ano').in('imovel_id', ids),
+    ])
+
+    // Competências (imovel|mes|ano) cujo aluguel entrou no caixa neste mês.
+    const compPagas = new Set((pagosRaw ?? []).map(p => `${p.imovel_id}|${p.mes}|${p.ano}`))
     const extrasSum: Record<string, number> = {}
-    for (const e of extrasRaw ?? []) extrasSum[e.imovel_id] = (extrasSum[e.imovel_id] ?? 0) + (e.valor ?? 0)
+    for (const e of extrasRaw ?? []) if (compPagas.has(`${e.imovel_id}|${e.mes}|${e.ano}`)) extrasSum[e.imovel_id] = (extrasSum[e.imovel_id] ?? 0) + (e.valor ?? 0)
     const descontosSum: Record<string, number> = {}
-    for (const d of descontosRaw ?? []) descontosSum[d.imovel_id] = (descontosSum[d.imovel_id] ?? 0) + (d.valor ?? 0)
+    for (const d of descontosRaw ?? []) if (compPagas.has(`${d.imovel_id}|${d.mes}|${d.ano}`)) descontosSum[d.imovel_id] = (descontosSum[d.imovel_id] ?? 0) + (d.valor ?? 0)
+
+    // Agrega por imóvel (um imóvel pode ter mais de um aluguel pago no mês — ex.: mês de
+    // acerto em que o inquilino quita dois meses). `ref` = competências recebidas, para a
+    // tela avisar quando o valor é de um mês diferente do relatório.
+    type Agg = { valor_pago: number; atrasado: boolean; refs: string[] }
+    const porImovel: Record<string, Agg> = {}
+    for (const p of pagosRaw ?? []) {
+      const a = porImovel[p.imovel_id] ?? { valor_pago: 0, atrasado: false, refs: [] }
+      a.valor_pago += (p.valor_pago ?? 0)
+      if (p.status === 'atrasado') a.atrasado = true
+      if (p.mes !== mes || p.ano !== ano) a.refs.push(`${MES_ABREV[(p.mes ?? 1) - 1]}/${String(p.ano).slice(2)}`)
+      porImovel[p.imovel_id] = a
+    }
 
     const imoveisRel = (imoveis ?? []).map(imovel => {
-      const pag = pagMap[imovel.id]
       const inquilino = Array.isArray(imovel.inquilinos) ? imovel.inquilinos[0] : imovel.inquilinos
+      const a = porImovel[imovel.id]
+      const pag = a ? { status: a.atrasado ? 'atrasado' : 'pago', valor_pago: a.valor_pago, refs: a.refs } : null
       return { ...imovel, pag, inquilino, extras: extrasSum[imovel.id] ?? 0, descontos: descontosSum[imovel.id] ?? 0 }
     })
 
-    // Somatório da empresa: Valor = soma dos aluguéis; Recebido = pagos (pago/atrasado)
-    // + extras − descontos.
+    // Empresa: Valor = soma dos aluguéis (carteira); Recebido = caixa do mês
+    // (aluguéis pagos + extras − descontos, tudo já filtrado pela data de pagamento).
     const somaValor = imoveisRel.reduce((s, i) => s + (i.valor_aluguel ?? 0), 0)
-    const somaRecebido = imoveisRel
-      .filter(i => i.pag?.status === 'pago' || i.pag?.status === 'atrasado')
-      .reduce((s, i) => s + (i.pag?.valor_pago ?? 0), 0)
-      + imoveisRel.reduce((s, i) => s + (i.extras ?? 0), 0)
-      - imoveisRel.reduce((s, i) => s + (i.descontos ?? 0), 0)
+    const somaRecebido = imoveisRel.reduce((s, i) => s + (i.pag?.valor_pago ?? 0) + (i.extras ?? 0) - (i.descontos ?? 0), 0)
 
     return { ...empresa, imoveis: imoveisRel, somaValor, somaRecebido }
   }))
 
   const todos = resultado.flatMap(e => e.imoveis)
-  const pagos = todos.filter(i => i.pag?.status === 'pago' || i.pag?.status === 'atrasado')
   const totalEsperado = todos.reduce((s, i) => s + (i.valor_aluguel ?? 0), 0)
   const totalExtras = todos.reduce((s, i) => s + (i.extras ?? 0), 0)
   const totalDescontos = todos.reduce((s, i) => s + (i.descontos ?? 0), 0)
-  const totalRecebido = pagos.reduce((s, i) => s + (i.pag?.valor_pago ?? 0), 0) + totalExtras - totalDescontos
-  const totalPendente = totalEsperado - pagos.reduce((s, i) => s + (i.valor_aluguel ?? 0), 0)
+  const totalRecebido = todos.reduce((s, i) => s + (i.pag?.valor_pago ?? 0), 0) + totalExtras - totalDescontos
+  // Pendente = aluguéis da carteira que NÃO entraram no caixa neste mês.
+  const totalPendente = todos.filter(i => (i.pag?.valor_pago ?? 0) === 0).reduce((s, i) => s + (i.valor_aluguel ?? 0), 0)
 
   return { resultado, totalEsperado, totalRecebido, totalPendente }
 }

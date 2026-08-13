@@ -99,6 +99,9 @@ export default async function RelatorioPage({ searchParams }: { searchParams: Pr
                     <td className="px-5 py-3 text-right text-gray-700 align-top whitespace-nowrap">R$ {(imovel.valor_aluguel ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                     <td className="px-5 py-3 text-right text-gray-700 align-top whitespace-nowrap">
                       {imovel.pag?.valor_pago ? `R$ ${imovel.pag.valor_pago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—'}
+                      {imovel.pag?.refs && imovel.pag.refs.length > 0 && (
+                        <div className="text-xs text-amber-600 font-medium">ref. {imovel.pag.refs.join(', ')}</div>
+                      )}
                       {imovel.extras > 0 && (
                         <div className="text-xs text-indigo-600 font-medium">+ Extras: R$ {imovel.extras.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
                       )}

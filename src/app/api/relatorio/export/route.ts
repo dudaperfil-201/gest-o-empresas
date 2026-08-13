@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
         <td>${esc(im.endereco)}</td>
         <td>${esc(im.inquilino?.nome ?? '—')}</td>
         <td>${brl(im.valor_aluguel ?? 0)}</td>
-        <td>${im.pag?.valor_pago ? brl(im.pag.valor_pago) : '—'}</td>
+        <td>${im.pag?.valor_pago ? brl(im.pag.valor_pago) : '—'}${im.pag?.refs && im.pag.refs.length > 0 ? ` (ref. ${esc(im.pag.refs.join(', '))})` : ''}</td>
         <td>${im.extras > 0 ? brl(im.extras) : '—'}</td>
         <td>${im.descontos > 0 ? brl(im.descontos) : '—'}</td>
         <td>${rotulo(im.pag?.status)}</td></tr>`
