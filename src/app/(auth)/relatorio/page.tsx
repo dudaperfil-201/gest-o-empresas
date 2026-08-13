@@ -37,12 +37,17 @@ export default async function RelatorioPage({ searchParams }: { searchParams: Pr
           <h2 className="text-xl font-semibold text-gray-900">Relatório Mensal</h2>
           <p className="text-sm text-gray-500 capitalize mt-0.5">{nomeMes}</p>
         </div>
-        <a
-          href={`/api/relatorio/export?mes=${mesAtual}&ano=${anoAtual}`}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
-        >
-          📥 Exportar Excel
-        </a>
+        <div className="flex items-center gap-2">
+          <Link href="/relatorio-atraso" className="border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors">
+            ⚠️ Em Atraso
+          </Link>
+          <a
+            href={`/api/relatorio/export?mes=${mesAtual}&ano=${anoAtual}`}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+          >
+            📥 Exportar Excel
+          </a>
+        </div>
       </div>
 
       {/* Navegação de meses */}

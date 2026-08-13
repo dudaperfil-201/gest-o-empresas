@@ -104,6 +104,9 @@ export default async function ImoveisPage({ searchParams }: { searchParams: Prom
           <Link href="/relatorio" className="border border-blue-200 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors">
             📊 Relatório
           </Link>
+          <Link href="/relatorio-atraso" className="border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors">
+            ⚠️ Em Atraso
+          </Link>
           <Link href="/empresas/nova" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
             + Nova empresa
           </Link>
