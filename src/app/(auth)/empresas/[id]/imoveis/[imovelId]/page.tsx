@@ -57,28 +57,30 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
     .order('mes', { ascending: false })
     .limit(24)
 
-  // Extras (energia, condomínio...) do imóvel, agrupados por mês/ano.
+  // Extras (energia, condomínio...) do imóvel, agrupados por mês/ano. Inclui id/mes/ano
+  // para permitir EDITAR/EXCLUIR cada item no Histórico de pagamentos.
   const { data: extrasRaw } = await supabase
     .from('extras_itens')
-    .select('ano, mes, descricao, valor')
+    .select('id, ano, mes, descricao, valor')
     .eq('imovel_id', imovelId)
     .order('created_at')
 
-  const extrasPorMes: Record<string, { descricao: string | null; valor: number }[]> = {}
+  type ItemHist = { id: string; ano: number; mes: number; descricao: string | null; valor: number }
+  const extrasPorMes: Record<string, ItemHist[]> = {}
   for (const e of extrasRaw ?? []) {
-    ;(extrasPorMes[`${e.ano}_${e.mes}`] ??= []).push({ descricao: e.descricao, valor: e.valor })
+    ;(extrasPorMes[`${e.ano}_${e.mes}`] ??= []).push({ id: e.id, ano: e.ano, mes: e.mes, descricao: e.descricao, valor: e.valor })
   }
 
   // Descontos concedidos ao inquilino, agrupados por mês/ano.
   const { data: descontosRaw } = await supabase
     .from('descontos_itens')
-    .select('ano, mes, descricao, valor')
+    .select('id, ano, mes, descricao, valor')
     .eq('imovel_id', imovelId)
     .order('created_at')
 
-  const descontosPorMes: Record<string, { descricao: string | null; valor: number }[]> = {}
+  const descontosPorMes: Record<string, ItemHist[]> = {}
   for (const d of descontosRaw ?? []) {
-    ;(descontosPorMes[`${d.ano}_${d.mes}`] ??= []).push({ descricao: d.descricao, valor: d.valor })
+    ;(descontosPorMes[`${d.ano}_${d.mes}`] ??= []).push({ id: d.id, ano: d.ano, mes: d.mes, descricao: d.descricao, valor: d.valor })
   }
 
   return (

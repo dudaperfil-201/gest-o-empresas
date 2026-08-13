@@ -31,22 +31,21 @@ export async function carregarRelatorio(supabase: Supabase, mes: number, ano: nu
     if (ids.length === 0) return { ...empresa, imoveis: [], somaValor: 0, somaRecebido: 0 }
 
     // Aluguéis RECEBIDOS neste mês (pela data_pagamento; só pago/atrasado). Extras e
-    // descontos são puxados de TODAS as competências e filtrados abaixo pelas que foram
-    // pagas neste mês (seguem o aluguel).
+    // descontos entram pelo SEU PRÓPRIO mês (mes/ano do item): o gestor lança/edita o
+    // extra no mês em que ele foi pago (regime de caixa), independente do aluguel.
+    // Editáveis no Histórico de pagamentos do inquilino.
     const [{ data: pagosRaw }, { data: extrasRaw }, { data: descontosRaw }] = await Promise.all([
       supabase.from('pagamentos').select('imovel_id, status, valor_pago, mes, ano, data_pagamento')
         .in('imovel_id', ids).in('status', ['pago', 'atrasado'])
         .gte('data_pagamento', inicio).lt('data_pagamento', fimExcl),
-      supabase.from('extras_itens').select('imovel_id, valor, mes, ano').in('imovel_id', ids),
-      supabase.from('descontos_itens').select('imovel_id, valor, mes, ano').in('imovel_id', ids),
+      supabase.from('extras_itens').select('imovel_id, valor').in('imovel_id', ids).eq('mes', mes).eq('ano', ano),
+      supabase.from('descontos_itens').select('imovel_id, valor').in('imovel_id', ids).eq('mes', mes).eq('ano', ano),
     ])
 
-    // Competências (imovel|mes|ano) cujo aluguel entrou no caixa neste mês.
-    const compPagas = new Set((pagosRaw ?? []).map(p => `${p.imovel_id}|${p.mes}|${p.ano}`))
     const extrasSum: Record<string, number> = {}
-    for (const e of extrasRaw ?? []) if (compPagas.has(`${e.imovel_id}|${e.mes}|${e.ano}`)) extrasSum[e.imovel_id] = (extrasSum[e.imovel_id] ?? 0) + (e.valor ?? 0)
+    for (const e of extrasRaw ?? []) extrasSum[e.imovel_id] = (extrasSum[e.imovel_id] ?? 0) + (e.valor ?? 0)
     const descontosSum: Record<string, number> = {}
-    for (const d of descontosRaw ?? []) if (compPagas.has(`${d.imovel_id}|${d.mes}|${d.ano}`)) descontosSum[d.imovel_id] = (descontosSum[d.imovel_id] ?? 0) + (d.valor ?? 0)
+    for (const d of descontosRaw ?? []) descontosSum[d.imovel_id] = (descontosSum[d.imovel_id] ?? 0) + (d.valor ?? 0)
 
     // Agrega por imóvel (um imóvel pode ter mais de um aluguel pago no mês — ex.: mês de
     // acerto em que o inquilino quita dois meses). `ref` = competências recebidas, para a

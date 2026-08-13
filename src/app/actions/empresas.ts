@@ -164,6 +164,26 @@ export async function removerExtra(itemId: string, empresaId: string) {
   revalidatePath('/imoveis')
 }
 
+// EDITAR um extra: descrição, valor e MÊS/ANO (o mês em que ele conta no relatório —
+// regime de caixa). Permite corrigir um extra pago com atraso, movendo-o para o mês
+// em que foi pago, direto no Histórico de pagamentos.
+export async function editarExtra(
+  itemId: string,
+  empresaId: string,
+  dados: { descricao: string | null; valor: number; mes: number; ano: number },
+): Promise<{ ok: boolean; erro?: string }> {
+  if (!(dados.mes >= 1 && dados.mes <= 12) || !(dados.ano >= 2000)) return { ok: false, erro: 'Mês/ano inválido.' }
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('extras_itens')
+    .update({ descricao: (dados.descricao ?? '').trim() || null, valor: dados.valor > 0 ? dados.valor : 0, mes: dados.mes, ano: dados.ano })
+    .eq('id', itemId)
+  if (error) return { ok: false, erro: error.message }
+  revalidatePath(`/empresas/${empresaId}`)
+  revalidatePath('/imoveis')
+  return { ok: true }
+}
+
 // DESCONTOS = lista de descontos concedidos ao inquilino, por imóvel/mês. Espelha
 // os EXTRAS, mas o valor SUBTRAI do total recebido do mês (desconto reduz o que
 // entra). Ficam na tabela própria `descontos_itens`.
@@ -198,6 +218,24 @@ export async function removerDesconto(itemId: string, empresaId: string) {
   await supabase.from('descontos_itens').delete().eq('id', itemId)
   revalidatePath(`/empresas/${empresaId}`)
   revalidatePath('/imoveis')
+}
+
+// EDITAR um desconto: descrição, valor e MÊS/ANO (espelha editarExtra).
+export async function editarDesconto(
+  itemId: string,
+  empresaId: string,
+  dados: { descricao: string | null; valor: number; mes: number; ano: number },
+): Promise<{ ok: boolean; erro?: string }> {
+  if (!(dados.mes >= 1 && dados.mes <= 12) || !(dados.ano >= 2000)) return { ok: false, erro: 'Mês/ano inválido.' }
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('descontos_itens')
+    .update({ descricao: (dados.descricao ?? '').trim() || null, valor: dados.valor > 0 ? dados.valor : 0, mes: dados.mes, ano: dados.ano })
+    .eq('id', itemId)
+  if (error) return { ok: false, erro: error.message }
+  revalidatePath(`/empresas/${empresaId}`)
+  revalidatePath('/imoveis')
+  return { ok: true }
 }
 
 export async function criarImovel(formData: FormData) {
