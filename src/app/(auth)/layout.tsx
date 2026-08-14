@@ -3,9 +3,11 @@ import { logout } from '@/app/actions/auth'
 import { getSessao } from '@/lib/auth'
 import Link from 'next/link'
 import IndicadoresPanel from './IndicadoresPanel'
+import IndicadoresImoveis from './IndicadoresImoveis'
 import BreakEven from './BreakEven'
 import GraficoEvolucao from './GraficoEvolucao'
 import SoNoFinanceiro from './SoNoFinanceiro'
+import SoNosImoveis from './SoNosImoveis'
 import PainelColapsavel from './PainelColapsavel'
 import { getBreakEven, getEvolucaoPatrimonio } from '@/lib/financeiro/carregar'
 
@@ -52,6 +54,14 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
               Sair
             </button>
           </form>
+
+          {/* Indicadores da parte de IMÓVEIS: só CUB, IPCA, IGP-M, CDI e Selic (índices de
+              reajuste). Aparece na seção de Imóveis, para todos os usuários. */}
+          <SoNosImoveis>
+            <PainelColapsavel titulo="📊 Indicadores" defaultOpen>
+              <IndicadoresImoveis />
+            </PainelColapsavel>
+          </SoNosImoveis>
 
           {/* Indicadores, Break Even e Gráfico: só na seção Financeiro (não no Início/Imóveis) */}
           {podeFinanceiro && (
