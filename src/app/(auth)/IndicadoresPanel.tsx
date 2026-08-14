@@ -30,6 +30,31 @@ async function fetchJson(url: string, revalidate = 3600): Promise<any | null> {
   }
 }
 
+// Câmbio OFICIAL do Banco Central (PTAX) — dólar, euro e franco em R$ (cotação de VENDA).
+// Consulta o período dos últimos ~12 dias (cobre fins de semana/feriados) e pega a
+// cotação mais recente. Datas no formato MM-DD-YYYY exigido pela API Olinda do BCB.
+type Ptax = { usd: number | null; eur: number | null; chf: number | null; data: string | null }
+async function fetchPtax(revalidate = 1800): Promise<Ptax> {
+  const base = 'https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata'
+  const hoje = new Date()
+  const di = new Date(hoje); di.setDate(di.getDate() - 12)
+  const fmt = (d: Date) => `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}-${d.getFullYear()}`
+  const periodo = `@di=%27${fmt(di)}%27&@df=%27${fmt(hoje)}%27&$top=1&$orderby=dataHoraCotacao%20desc&$format=json`
+  const dolarUrl = `${base}/CotacaoDolarPeriodo(dataInicial=@di,dataFinalCotacao=@df)?${periodo}`
+  const moedaUrl = (m: string) => `${base}/CotacaoMoedaPeriodo(moeda=@m,dataInicial=@di,dataFinalCotacao=@df)?@m=%27${m}%27&${periodo}`
+  const [usdJ, eurJ, chfJ] = await Promise.all([
+    fetchJson(dolarUrl, revalidate),
+    fetchJson(moedaUrl('EUR'), revalidate),
+    fetchJson(moedaUrl('CHF'), revalidate),
+  ])
+  const venda = (j: any): number | null => {
+    const v = j?.value?.[0]?.cotacaoVenda
+    return typeof v === 'number' && isFinite(v) ? v : null
+  }
+  const dataCot: string | null = usdJ?.value?.[0]?.dataHoraCotacao?.slice(0, 10) ?? null
+  return { usd: venda(usdJ), eur: venda(eurJ), chf: venda(chfJ), data: dataCot }
+}
+
 // Curva de juros do Tesouro americano (par yield curve), fonte oficial do US Treasury.
 // Atualiza todo dia útil (~meio da tarde ET) → cache de 6h. Retorna o dado mais recente.
 type Treasury = { data: string; y: Record<string, string> }
@@ -75,8 +100,8 @@ function Linha({ icone, label, valor, sub }: { icone?: string; label: string; va
 }
 
 export default async function IndicadoresPanel() {
-  const [cambio, cdi, selic, ipca, treasury, tesouroIpca] = await Promise.all([
-    fetchJson('https://open.er-api.com/v6/latest/USD', 1800),
+  const [ptax, cdi, selic, ipca, treasury, tesouroIpca] = await Promise.all([
+    fetchPtax(),
     fetchJson('https://api.bcb.gov.br/dados/serie/bcdata.sgs.4389/dados/ultimos/1?formato=json'),
     fetchJson('https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json'),
     fetchJson('https://api.bcb.gov.br/dados/serie/bcdata.sgs.13522/dados/ultimos/1?formato=json'),
@@ -96,13 +121,13 @@ export default async function IndicadoresPanel() {
   const fmtBRL = (n: number | null) => n != null ? 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
   const fmtTaxa = (n: number | null) => n != null ? n.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '%' : '—'
 
-  // Câmbio: base USD → taxas cruzadas para R$ por Dólar/Euro/Franco.
-  const r = cambio?.rates
+  // Câmbio OFICIAL (PTAX/BCB), em R$ por Dólar/Euro/Franco (cotação de venda).
   const brl = (n: number | null | undefined) =>
     n != null && isFinite(n) ? 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—'
-  const usdBrl = r?.BRL ?? null
-  const eurBrl = r?.BRL && r?.EUR ? r.BRL / r.EUR : null
-  const chfBrl = r?.BRL && r?.CHF ? r.BRL / r.CHF : null
+  const usdBrl = ptax.usd
+  const eurBrl = ptax.eur
+  const chfBrl = ptax.chf
+  const ptaxData = ptax.data ? new Date(ptax.data + 'T12:00:00').toLocaleDateString('pt-BR') : null
 
   const pctAA = (arr: any) => arr?.[0]?.valor ? Number(arr[0].valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '%' : '—'
 
@@ -118,6 +143,10 @@ export default async function IndicadoresPanel() {
   return (
     <>
       <div className="space-y-2 text-sm">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">💱 Câmbio (PTAX/BCB)</span>
+          {ptaxData && <span className="text-[9px] text-gray-300">{ptaxData}</span>}
+        </div>
         <Linha icone="💵" label="Dólar" valor={brl(usdBrl)} />
         <Linha icone="💶" label="Euro" valor={brl(eurBrl)} />
         <Linha icone="🇨🇭" label="Franco" valor={brl(chfBrl)} />
@@ -170,7 +199,7 @@ export default async function IndicadoresPanel() {
           </>
         )}
       </div>
-      <p className="text-[9px] text-gray-300 mt-3 leading-tight">Câmbio, juros, Treasury e Tesouro IPCA+ ao vivo · CUB manual</p>
+      <p className="text-[9px] text-gray-300 mt-3 leading-tight">Câmbio PTAX (BCB), juros, Treasury e Tesouro IPCA+ ao vivo · CUB manual</p>
     </>
   )
 }
