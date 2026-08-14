@@ -119,6 +119,14 @@ export default function BreakEven({ ano, mes, rnxRendimento, serginho: serginhoS
         {status === 'pendente' && <span className="text-purple-500">alterações não salvas</span>}
         {status === 'erro' && <span className="text-red-500">erro ao salvar — tente de novo</span>}
       </p>
+
+      {/* Exportar histórico (todos os meses) para Excel — enviar à contabilidade */}
+      <a
+        href="/api/break-even/export"
+        className="mt-1 flex items-center justify-center gap-1 w-full px-3 py-2 rounded-md text-sm font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors"
+      >
+        📥 Exportar Excel
+      </a>
     </>
   )
 }
