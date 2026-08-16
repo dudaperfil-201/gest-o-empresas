@@ -16,6 +16,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
   if (!sessao) redirect('/login')
   const ehAdmin = sessao.ehAdmin
   const podeFinanceiro = sessao.podeFinanceiro
+  const podeFrota = sessao.podeFrota
   // Break Even do mês corrente (RNX auto + valores salvos) — só para quem vê o Financeiro.
   const breakEven = podeFinanceiro ? await getBreakEven() : null
   // Evolução do patrimônio total (gráfico) — só para quem vê o Financeiro.
@@ -39,9 +40,11 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
           <Link href="/imoveis" className="px-4 py-2 text-sm font-medium text-blue-700 border border-blue-200 rounded-lg bg-white hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all whitespace-nowrap">
             🏢 Imóveis
           </Link>
-          <Link href="/frota" className="px-4 py-2 text-sm font-medium text-amber-700 border border-amber-200 rounded-lg bg-white hover:bg-amber-600 hover:text-white hover:border-amber-600 transition-all whitespace-nowrap">
-            🚗 Frota
-          </Link>
+          {podeFrota && (
+            <Link href="/frota" className="px-4 py-2 text-sm font-medium text-amber-700 border border-amber-200 rounded-lg bg-white hover:bg-amber-600 hover:text-white hover:border-amber-600 transition-all whitespace-nowrap">
+              🚗 Frota
+            </Link>
+          )}
           {podeFinanceiro && (
             <Link href="/financeiro" className="px-4 py-2 text-sm font-medium text-green-700 border border-green-200 rounded-lg bg-white hover:bg-green-600 hover:text-white hover:border-green-600 transition-all whitespace-nowrap">
               💰 Financeiro
@@ -99,10 +102,12 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
           <span className="text-xl">🏢</span>
           <span className="text-[10px] font-medium">Imóveis</span>
         </Link>
-        <Link href="/frota" className="flex flex-col items-center gap-0.5 px-3 py-1 text-amber-700">
-          <span className="text-xl">🚗</span>
-          <span className="text-[10px] font-medium">Frota</span>
-        </Link>
+        {podeFrota && (
+          <Link href="/frota" className="flex flex-col items-center gap-0.5 px-3 py-1 text-amber-700">
+            <span className="text-xl">🚗</span>
+            <span className="text-[10px] font-medium">Frota</span>
+          </Link>
+        )}
         {podeFinanceiro && (
           <Link href="/financeiro" className="flex flex-col items-center gap-0.5 px-3 py-1 text-green-700">
             <span className="text-xl">💰</span>

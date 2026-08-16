@@ -22,6 +22,7 @@ export interface Sessao {
   nome: string
   papel: Papel
   podeFinanceiro: boolean
+  podeFrota: boolean
   ehAdmin: boolean
 }
 
@@ -33,19 +34,22 @@ export async function getSessao(): Promise<Sessao | null> {
 
   const { data: perfil } = await supabase
     .from('usuarios')
-    .select('nome, papel')
+    .select('nome, papel, frota')
     .eq('id', user.id)
     .maybeSingle()
 
   const papel = normalizarPapel(perfil?.papel ?? (user.email === OWNER_EMAIL ? 'admin' : 'imoveis'))
+  const ehAdmin = papel === 'admin'
 
   return {
     userId: user.id,
     email: user.email ?? '',
     nome: perfil?.nome ?? user.email ?? '',
     papel,
-    podeFinanceiro: papel === 'ambos' || papel === 'admin',
-    ehAdmin: papel === 'admin',
+    podeFinanceiro: papel === 'ambos' || ehAdmin,
+    // Frota: liberada 1 a 1 pelo admin. O admin/dono sempre enxerga.
+    podeFrota: ehAdmin || perfil?.frota === true,
+    ehAdmin,
   }
 }
 
@@ -62,5 +66,13 @@ export async function exigirAdmin(): Promise<Sessao> {
   const sessao = await getSessao()
   if (!sessao) redirect('/login')
   if (!sessao.ehAdmin) redirect('/imoveis')
+  return sessao
+}
+
+// Guarda: exige acesso à Frota, senão manda para os Imóveis.
+export async function exigirFrota(): Promise<Sessao> {
+  const sessao = await getSessao()
+  if (!sessao) redirect('/login')
+  if (!sessao.podeFrota) redirect('/imoveis')
   return sessao
 }

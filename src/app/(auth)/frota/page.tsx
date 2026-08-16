@@ -1,11 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getVeiculos } from '@/app/actions/veiculos'
+import { exigirFrota } from '@/lib/auth'
 import FrotaManager from './FrotaManager'
 import Link from 'next/link'
 
 // Módulo FROTA VEÍCULOS — Fase 1: cadastro dos veículos.
 export default async function FrotaPage() {
+  await exigirFrota() // só quem tem acesso à Frota (admin ou liberado)
   const supabase = await createClient()
   const [veiculos, { data: empresas }] = await Promise.all([
     getVeiculos(),

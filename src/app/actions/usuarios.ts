@@ -9,6 +9,7 @@ export interface UsuarioItem {
   email: string
   nome: string
   papel: Papel
+  frota: boolean
   ehVoce: boolean
 }
 
@@ -22,17 +23,20 @@ export async function listarUsuarios(): Promise<UsuarioItem[]> {
 
   const admin = createAdminClient()
   const { data } = await admin.auth.admin.listUsers()
-  const { data: perfis } = await admin.from('usuarios').select('id, nome, papel')
+  const { data: perfis } = await admin.from('usuarios').select('id, nome, papel, frota')
   const mapa = new Map((perfis ?? []).map(p => [p.id, p]))
 
   return (data?.users ?? []).map(u => {
     const perfil = mapa.get(u.id)
     const papelBruto = perfil?.papel ?? (u.email === OWNER_EMAIL ? 'admin' : 'imoveis')
+    const papel = normalizarPapel(papelBruto)
     return {
       id: u.id,
       email: u.email ?? '',
       nome: perfil?.nome ?? '',
-      papel: normalizarPapel(papelBruto),
+      papel,
+      // Admin/dono sempre enxerga a Frota; os demais dependem da coluna.
+      frota: papel === 'admin' || perfil?.frota === true,
       ehVoce: u.id === sessao.userId,
     }
   })
@@ -45,8 +49,9 @@ export async function criarUsuario(formData: FormData): Promise<{ ok: true } | {
   const nome = (formData.get('nome') as string || '').trim()
   const email = (formData.get('email') as string || '').trim().toLowerCase()
   const senha = (formData.get('senha') as string || '')
-  // Módulos marcados: Imóveis é sempre incluído; Financeiro e Admin são opcionais.
+  // Módulos marcados: Imóveis é sempre incluído; Financeiro, Frota e Admin são opcionais.
   const querFinanceiro = formData.get('financeiro') === 'on'
+  const querFrota = formData.get('frota') === 'on'
   const querAdmin = formData.get('admin') === 'on'
   const papel: Papel = querAdmin ? 'admin' : querFinanceiro ? 'ambos' : 'imoveis'
 
@@ -61,17 +66,24 @@ export async function criarUsuario(formData: FormData): Promise<{ ok: true } | {
   })
   if (error || !data.user) return { ok: false, erro: error?.message ?? 'Erro ao criar usuário.' }
 
-  const { error: erroPerfil } = await admin.from('usuarios').upsert({ id: data.user.id, nome: nome || email, papel })
+  const { error: erroPerfil } = await admin.from('usuarios').upsert({ id: data.user.id, nome: nome || email, papel, frota: querFrota })
   if (erroPerfil) return { ok: false, erro: 'Usuário criado, mas falhou ao salvar o papel: ' + erroPerfil.message }
 
   revalidatePath('/usuarios')
   return { ok: true }
 }
 
-export async function alterarPapel(id: string, papel: Papel): Promise<{ ok: true } | { ok: false; erro: string }> {
+// Atualiza as permissões de um usuário: papel (Imóveis / +Financeiro / Admin) e o
+// acesso à Frota. Admin já enxerga a Frota de qualquer jeito, então guardamos frota
+// só quando ainda não é admin (evita "prender" o flag caso rebaixe o papel depois).
+export async function atualizarPermissoes(
+  id: string,
+  papel: Papel,
+  frota: boolean,
+): Promise<{ ok: true } | { ok: false; erro: string }> {
   const sessao = await getSessao()
   if (!sessao?.ehAdmin) return { ok: false, erro: 'Sem permissão.' }
-  if (id === sessao.userId) return { ok: false, erro: 'Você não pode alterar o seu próprio papel.' }
+  if (id === sessao.userId) return { ok: false, erro: 'Você não pode alterar as suas próprias permissões.' }
 
   const admin = createAdminClient()
   // Garante o nome (coluna obrigatória) mesmo para linhas ainda inexistentes.
@@ -81,7 +93,7 @@ export async function alterarPapel(id: string, papel: Papel): Promise<{ ok: true
     const { data: u } = await admin.auth.admin.getUserById(id)
     nome = u.user?.email ?? 'Usuário'
   }
-  const { error } = await admin.from('usuarios').upsert({ id, nome, papel })
+  const { error } = await admin.from('usuarios').upsert({ id, nome, papel, frota: papel === 'admin' ? false : frota })
   if (error) return { ok: false, erro: error.message }
 
   revalidatePath('/usuarios')

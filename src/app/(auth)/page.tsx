@@ -41,18 +41,20 @@ export default async function HomePage() {
         </div>
 
         {/* Terceiro centralizado embaixo: Frota (mesma largura de um card) */}
-        <div className="flex justify-center mt-6">
-          <Link
-            href="/frota"
-            className="group w-full sm:w-[calc(50%-0.75rem)] bg-white border border-gray-200 rounded-2xl p-8 flex flex-col items-center text-center hover:border-amber-400 hover:shadow-md transition-all"
-          >
-            <div className="w-20 h-20 rounded-2xl bg-amber-50 flex items-center justify-center text-5xl group-hover:bg-amber-100 transition-colors">
-              🚗
-            </div>
-            <h3 className="mt-5 text-xl font-bold text-amber-700">FROTA</h3>
-            <p className="mt-2 text-sm text-gray-500">Cadastro e gestão dos veículos da frota.</p>
-          </Link>
-        </div>
+        {sessao?.podeFrota && (
+          <div className="flex justify-center mt-6">
+            <Link
+              href="/frota"
+              className="group w-full sm:w-[calc(50%-0.75rem)] bg-white border border-gray-200 rounded-2xl p-8 flex flex-col items-center text-center hover:border-amber-400 hover:shadow-md transition-all"
+            >
+              <div className="w-20 h-20 rounded-2xl bg-amber-50 flex items-center justify-center text-5xl group-hover:bg-amber-100 transition-colors">
+                🚗
+              </div>
+              <h3 className="mt-5 text-xl font-bold text-amber-700">FROTA</h3>
+              <p className="mt-2 text-sm text-gray-500">Cadastro e gestão dos veículos da frota.</p>
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   )
