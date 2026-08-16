@@ -4,16 +4,26 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { criarUsuario, atualizarPermissoes, excluirUsuario, type UsuarioItem } from '@/app/actions/usuarios'
 
-type Papel = 'imoveis' | 'ambos' | 'admin'
+type Papel = 'relatorios' | 'imoveis' | 'ambos' | 'admin'
 
 const PAPEL_LABEL: Record<Papel, string> = {
+  relatorios: 'Somente Relatórios',
   imoveis: 'Imóveis',
   ambos: 'Imóveis + Financeiro',
   admin: 'Admin (tudo)',
 }
 
+// Opções do tipo de acesso (base). A Frota é uma caixa extra à parte.
+const TIPOS: { valor: Papel; titulo: string; desc: string }[] = [
+  { valor: 'relatorios', titulo: '📊 Somente Relatórios', desc: 'Só vê os relatórios (Mensal, Em Atraso, Break Even). Não mexe em nada.' },
+  { valor: 'imoveis', titulo: '🏢 Imóveis', desc: 'Gestão de imóveis, inquilinos e pagamentos.' },
+  { valor: 'ambos', titulo: '💰 Imóveis + Financeiro', desc: 'Tudo dos Imóveis mais o módulo Financeiro.' },
+  { valor: 'admin', titulo: '👥 Administrador', desc: 'Vê tudo e gerencia usuários.' },
+]
+
 // Resumo curto dos módulos que a pessoa acessa (para a lista).
 function resumoAcessos(u: UsuarioItem): string {
+  if (u.papel === 'relatorios') return '📊 Somente Relatórios'
   const m = ['🏢 Imóveis']
   if (u.papel === 'ambos' || u.papel === 'admin') m.push('💰 Financeiro')
   if (u.frota) m.push('🚗 Frota')
@@ -21,34 +31,36 @@ function resumoAcessos(u: UsuarioItem): string {
   return m.join(' · ')
 }
 
+const temFrota = (p: Papel) => p === 'imoveis' || p === 'ambos'
+
 export default function UsuariosCliente({ usuarios }: { usuarios: UsuarioItem[] }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
   const [criado, setCriado] = useState<{ email: string; senha: string; papel: Papel; frota: boolean } | null>(null)
 
+  // Estado do formulário de criação.
+  const [novoTipo, setNovoTipo] = useState<Papel>('imoveis')
+  const [novoFrota, setNovoFrota] = useState(false)
+
   // Painel de edição de permissões (por pessoa).
   const [editando, setEditando] = useState<UsuarioItem | null>(null)
-  const [edFinanceiro, setEdFinanceiro] = useState(false)
+  const [edTipo, setEdTipo] = useState<Papel>('imoveis')
   const [edFrota, setEdFrota] = useState(false)
-  const [edAdmin, setEdAdmin] = useState(false)
   const [salvando, setSalvando] = useState(false)
 
   function abrirEdicao(u: UsuarioItem) {
     setErro('')
     setEditando(u)
-    setEdFinanceiro(u.papel === 'ambos' || u.papel === 'admin')
+    setEdTipo(u.papel)
     setEdFrota(u.frota)
-    setEdAdmin(u.papel === 'admin')
   }
 
   async function salvarEdicao() {
     if (!editando) return
     setSalvando(true)
     setErro('')
-    const papel: Papel = edAdmin ? 'admin' : edFinanceiro ? 'ambos' : 'imoveis'
-    // Admin sempre vê a Frota; senão vale a caixinha.
-    const res = await atualizarPermissoes(editando.id, papel, edAdmin ? true : edFrota)
+    const res = await atualizarPermissoes(editando.id, edTipo, temFrota(edTipo) ? edFrota : false)
     setSalvando(false)
     if (!res.ok) { setErro(res.erro); return }
     setEditando(null)
@@ -61,13 +73,14 @@ export default function UsuariosCliente({ usuarios }: { usuarios: UsuarioItem[] 
     setLoading(true)
     const form = e.currentTarget
     const fd = new FormData(form)
-    const papel: Papel = fd.get('admin') === 'on' ? 'admin' : fd.get('financeiro') === 'on' ? 'ambos' : 'imoveis'
-    const frota = fd.get('frota') === 'on' || papel === 'admin'
+    const frota = temFrota(novoTipo) && novoFrota
     try {
       const res = await criarUsuario(fd)
       if (res.ok) {
-        setCriado({ email: (fd.get('email') as string).trim().toLowerCase(), senha: fd.get('senha') as string, papel, frota })
+        setCriado({ email: (fd.get('email') as string).trim().toLowerCase(), senha: fd.get('senha') as string, papel: novoTipo, frota })
         form.reset()
+        setNovoTipo('imoveis')
+        setNovoFrota(false)
         router.refresh()
       } else {
         setErro(res.erro)
@@ -86,6 +99,34 @@ export default function UsuariosCliente({ usuarios }: { usuarios: UsuarioItem[] 
   }
 
   const link = typeof window !== 'undefined' ? window.location.origin : ''
+
+  // Bloco reutilizável de escolha do tipo + Frota (usado na criação e na edição).
+  const seletorTipo = (tipo: Papel, setTipo: (p: Papel) => void, frota: boolean, setFrota: (b: boolean) => void, comNames: boolean) => (
+    <div className="flex flex-col gap-2">
+      {TIPOS.map(t => (
+        <label key={t.valor} className={`flex items-start gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${tipo === t.valor ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+          <input
+            type="radio" {...(comNames ? { name: 'tipo' } : {})} value={t.valor}
+            checked={tipo === t.valor} onChange={() => setTipo(t.valor)}
+            className="mt-0.5 w-4 h-4 accent-blue-600"
+          />
+          <span className="text-sm">
+            <span className="font-medium text-gray-800">{t.titulo}</span>
+            <span className="block text-xs text-gray-500">{t.desc}</span>
+          </span>
+        </label>
+      ))}
+      <label className={`flex items-center gap-2 mt-1 text-sm ${temFrota(tipo) ? 'text-gray-700 cursor-pointer' : 'text-gray-300'}`}>
+        <input
+          type="checkbox" {...(comNames ? { name: 'frota' } : {})}
+          checked={temFrota(tipo) ? frota : false} disabled={!temFrota(tipo)}
+          onChange={e => setFrota(e.target.checked)}
+          className="w-4 h-4 accent-amber-600"
+        />
+        🚗 Frota {!temFrota(tipo) && <span className="text-xs text-gray-300">(não se aplica)</span>}
+      </label>
+    </div>
+  )
 
   return (
     <div className="space-y-6">
@@ -128,27 +169,10 @@ export default function UsuariosCliente({ usuarios }: { usuarios: UsuarioItem[] 
           </div>
         </div>
 
-        {/* Seleção de módulos */}
+        {/* Tipo de acesso */}
         <div className="mt-4">
-          <label className="block text-xs font-medium text-gray-600 mb-2">Permissões (o que a pessoa pode acessar)</label>
-          <div className="flex flex-col gap-2 text-sm text-gray-700">
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked disabled className="w-4 h-4 accent-blue-600" />
-              🏢 Imóveis <span className="text-xs text-gray-400">(sempre incluído)</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" name="financeiro" className="w-4 h-4 accent-green-600" />
-              💰 Financeiro
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" name="frota" className="w-4 h-4 accent-amber-600" />
-              🚗 Frota
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer mt-1 pt-2 border-t border-gray-100">
-              <input type="checkbox" name="admin" className="w-4 h-4 accent-gray-700" />
-              👥 Administrador <span className="text-xs text-gray-400">(vê tudo e gerencia usuários)</span>
-            </label>
-          </div>
+          <label className="block text-xs font-medium text-gray-600 mb-2">Tipo de acesso</label>
+          {seletorTipo(novoTipo, setNovoTipo, novoFrota, setNovoFrota, true)}
         </div>
 
         <button type="submit" disabled={loading} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-60">
@@ -187,28 +211,11 @@ export default function UsuariosCliente({ usuarios }: { usuarios: UsuarioItem[] 
       {/* Modal de edição de permissões */}
       {editando && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !salvando && setEditando(null)}>
-          <div className="bg-white rounded-xl p-5 w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl p-5 w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-gray-900">Editar permissões</h3>
-            <p className="text-sm text-gray-500 mt-0.5 truncate">{editando.nome || editando.email}</p>
+            <p className="text-sm text-gray-500 mt-0.5 truncate mb-4">{editando.nome || editando.email}</p>
 
-            <div className="flex flex-col gap-2 text-sm text-gray-700 mt-4">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked disabled className="w-4 h-4 accent-blue-600" />
-                🏢 Imóveis <span className="text-xs text-gray-400">(sempre incluído)</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={edFinanceiro} onChange={e => setEdFinanceiro(e.target.checked)} className="w-4 h-4 accent-green-600" />
-                💰 Financeiro
-              </label>
-              <label className={`flex items-center gap-2 ${edAdmin ? 'opacity-60' : 'cursor-pointer'}`}>
-                <input type="checkbox" checked={edAdmin ? true : edFrota} disabled={edAdmin} onChange={e => setEdFrota(e.target.checked)} className="w-4 h-4 accent-amber-600" />
-                🚗 Frota {edAdmin && <span className="text-xs text-gray-400">(admin já vê)</span>}
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer mt-1 pt-2 border-t border-gray-100">
-                <input type="checkbox" checked={edAdmin} onChange={e => setEdAdmin(e.target.checked)} className="w-4 h-4 accent-gray-700" />
-                👥 Administrador <span className="text-xs text-gray-400">(vê tudo e gerencia usuários)</span>
-              </label>
-            </div>
+            {seletorTipo(edTipo, setEdTipo, edFrota, setEdFrota, false)}
 
             <div className="flex items-center justify-end gap-2 mt-5">
               <button onClick={() => setEditando(null)} disabled={salvando} className="px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-gray-100">Cancelar</button>

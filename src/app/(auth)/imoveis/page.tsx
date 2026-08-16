@@ -1,15 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { contarWhatsAppPendentes } from '@/lib/lembretes'
-import { getSessao } from '@/lib/auth'
+import { exigirGestao } from '@/lib/auth'
 import GraficoImoveis from './GraficoImoveis'
 
 export default async function ImoveisPage({ searchParams }: { searchParams: Promise<{ mes?: string; ano?: string }> }) {
   const supabase = await createClient()
 
-  // Comissão é financeiro → botão só para quem vê o Financeiro.
-  const sessao = await getSessao()
-  const podeFinanceiro = !!sessao?.podeFinanceiro
+  // Bloqueia "somente relatórios" (manda pros relatórios). Comissão é financeiro →
+  // botão só para quem vê o Financeiro.
+  const sessao = await exigirGestao()
+  const podeFinanceiro = sessao.podeFinanceiro
 
   // Quantos WhatsApp de lembrete estão pendentes de envio (para acender o botão).
   const whatsPendentes = await contarWhatsAppPendentes(supabase)

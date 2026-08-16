@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { carregarAtrasos } from '@/lib/atrasos'
+import { getSessao } from '@/lib/auth'
 import Link from 'next/link'
 
 const brl = (n: number) => 'R$ ' + (n ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
@@ -9,16 +10,21 @@ const soFone = (t: string | null) => (t ?? '').replace(/\D/g, '')
 // empresas, num só lugar.
 export default async function RelatorioAtrasoPage() {
   const supabase = await createClient()
+  const sessao = await getSessao()
   const { empresas, totalItens, totalAberto, totalAtual, desde } = await carregarAtrasos(supabase)
   const hoje = new Date().toLocaleDateString('pt-BR')
 
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-        <Link href="/" className="hover:text-blue-600">Início</Link>
-        <span>/</span>
-        <Link href="/imoveis" className="hover:text-blue-600">Imóveis</Link>
-        <span>/</span>
+        {!sessao?.soRelatorios && (
+          <>
+            <Link href="/" className="hover:text-blue-600">Início</Link>
+            <span>/</span>
+            <Link href="/imoveis" className="hover:text-blue-600">Imóveis</Link>
+            <span>/</span>
+          </>
+        )}
         <span className="text-gray-900 font-medium">Em Atraso</span>
       </div>
 

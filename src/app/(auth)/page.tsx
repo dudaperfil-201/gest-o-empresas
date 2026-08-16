@@ -4,6 +4,8 @@ import { getSessao } from '@/lib/auth'
 
 export default async function HomePage() {
   const sessao = await getSessao()
+  // "Somente relatórios" vai direto para o relatório mensal.
+  if (sessao?.soRelatorios) redirect('/relatorio')
   // Quem não tem o módulo Financeiro só tem Imóveis — vai direto pra lá.
   if (sessao && !sessao.podeFinanceiro) redirect('/imoveis')
 

@@ -38,6 +38,24 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
+  // Usuário "Somente Relatórios": só pode navegar nos relatórios (Mensal, Em Atraso,
+  // Break Even) e nos exports de Excel deles. Qualquer outra rota volta pra /relatorio.
+  if (user) {
+    const { data: perfil } = await supabase
+      .from('usuarios')
+      .select('papel')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (perfil?.papel === 'relatorios') {
+      const permitido =
+        pathname.startsWith('/relatorio') ||        // /relatorio e /relatorio-atraso
+        pathname.startsWith('/break-even') ||
+        pathname.startsWith('/api/relatorio') ||    // exports do mensal e do atraso
+        pathname.startsWith('/api/break-even')
+      if (!permitido) return NextResponse.redirect(new URL('/relatorio', request.url))
+    }
+  }
+
   return supabaseResponse
 }
 

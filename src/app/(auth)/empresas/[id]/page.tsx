@@ -1,10 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { exigirGestao } from '@/lib/auth'
 import NovoImovelForm from './NovoImovelForm'
 import ImovelCard from './ImovelCard'
 
 export default async function EmpresaPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ mes?: string; ano?: string }> }) {
+  await exigirGestao() // bloqueia "somente relatórios"
   const { id } = await params
   const supabase = await createClient()
 

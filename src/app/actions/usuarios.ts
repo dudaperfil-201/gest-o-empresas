@@ -49,11 +49,11 @@ export async function criarUsuario(formData: FormData): Promise<{ ok: true } | {
   const nome = (formData.get('nome') as string || '').trim()
   const email = (formData.get('email') as string || '').trim().toLowerCase()
   const senha = (formData.get('senha') as string || '')
-  // Módulos marcados: Imóveis é sempre incluído; Financeiro, Frota e Admin são opcionais.
-  const querFinanceiro = formData.get('financeiro') === 'on'
-  const querFrota = formData.get('frota') === 'on'
-  const querAdmin = formData.get('admin') === 'on'
-  const papel: Papel = querAdmin ? 'admin' : querFinanceiro ? 'ambos' : 'imoveis'
+  // Tipo de acesso (radio): relatorios | imoveis | ambos | admin. A Frota é uma caixa
+  // extra que só faz sentido para quem faz gestão de imóveis (imoveis/ambos).
+  const papel = normalizarPapel(formData.get('tipo') as string)
+  const podeFrota = papel === 'imoveis' || papel === 'ambos'
+  const frota = podeFrota && formData.get('frota') === 'on'
 
   if (!email || !senha) return { ok: false, erro: 'E-mail e senha são obrigatórios.' }
   if (senha.length < 6) return { ok: false, erro: 'A senha precisa ter ao menos 6 caracteres.' }
@@ -66,7 +66,7 @@ export async function criarUsuario(formData: FormData): Promise<{ ok: true } | {
   })
   if (error || !data.user) return { ok: false, erro: error?.message ?? 'Erro ao criar usuário.' }
 
-  const { error: erroPerfil } = await admin.from('usuarios').upsert({ id: data.user.id, nome: nome || email, papel, frota: querFrota })
+  const { error: erroPerfil } = await admin.from('usuarios').upsert({ id: data.user.id, nome: nome || email, papel, frota })
   if (erroPerfil) return { ok: false, erro: 'Usuário criado, mas falhou ao salvar o papel: ' + erroPerfil.message }
 
   revalidatePath('/usuarios')
@@ -93,7 +93,9 @@ export async function atualizarPermissoes(
     const { data: u } = await admin.auth.admin.getUserById(id)
     nome = u.user?.email ?? 'Usuário'
   }
-  const { error } = await admin.from('usuarios').upsert({ id, nome, papel, frota: papel === 'admin' ? false : frota })
+  // Frota só é guardada para quem faz gestão de imóveis (admin já vê; relatórios não vê).
+  const podeFrota = papel === 'imoveis' || papel === 'ambos'
+  const { error } = await admin.from('usuarios').upsert({ id, nome, papel, frota: podeFrota && frota })
   if (error) return { ok: false, erro: error.message }
 
   revalidatePath('/usuarios')
