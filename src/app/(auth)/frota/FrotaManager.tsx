@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { criarVeiculo, editarVeiculo, apagarVeiculo, type Veiculo } from '@/app/actions/veiculos'
 
 type Empresa = { id: string; nome: string }
+const brl = (n: number) => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const soDigitos = (s: string) => s.replace(/\D/g, '')
 const toInt = (s: string) => { const n = parseInt(soDigitos(s), 10); return Number.isFinite(n) ? n : null }
 
@@ -100,6 +101,12 @@ export default function FrotaManager({ veiculos, empresas }: { veiculos: Veiculo
                   <p className="text-xs text-gray-500 mt-0.5">
                     {[v.ano && `${v.ano}`, v.cor, v.km_atual != null && `${v.km_atual.toLocaleString('pt-BR')} km`].filter(Boolean).join(' · ') || '—'}
                   </p>
+                  {v.fipe_valor != null && (
+                    <p className="mt-1.5 text-sm font-bold text-green-700">
+                      💵 FIPE {brl(v.fipe_valor)}
+                      {v.fipe_ref && <span className="ml-1.5 text-[10px] font-normal text-gray-400">ref. {v.fipe_ref}</span>}
+                    </p>
+                  )}
                   {nomeEmpresa(v.empresa_id) && <p className="text-xs text-blue-600 mt-0.5">🏢 {nomeEmpresa(v.empresa_id)}</p>}
                   {v.renavam && <p className="text-[11px] text-gray-400 mt-0.5">Renavam: {v.renavam}</p>}
                   {v.observacoes && <p className="text-xs text-gray-400 mt-1">{v.observacoes}</p>}

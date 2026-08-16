@@ -18,6 +18,9 @@ export type Veiculo = {
   observacoes: string | null
   ativo: boolean
   created_at: string
+  fipe_valor: number | null
+  fipe_ref: string | null
+  fipe_atualizado_em: string | null
 }
 type Resultado = { ok: true } | { ok: false; erro: string }
 
