@@ -1,7 +1,13 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+
+// Bucket (privado) dos documentos dos veículos (CRLV etc.). Operações de Storage usam
+// o client ADMIN (service role) — o client logado é bloqueado pela RLS do Storage.
+const BUCKET_DOC = 'documentos-veiculo'
+const sanitizar = (nome: string) => nome.replace(/[^\w.\-]+/g, '_').slice(-80)
 
 // Módulo FROTA VEÍCULOS — cadastro dos veículos. Fase 1 (só cadastro).
 
@@ -85,6 +91,55 @@ export async function apagarVeiculo(id: string): Promise<Resultado> {
   const supabase = await createClient()
   const { error } = await supabase.from('veiculos').delete().eq('id', id)
   if (error) return { ok: false, erro: error.message }
+  // Apaga também o documento do veículo no Storage (se houver).
+  try {
+    const admin = createAdminClient()
+    const { data } = await admin.storage.from(BUCKET_DOC).list(id)
+    if (data?.length) await admin.storage.from(BUCKET_DOC).remove(data.map(a => `${id}/${a.name}`))
+  } catch { /* bucket pode não existir ainda */ }
+  revalidatePath('/frota')
+  return { ok: true }
+}
+
+// Anexa (ou substitui) o DOCUMENTO do veículo (foto/PDF do CRLV). Cria o bucket se
+// preciso e mantém só 1 documento por veículo.
+export async function uploadDocumentoVeiculo(formData: FormData): Promise<Resultado> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { ok: false, erro: 'Não autenticado.' }
+
+  const veiculoId = formData.get('veiculo_id') as string
+  const file = formData.get('arquivo') as File | null
+  if (!veiculoId || !file || file.size === 0) return { ok: false, erro: 'Selecione um arquivo.' }
+
+  const admin = createAdminClient()
+  // Garante o bucket (privado). Ignora erro se já existir.
+  await admin.storage.createBucket(BUCKET_DOC, { public: false }).catch(() => {})
+  // Substitui: remove documentos antigos do veículo.
+  try {
+    const { data: antigos } = await admin.storage.from(BUCKET_DOC).list(veiculoId)
+    if (antigos?.length) await admin.storage.from(BUCKET_DOC).remove(antigos.map(a => `${veiculoId}/${a.name}`))
+  } catch { /* pasta pode não existir */ }
+
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  const path = `${veiculoId}/${Date.now()}_${sanitizar(file.name || 'documento.pdf')}`
+  const { error } = await admin.storage.from(BUCKET_DOC).upload(path, bytes, {
+    contentType: file.type || 'application/octet-stream', upsert: false,
+  })
+  if (error) return { ok: false, erro: error.message }
+  revalidatePath('/frota')
+  return { ok: true }
+}
+
+export async function removerDocumentoVeiculo(veiculoId: string): Promise<Resultado> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { ok: false, erro: 'Não autenticado.' }
+  const admin = createAdminClient()
+  try {
+    const { data } = await admin.storage.from(BUCKET_DOC).list(veiculoId)
+    if (data?.length) await admin.storage.from(BUCKET_DOC).remove(data.map(a => `${veiculoId}/${a.name}`))
+  } catch { /* nada a remover */ }
   revalidatePath('/frota')
   return { ok: true }
 }

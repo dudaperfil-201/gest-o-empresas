@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { criarVeiculo, editarVeiculo, apagarVeiculo, type Veiculo } from '@/app/actions/veiculos'
+import { criarVeiculo, editarVeiculo, apagarVeiculo, uploadDocumentoVeiculo, removerDocumentoVeiculo, type Veiculo } from '@/app/actions/veiculos'
 
 type Empresa = { id: string; nome: string }
 const brl = (n: number) => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -11,8 +11,9 @@ const toInt = (s: string) => { const n = parseInt(soDigitos(s), 10); return Numb
 
 const vazio = { empresa_id: '', placa: '', marca: '', modelo: '', ano: '', cor: '', renavam: '', km_atual: '', observacoes: '' }
 
-export default function FrotaManager({ veiculos, empresas }: { veiculos: Veiculo[]; empresas: Empresa[] }) {
+export default function FrotaManager({ veiculos, empresas, documentos }: { veiculos: Veiculo[]; empresas: Empresa[]; documentos: Record<string, string> }) {
   const router = useRouter()
+  const [enviandoDoc, setEnviandoDoc] = useState<string | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
   const [editId, setEditId] = useState<string | null>(null) // null = criando
   const [ativo, setAtivo] = useState(true)
@@ -66,6 +67,31 @@ export default function FrotaManager({ veiculos, empresas }: { veiculos: Veiculo
     }
   }
 
+  async function enviarDoc(veiculoId: string, file: File) {
+    setEnviandoDoc(veiculoId); setErro(null)
+    try {
+      const fd = new FormData()
+      fd.append('veiculo_id', veiculoId)
+      fd.append('arquivo', file)
+      const r = await uploadDocumentoVeiculo(fd)
+      if (!r.ok) { setErro(r.erro); return }
+      router.refresh()
+    } finally {
+      setEnviandoDoc(null)
+    }
+  }
+  async function removerDoc(veiculoId: string) {
+    if (!confirm('Remover o documento deste veículo?')) return
+    setEnviandoDoc(veiculoId); setErro(null)
+    try {
+      const r = await removerDocumentoVeiculo(veiculoId)
+      if (!r.ok) { setErro(r.erro); return }
+      router.refresh()
+    } finally {
+      setEnviandoDoc(null)
+    }
+  }
+
   const set = (k: keyof typeof vazio, v: string) => setF(prev => ({ ...prev, [k]: v }))
 
   return (
@@ -115,6 +141,28 @@ export default function FrotaManager({ veiculos, empresas }: { veiculos: Veiculo
                   <button onClick={() => abrirEdicao(v)} className="text-xs font-medium text-blue-600 hover:text-blue-800 opacity-0 group-hover:opacity-100 transition-opacity">✏️ Editar</button>
                   <button onClick={() => excluir(v)} className="text-xs font-medium text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity">🗑 Excluir</button>
                 </div>
+              </div>
+
+              {/* Documento do veículo (CRLV) */}
+              <div className="mt-3 pt-2 border-t border-gray-100 flex items-center gap-3 text-xs">
+                {documentos[v.id] ? (
+                  <>
+                    <a href={documentos[v.id]} target="_blank" rel="noopener noreferrer" className="text-amber-700 font-medium hover:text-amber-900">📄 Ver documento</a>
+                    <label className="text-gray-400 hover:text-gray-600 cursor-pointer">
+                      trocar
+                      <input type="file" accept="image/*,application/pdf" className="hidden"
+                        onChange={e => { const file = e.target.files?.[0]; e.target.value = ''; if (file) enviarDoc(v.id, file) }} />
+                    </label>
+                    <button onClick={() => removerDoc(v.id)} className="text-red-400 hover:text-red-600">remover</button>
+                  </>
+                ) : (
+                  <label className="flex items-center gap-1 text-gray-400 hover:text-amber-700 cursor-pointer">
+                    📎 Anexar documento
+                    <input type="file" accept="image/*,application/pdf" className="hidden"
+                      onChange={e => { const file = e.target.files?.[0]; e.target.value = ''; if (file) enviarDoc(v.id, file) }} />
+                  </label>
+                )}
+                {enviandoDoc === v.id && <span className="text-gray-400">enviando…</span>}
               </div>
             </div>
           ))}

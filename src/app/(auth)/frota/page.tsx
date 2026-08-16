@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getVeiculos } from '@/app/actions/veiculos'
 import FrotaManager from './FrotaManager'
 import Link from 'next/link'
@@ -10,6 +11,20 @@ export default async function FrotaPage() {
     getVeiculos(),
     supabase.from('empresas').select('id, nome').order('nome'),
   ])
+
+  // Link (URL assinada) do documento de cada veículo, se houver.
+  const admin = createAdminClient()
+  const documentos: Record<string, string> = {}
+  await Promise.all(veiculos.map(async v => {
+    try {
+      const { data } = await admin.storage.from('documentos-veiculo').list(v.id, { limit: 1 })
+      const nome = data?.[0]?.name
+      if (nome) {
+        const { data: s } = await admin.storage.from('documentos-veiculo').createSignedUrl(`${v.id}/${nome}`, 3600)
+        if (s?.signedUrl) documentos[v.id] = s.signedUrl
+      }
+    } catch { /* bucket pode não existir ainda */ }
+  }))
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -26,7 +41,7 @@ export default async function FrotaPage() {
         </p>
       </div>
 
-      <FrotaManager veiculos={veiculos} empresas={empresas ?? []} />
+      <FrotaManager veiculos={veiculos} empresas={empresas ?? []} documentos={documentos} />
     </div>
   )
 }
