@@ -6,6 +6,23 @@ import { criarVeiculo, editarVeiculo, apagarVeiculo, uploadDocumentoVeiculo, rem
 
 type Empresa = { id: string; nome: string }
 const brl = (n: number) => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+// IPVA em Santa Catarina (DETRAN-SC): o vencimento (cota única) é pelo DÍGITO FINAL da
+// placa → mês. Final 1=jan, 2=fev, ... 9=set, 0=outubro. Retorna o mês (1–12) ou null.
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
+const ipvaMesDaPlaca = (placa: string | null): number | null => {
+  const digs = (placa || '').replace(/\D/g, '')
+  if (!digs) return null
+  const d = parseInt(digs.slice(-1), 10)
+  return d === 0 ? 10 : d
+}
+// Alerta (card vermelho) no MÊS do IPVA e no mês ANTERIOR (aviso com antecedência).
+const mesAtual = new Date().getMonth() + 1
+const ipvaProximo = (mes: number | null): boolean => {
+  if (mes == null) return false
+  const anterior = mes === 1 ? 12 : mes - 1
+  return mesAtual === mes || mesAtual === anterior
+}
 const soDigitos = (s: string) => s.replace(/\D/g, '')
 const toInt = (s: string) => { const n = parseInt(soDigitos(s), 10); return Number.isFinite(n) ? n : null }
 
@@ -113,8 +130,11 @@ export default function FrotaManager({ veiculos, empresas, documentos }: { veicu
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {veiculos.map(v => (
-            <div key={v.id} className={`bg-white border rounded-xl p-4 group ${v.ativo ? 'border-gray-200' : 'border-gray-200 opacity-60'}`}>
+          {veiculos.map(v => {
+            const ipvaMes = ipvaMesDaPlaca(v.placa)
+            const ipvaAlerta = ipvaProximo(ipvaMes)
+            return (
+            <div key={v.id} className={`border rounded-xl p-4 group transition-colors ${ipvaAlerta ? 'bg-red-50 border-red-400' : v.ativo ? 'bg-white border-gray-200' : 'bg-white border-gray-200 opacity-60'}`}>
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -127,6 +147,11 @@ export default function FrotaManager({ veiculos, empresas, documentos }: { veicu
                   <p className="text-xs text-gray-500 mt-0.5">
                     {[v.ano && `${v.ano}`, v.cor, v.km_atual != null && `${v.km_atual.toLocaleString('pt-BR')} km`].filter(Boolean).join(' · ') || '—'}
                   </p>
+                  {ipvaMes != null && (
+                    <p className={`text-xs mt-0.5 ${ipvaAlerta ? 'text-red-600 font-bold' : 'text-gray-400'}`}>
+                      {ipvaAlerta ? '🚨' : '📅'} IPVA: {MESES[ipvaMes - 1]}{ipvaAlerta ? ' — vence em breve!' : ''}
+                    </p>
+                  )}
                   {v.fipe_valor != null && (
                     <p className="mt-1.5 text-sm font-bold text-green-700">
                       💵 FIPE {brl(v.fipe_valor)}
@@ -165,7 +190,8 @@ export default function FrotaManager({ veiculos, empresas, documentos }: { veicu
                 {enviandoDoc === v.id && <span className="text-gray-400">enviando…</span>}
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
