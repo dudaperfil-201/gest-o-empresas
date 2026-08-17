@@ -19,6 +19,47 @@ export default function DocumentosCliente({ pasta, meses, ehAdmin }: { pasta: st
   const [erro, setErro] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Seleção para download em lote.
+  const [sel, setSel] = useState<Set<string>>(new Set())
+  const [baixando, setBaixando] = useState(false)
+  const todosPaths = meses.flatMap(m => m.docs.map(d => d.path))
+  const todosMarcados = todosPaths.length > 0 && todosPaths.every(p => sel.has(p))
+
+  const toggle = (path: string) => setSel(prev => {
+    const n = new Set(prev)
+    if (n.has(path)) n.delete(path); else n.add(path)
+    return n
+  })
+  const toggleTodos = () => setSel(todosMarcados ? new Set() : new Set(todosPaths))
+  const toggleMes = (paths: string[]) => setSel(prev => {
+    const n = new Set(prev)
+    const todosDoMes = paths.every(p => n.has(p))
+    for (const p of paths) { if (todosDoMes) n.delete(p); else n.add(p) }
+    return n
+  })
+
+  async function baixarSelecionados() {
+    const paths = [...sel]
+    if (paths.length === 0) return
+    setBaixando(true); setErro('')
+    try {
+      const res = await fetch('/api/documentos/zip', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paths }),
+      })
+      if (!res.ok) { setErro('Não consegui gerar o arquivo .zip.'); return }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = `documentos_${pasta}.zip`
+      document.body.appendChild(a); a.click(); a.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      setErro('Erro ao baixar os documentos.')
+    } finally {
+      setBaixando(false)
+    }
+  }
+
   async function enviar(files: FileList | null) {
     if (!files || files.length === 0) return
     const [ano, mes] = mesRef.split('-')
@@ -44,6 +85,7 @@ export default function DocumentosCliente({ pasta, meses, ehAdmin }: { pasta: st
     try {
       const r = await removerDocumento(path)
       if (!r.ok) { setErro(r.erro); return }
+      setSel(prev => { const n = new Set(prev); n.delete(path); return n })
       router.refresh()
     } finally {
       setRemovendo(null)
@@ -74,6 +116,20 @@ export default function DocumentosCliente({ pasta, meses, ehAdmin }: { pasta: st
         </div>
       )}
 
+      {/* Barra de seleção / baixar */}
+      {todosPaths.length > 0 && (
+        <div className="flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-xl px-4 py-2.5 flex-wrap">
+          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+            <input type="checkbox" checked={todosMarcados} onChange={toggleTodos} className="w-4 h-4 accent-indigo-600" />
+            Selecionar todos <span className="text-xs text-gray-400">({sel.size} de {todosPaths.length})</span>
+          </label>
+          <button onClick={baixarSelecionados} disabled={sel.size === 0 || baixando}
+            className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white bg-green-600 hover:bg-green-700 transition-colors disabled:opacity-50">
+            {baixando ? 'Gerando .zip…' : `⬇️ Baixar selecionados${sel.size ? ` (${sel.size})` : ''}`}
+          </button>
+        </div>
+      )}
+
       {/* Lista por mês */}
       {meses.length === 0 ? (
         <div className="bg-white border border-dashed border-gray-300 rounded-xl p-10 text-center">
@@ -82,31 +138,39 @@ export default function DocumentosCliente({ pasta, meses, ehAdmin }: { pasta: st
           {ehAdmin && <p className="text-sm text-gray-400 mt-1">Envie o primeiro no formulário acima.</p>}
         </div>
       ) : (
-        meses.map(m => (
-          <div key={`${m.ano}-${m.mes}`} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900 capitalize">{rotuloMes(m.ano, m.mes)}</h3>
-              <span className="text-xs text-gray-500">{m.docs.length} documento{m.docs.length === 1 ? '' : 's'}</span>
+        meses.map(m => {
+          const pathsMes = m.docs.map(d => d.path)
+          const mesMarcado = pathsMes.every(p => sel.has(p))
+          return (
+            <div key={`${m.ano}-${m.mes}`} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-2">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" checked={mesMarcado} onChange={() => toggleMes(pathsMes)} className="w-4 h-4 accent-indigo-600" />
+                  <h3 className="font-semibold text-gray-900 capitalize">{rotuloMes(m.ano, m.mes)}</h3>
+                </label>
+                <span className="text-xs text-gray-500">{m.docs.length} documento{m.docs.length === 1 ? '' : 's'}</span>
+              </div>
+              <div className="divide-y divide-gray-100">
+                {m.docs.map(d => (
+                  <div key={d.path} className="flex items-center gap-3 px-4 py-2.5">
+                    <input type="checkbox" checked={sel.has(d.path)} onChange={() => toggle(d.path)} className="w-4 h-4 accent-indigo-600 shrink-0" />
+                    <span className="text-lg">📄</span>
+                    <a href={d.url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 text-sm text-indigo-700 hover:text-indigo-900 font-medium truncate">
+                      {d.nome}
+                    </a>
+                    <span className="text-xs text-gray-400 shrink-0">{tamanho(d.tamanho)}</span>
+                    {ehAdmin && (
+                      <button onClick={() => remover(d.path, d.nome)} disabled={removendo === d.path}
+                        className="text-xs text-red-500 hover:text-red-700 shrink-0 disabled:opacity-50">
+                        {removendo === d.path ? 'removendo…' : 'remover'}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="divide-y divide-gray-100">
-              {m.docs.map(d => (
-                <div key={d.path} className="flex items-center gap-3 px-4 py-2.5">
-                  <span className="text-lg">📄</span>
-                  <a href={d.url} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-0 text-sm text-indigo-700 hover:text-indigo-900 font-medium truncate">
-                    {d.nome}
-                  </a>
-                  <span className="text-xs text-gray-400 shrink-0">{tamanho(d.tamanho)}</span>
-                  {ehAdmin && (
-                    <button onClick={() => remover(d.path, d.nome)} disabled={removendo === d.path}
-                      className="text-xs text-red-500 hover:text-red-700 shrink-0 disabled:opacity-50">
-                      {removendo === d.path ? 'removendo…' : 'remover'}
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        ))
+          )
+        })
       )}
     </div>
   )
