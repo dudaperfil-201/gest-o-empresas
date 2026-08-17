@@ -7,7 +7,7 @@ const CARDS = [
   { chave: 'podeImoveis', href: '/imoveis', emoji: '🏢', titulo: 'IMÓVEIS', cor: 'blue', desc: 'Gestão de aluguéis, empresas, inquilinos e pagamentos.' },
   { chave: 'podeFinanceiro', href: '/financeiro', emoji: '💰', titulo: 'FINANCEIRO', cor: 'green', desc: 'Gestão de recursos financeiros e investimentos.' },
   { chave: 'podeFrota', href: '/frota', emoji: '🚗', titulo: 'FROTA', cor: 'amber', desc: 'Cadastro e gestão dos veículos da frota.' },
-  { chave: 'podeRelatorios', href: '/relatorio', emoji: '📊', titulo: 'RELATÓRIOS', cor: 'indigo', desc: 'Relatório Mensal, Em Atraso e Break Even.' },
+  { chave: 'podeRelatorios', href: '/relatorio', emoji: '📊', titulo: 'RELATÓRIO E DOCUMENTOS', cor: 'indigo', desc: 'Relatório Mensal, Em Atraso, Break Even e documentos por mês.' },
 ] as const
 
 // Classes literais (Tailwind não gera classes montadas dinamicamente).
