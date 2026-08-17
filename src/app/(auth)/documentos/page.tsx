@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { exigirRelatorios, getSessao } from '@/lib/auth'
 import { listarDocumentos } from '@/app/actions/documentos'
-import AbasRelatorios from '../AbasRelatorios'
 import DocumentosCliente from './DocumentosCliente'
 
 export const dynamic = 'force-dynamic'
@@ -18,8 +17,6 @@ export default async function DocumentosPage() {
         <span>/</span>
         <Link href="/relatorios" className="hover:text-blue-600">Relatório e Documentos</Link>
       </div>
-
-      <AbasRelatorios atual="documentos" />
 
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900">📁 Documentos</h2>
