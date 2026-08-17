@@ -15,7 +15,7 @@ export default async function EmpresaPage({ params, searchParams }: { params: Pr
 
   const { data: imoveisRaw } = await supabase
     .from('imoveis')
-    .select('id, endereco, valor_aluguel, ativo, dia_vencimento, inquilinos(nome, data_inicio)')
+    .select('id, endereco, valor_aluguel, ativo, dia_vencimento, inquilinos(nome, data_inicio, ativo)')
     .eq('empresa_id', id)
 
   // Ordenação numérica natural: SALA-1, SALA-2, ... SALA-10 (e não SALA-1, SALA-10, SALA-2)
@@ -156,8 +156,10 @@ export default async function EmpresaPage({ params, searchParams }: { params: Pr
       <div className="space-y-3 mb-8">
         {(imoveis ?? []).map(imovel => {
           const pag = pagMap[imovel.id]
-          // Disponível = sem dado no cadastro (aluguel zerado e sem inquilino). Mesma regra do dashboard.
-          const inq = Array.isArray(imovel.inquilinos) ? imovel.inquilinos : (imovel.inquilinos ? [imovel.inquilinos] : [])
+          // Disponível = sem inquilino ATIVO e aluguel zerado. Inquilinos que saíram
+          // (ativo=false) não contam — o imóvel fica disponível ao desocupar.
+          const inqTodos = Array.isArray(imovel.inquilinos) ? imovel.inquilinos : (imovel.inquilinos ? [imovel.inquilinos] : [])
+          const inq = inqTodos.filter((i: { ativo?: boolean | null }) => i.ativo !== false)
           const disponivel = inq.length === 0 && (imovel.valor_aluguel ?? 0) <= 0
           const temInquilino = inq.length > 0
           return (

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import InquilinoForm from './InquilinoForm'
 import DocumentosInquilino from './DocumentosInquilino'
 import HistoricoPagamentos from './HistoricoPagamentos'
+import DesocuparBotao from './DesocuparBotao'
 
 export default async function ImovelPage({ params }: { params: Promise<{ id: string; imovelId: string }> }) {
   const { id, imovelId } = await params
@@ -14,15 +15,24 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
   const { data: imovel } = await supabase.from('imoveis').select('*').eq('id', imovelId).single()
   if (!imovel) notFound()
 
-  // Pega o inquilino MAIS RECENTE do imóvel, de forma tolerante: `.single()`
-  // dava erro (e retornava null → form vazio) quando havia 0 OU mais de 1 registro.
+  // Inquilino ATIVO (atual) do imóvel — o mais recente que não saiu. Se não houver,
+  // o imóvel está disponível (form abre em branco).
   const { data: inquilino } = await supabase
     .from('inquilinos')
     .select('*')
     .eq('imovel_id', imovelId)
+    .or('ativo.is.null,ativo.eq.true')
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
+
+  // Inquilinos ANTERIORES (que já saíram) — o histórico deles fica guardado.
+  const { data: anteriores } = await supabase
+    .from('inquilinos')
+    .select('id, nome, telefone, data_inicio, data_saida')
+    .eq('imovel_id', imovelId)
+    .eq('ativo', false)
+    .order('data_saida', { ascending: false })
 
   // Documentos do inquilino (contrato + boletos) para a Área do Inquilino.
   let contratosDocs: { name: string; path: string; url: string | null }[] = []
@@ -103,6 +113,12 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
       <div className="bg-blue-50/60 border-2 border-blue-300 rounded-xl p-5 mb-4">
         <h3 className="font-medium text-gray-900 mb-4">Cadastro do imóvel</h3>
         <InquilinoForm imovelId={imovelId} empresaId={id} inquilino={inquilino} valorAluguel={imovel.valor_aluguel ?? 0} enderecoImovel={imovel.endereco} diaVencimento={imovel.dia_vencimento ?? null} />
+        {inquilino && (
+          <div className="mt-4 pt-4 border-t border-blue-200 flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-xs text-gray-500">Inquilino saiu? Marque como disponível — o histórico dele fica guardado.</p>
+            <DesocuparBotao imovelId={imovelId} empresaId={id} inquilinoNome={inquilino.nome} />
+          </div>
+        )}
       </div>
 
       <div className="bg-green-50/60 border-2 border-green-300 rounded-xl p-5 mb-4">
@@ -137,6 +153,27 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
             contratos={contratosDocs}
             boletos={boletosDocs}
           />
+        </div>
+      )}
+
+      {anteriores && anteriores.length > 0 && (
+        <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-5 mt-4">
+          <h3 className="font-medium text-gray-900 mb-1">Inquilinos anteriores</h3>
+          <p className="text-xs text-gray-500 mb-3">Já saíram deste imóvel. O histórico de pagamentos deles continua no “Histórico de pagamentos” acima.</p>
+          <div className="space-y-2">
+            {anteriores.map(a => (
+              <div key={a.id} className="flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-lg px-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-800 truncate">{a.nome}</p>
+                  {a.telefone && <p className="text-xs text-gray-500">Tel: {a.telefone}</p>}
+                </div>
+                <div className="text-right text-xs text-gray-500 shrink-0">
+                  {a.data_inicio && <div>Entrou: {new Date(a.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')}</div>}
+                  {a.data_saida && <div>Saiu: {new Date(a.data_saida + 'T12:00:00').toLocaleDateString('pt-BR')}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

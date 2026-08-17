@@ -256,6 +256,27 @@ export async function apagarImovel(imovelId: string, empresaId: string) {
   revalidatePath(`/empresas/${empresaId}`)
 }
 
+// Desocupa o imóvel: marca o(s) inquilino(s) ATIVO(s) como saído(s) — o registro e o
+// histórico de pagamentos ficam GUARDADOS — e zera aluguel/dia de vencimento para o
+// imóvel voltar a aparecer como DISPONÍVEL.
+export async function desocuparImovel(imovelId: string, empresaId: string): Promise<{ ok: true } | { ok: false; erro: string }> {
+  const supabase = await createClient()
+  const hoje = new Date().toISOString().slice(0, 10)
+  const { error: e1 } = await supabase.from('inquilinos')
+    .update({ ativo: false, data_saida: hoje })
+    .eq('imovel_id', imovelId)
+    .or('ativo.is.null,ativo.eq.true')
+  if (e1) return { ok: false, erro: e1.message }
+  const { error: e2 } = await supabase.from('imoveis')
+    .update({ valor_aluguel: 0, dia_vencimento: null })
+    .eq('id', imovelId)
+  if (e2) return { ok: false, erro: e2.message }
+  revalidatePath(`/empresas/${empresaId}/imoveis/${imovelId}`)
+  revalidatePath(`/empresas/${empresaId}`)
+  revalidatePath('/imoveis')
+  return { ok: true }
+}
+
 export async function editarImovel(formData: FormData) {
   const supabase = await createClient()
   const id = formData.get('id') as string
@@ -311,6 +332,7 @@ export async function salvarInquilino(formData: FormData) {
         .from('inquilinos')
         .select('id')
         .eq('imovel_id', imovel_id)
+        .or('ativo.is.null,ativo.eq.true') // só reaproveita inquilino ATIVO
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle()

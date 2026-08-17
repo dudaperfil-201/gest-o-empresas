@@ -33,13 +33,14 @@ export default async function ImoveisPage({ searchParams }: { searchParams: Prom
   const resumos = await Promise.all((empresas ?? []).map(async empresa => {
     const { data: imoveis } = await supabase
       .from('imoveis')
-      .select('id, valor_aluguel, inquilinos(id)')
+      .select('id, valor_aluguel, inquilinos(id, ativo)')
       .eq('empresa_id', empresa.id)
       .eq('ativo', true)
 
+    // Só conta inquilino ATIVO (quem saiu, ativo=false, não conta → imóvel disponível).
     const temInquilino = (im: { inquilinos: unknown }) => {
       const inq = Array.isArray(im.inquilinos) ? im.inquilinos : (im.inquilinos ? [im.inquilinos] : [])
-      return inq.length > 0
+      return inq.some((i: { ativo?: boolean | null }) => i.ativo !== false)
     }
 
     // Regra do usuário: se há dado no cadastro, o imóvel está locado.
