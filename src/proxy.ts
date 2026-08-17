@@ -62,7 +62,7 @@ export async function proxy(request: NextRequest) {
       (p.startsWith('/financeiro') || p.startsWith('/comissao')) ? 'financeiro' :
       p.startsWith('/frota') ? 'frota' :
       p.startsWith('/usuarios') ? 'admin' :
-      (p.startsWith('/relatorio') || p.startsWith('/break-even') || p.startsWith('/api/relatorio') || p.startsWith('/api/break-even')) ? 'relatorios' :
+      (p.startsWith('/relatorio') || p.startsWith('/break-even') || p.startsWith('/documentos') || p.startsWith('/api/relatorio') || p.startsWith('/api/break-even')) ? 'relatorios' :
       null
 
     if (precisa) {

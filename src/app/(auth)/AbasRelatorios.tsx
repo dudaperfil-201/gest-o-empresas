@@ -1,13 +1,14 @@
 import Link from 'next/link'
 
-// Abas de navegação entre os 3 relatórios. `atual` destaca a aba da página.
+// Abas de navegação da área Relatório e Documentos. `atual` destaca a aba da página.
 const ABAS = [
   { chave: 'mensal', href: '/relatorio', label: '📄 Mensal' },
   { chave: 'atraso', href: '/relatorio-atraso', label: '⚠️ Em Atraso' },
   { chave: 'breakeven', href: '/break-even', label: '💸 Break Even' },
+  { chave: 'documentos', href: '/documentos', label: '📁 Documentos' },
 ] as const
 
-export default function AbasRelatorios({ atual }: { atual: 'mensal' | 'atraso' | 'breakeven' }) {
+export default function AbasRelatorios({ atual }: { atual: 'mensal' | 'atraso' | 'breakeven' | 'documentos' }) {
   return (
     <div className="flex flex-wrap gap-2 mb-5">
       {ABAS.map(a => (
