@@ -68,7 +68,7 @@ export async function proxy(request: NextRequest) {
     if (precisa) {
       const liberado = precisa === 'admin' ? ehAdmin : perms[precisa]
       if (!liberado) {
-        const destino = perms.imoveis ? '/imoveis' : perms.financeiro ? '/financeiro' : perms.frota ? '/frota' : perms.relatorios ? '/relatorio' : '/'
+        const destino = perms.imoveis ? '/imoveis' : perms.financeiro ? '/financeiro' : perms.frota ? '/frota' : perms.relatorios ? '/relatorios' : '/'
         if (destino !== p) return NextResponse.redirect(new URL(destino, request.url))
       }
     }

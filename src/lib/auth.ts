@@ -51,7 +51,7 @@ export function primeiraRota(s: Pick<Sessao, 'podeImoveis' | 'podeFinanceiro' | 
   if (s.podeImoveis) return '/imoveis'
   if (s.podeFinanceiro) return '/financeiro'
   if (s.podeFrota) return '/frota'
-  if (s.podeRelatorios) return '/relatorio'
+  if (s.podeRelatorios) return '/relatorios'
   return '/'
 }
 

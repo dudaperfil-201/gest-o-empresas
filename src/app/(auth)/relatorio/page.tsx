@@ -30,7 +30,7 @@ export default async function RelatorioPage({ searchParams }: { searchParams: Pr
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
         <Link href="/" className="hover:text-blue-600">Início</Link>
         <span>/</span>
-        <span className="text-gray-900 font-medium">Relatórios</span>
+        <Link href="/relatorios" className="hover:text-blue-600">Relatório e Documentos</Link>
       </div>
 
       <AbasRelatorios atual="mensal" />
