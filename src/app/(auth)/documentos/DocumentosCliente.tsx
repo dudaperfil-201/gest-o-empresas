@@ -11,7 +11,7 @@ const tamanho = (b: number) => b >= 1024 * 1024 ? (b / 1024 / 1024).toFixed(1) +
 const agora = new Date()
 const mesAtualStr = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`
 
-export default function DocumentosCliente({ meses, ehAdmin }: { meses: MesDocs[]; ehAdmin: boolean }) {
+export default function DocumentosCliente({ pasta, meses, ehAdmin }: { pasta: string; meses: MesDocs[]; ehAdmin: boolean }) {
   const router = useRouter()
   const [mesRef, setMesRef] = useState(mesAtualStr)
   const [enviando, setEnviando] = useState(false)
@@ -25,6 +25,7 @@ export default function DocumentosCliente({ meses, ehAdmin }: { meses: MesDocs[]
     setEnviando(true); setErro('')
     try {
       const fd = new FormData()
+      fd.append('pasta', pasta)
       fd.append('ano', ano)
       fd.append('mes', String(parseInt(mes, 10)))
       for (const f of Array.from(files)) fd.append('arquivos', f)
