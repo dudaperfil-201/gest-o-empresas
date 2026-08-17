@@ -59,7 +59,7 @@ export async function proxy(request: NextRequest) {
     const p = pathname
     const precisa: keyof typeof perms | 'admin' | null =
       (p.startsWith('/imoveis') || p.startsWith('/empresas') || p.startsWith('/lembretes')) ? 'imoveis' :
-      (p.startsWith('/financeiro') || p.startsWith('/comissao')) ? 'financeiro' :
+      p.startsWith('/financeiro') ? 'financeiro' :
       p.startsWith('/frota') ? 'frota' :
       p.startsWith('/usuarios') ? 'admin' :
       (p.startsWith('/relatorio') || p.startsWith('/break-even') || p.startsWith('/documentos') || p.startsWith('/api/relatorio') || p.startsWith('/api/break-even')) ? 'relatorios' :

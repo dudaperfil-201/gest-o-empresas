@@ -1,11 +1,11 @@
-import { exigirFinanceiro } from '@/lib/auth'
 import { getComissoes } from '@/app/actions/comissoes'
 import ComissaoManager from './ComissaoManager'
 import Link from 'next/link'
 
-// Comissões do funcionário responsável pela gestão dos imóveis. Só Financeiro.
+// Comissões do funcionário responsável pela gestão dos imóveis.
+// Liberado para TODOS os usuários logados (até segunda ordem). O login já é garantido
+// pelo layout (auth) e pelo proxy.
 export default async function ComissaoPage() {
-  await exigirFinanceiro()
   const { comissoes, pagamentos } = await getComissoes()
 
   return (

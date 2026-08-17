@@ -7,10 +7,8 @@ import GraficoImoveis from './GraficoImoveis'
 export default async function ImoveisPage({ searchParams }: { searchParams: Promise<{ mes?: string; ano?: string }> }) {
   const supabase = await createClient()
 
-  // Bloqueia "somente relatórios" (manda pros relatórios). Comissão é financeiro →
-  // botão só para quem vê o Financeiro.
-  const sessao = await exigirGestao()
-  const podeFinanceiro = sessao.podeFinanceiro
+  // Bloqueia "somente relatórios" (manda pros relatórios).
+  await exigirGestao()
 
   // Quantos WhatsApp de lembrete estão pendentes de envio (para acender o botão).
   const whatsPendentes = await contarWhatsAppPendentes(supabase)
@@ -113,11 +111,9 @@ export default async function ImoveisPage({ searchParams }: { searchParams: Prom
           <Link href="/relatorio-atraso" className="border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors">
             ⚠️ Em Atraso
           </Link>
-          {podeFinanceiro && (
-            <Link href="/comissao" className="border border-purple-200 text-purple-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-50 transition-colors">
-              💰 Comissão
-            </Link>
-          )}
+          <Link href="/comissao" className="border border-purple-200 text-purple-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-50 transition-colors">
+            💰 Comissão
+          </Link>
           <Link href="/empresas/nova" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
             + Nova empresa
           </Link>

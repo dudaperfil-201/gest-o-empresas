@@ -13,9 +13,10 @@ type Resultado = { ok: true } | { ok: false; erro: string }
 
 const PERCENTUAL = 60 // % da comissão sobre o 1º aluguel
 
-async function podeFinanceiro(): Promise<boolean> {
+// Comissão liberada para TODOS os usuários logados (até segunda ordem).
+async function usuarioLogado(): Promise<boolean> {
   const s = await getSessao()
-  return !!s?.podeFinanceiro
+  return !!s
 }
 
 // Carrega comissões e pagamentos. Tolerante: se as tabelas ainda não existirem
@@ -34,7 +35,7 @@ export async function getComissoes(): Promise<{ comissoes: Comissao[]; pagamento
 }
 
 export async function adicionarComissao(descricao: string, valorAluguel: number): Promise<Resultado> {
-  if (!(await podeFinanceiro())) return { ok: false, erro: 'Sem permissão.' }
+  if (!(await usuarioLogado())) return { ok: false, erro: 'Sem permissão.' }
   const aluguel = Number(valorAluguel) || 0
   if (aluguel <= 0) return { ok: false, erro: 'Informe o valor do aluguel.' }
   const supabase = await createClient()
@@ -50,7 +51,7 @@ export async function adicionarComissao(descricao: string, valorAluguel: number)
 }
 
 export async function excluirComissao(id: string): Promise<Resultado> {
-  if (!(await podeFinanceiro())) return { ok: false, erro: 'Sem permissão.' }
+  if (!(await usuarioLogado())) return { ok: false, erro: 'Sem permissão.' }
   const supabase = await createClient()
   const { error } = await supabase.from('comissoes').delete().eq('id', id)
   if (error) return { ok: false, erro: error.message }
@@ -59,7 +60,7 @@ export async function excluirComissao(id: string): Promise<Resultado> {
 }
 
 export async function adicionarPagamento(descricao: string, valor: number, dataPagamento: string | null): Promise<Resultado> {
-  if (!(await podeFinanceiro())) return { ok: false, erro: 'Sem permissão.' }
+  if (!(await usuarioLogado())) return { ok: false, erro: 'Sem permissão.' }
   const v = Number(valor) || 0
   if (v <= 0) return { ok: false, erro: 'Informe o valor pago.' }
   const supabase = await createClient()
@@ -74,7 +75,7 @@ export async function adicionarPagamento(descricao: string, valor: number, dataP
 }
 
 export async function excluirPagamento(id: string): Promise<Resultado> {
-  if (!(await podeFinanceiro())) return { ok: false, erro: 'Sem permissão.' }
+  if (!(await usuarioLogado())) return { ok: false, erro: 'Sem permissão.' }
   const supabase = await createClient()
   const { error } = await supabase.from('comissoes_pagamentos').delete().eq('id', id)
   if (error) return { ok: false, erro: error.message }
