@@ -1,18 +1,15 @@
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { getSessao } from '@/lib/auth'
+import { exigirRelatorios } from '@/lib/auth'
 import { getBreakEven } from '@/lib/financeiro/carregar'
+import AbasRelatorios from '../AbasRelatorios'
 
 const brl = (n: number) => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 // Relatório BREAK EVEN (somente leitura): distribuição de lucros do mês corrente.
 // A edição dos valores (Serginho/Eduardo) continua no painel da barra lateral do
-// Financeiro — aqui é só consulta, para o acesso "Somente Relatórios" e afins.
+// Financeiro — aqui é só consulta, para quem tem a categoria Relatórios.
 export default async function BreakEvenPage() {
-  const sessao = await getSessao()
-  if (!sessao) redirect('/login')
-  // Só quem vê o Financeiro ou é "somente relatórios" acessa este relatório.
-  if (!sessao.podeFinanceiro && !sessao.soRelatorios) redirect('/imoveis')
+  await exigirRelatorios()
 
   const be = await getBreakEven()
   const total = be ? be.serginho + be.eduardo + be.rnxRendimento : 0
@@ -22,13 +19,13 @@ export default async function BreakEvenPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      {!sessao.soRelatorios && (
-        <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-          <Link href="/" className="hover:text-blue-600">Início</Link>
-          <span>/</span>
-          <span className="text-gray-900 font-medium">Break Even</span>
-        </div>
-      )}
+      <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+        <Link href="/" className="hover:text-blue-600">Início</Link>
+        <span>/</span>
+        <span className="text-gray-900 font-medium">Relatórios</span>
+      </div>
+
+      <AbasRelatorios atual="breakeven" />
 
       <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
         <div>

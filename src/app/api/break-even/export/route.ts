@@ -3,11 +3,11 @@ import { createClient } from '@/lib/supabase/server'
 import { getSessao } from '@/lib/auth'
 
 // Exporta o BREAK EVEN (todos os meses salvos) como planilha — tabela HTML com MIME de
-// Excel, igual à exportação do relatório de imóveis. Só para quem vê o Financeiro.
+// Excel, igual à exportação do relatório de imóveis. Para quem tem a categoria Relatórios.
 export async function GET(_request: NextRequest) {
   const sessao = await getSessao()
   if (!sessao) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (!sessao.podeFinanceiro) return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
+  if (!sessao.podeRelatorios) return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
 
   const supabase = await createClient()
   const { data: rows } = await supabase

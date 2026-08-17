@@ -2,65 +2,55 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { criarUsuario, atualizarPermissoes, excluirUsuario, type UsuarioItem } from '@/app/actions/usuarios'
+import { criarUsuario, atualizarPermissoes, excluirUsuario, type UsuarioItem, type Permissoes } from '@/app/actions/usuarios'
 
-type Papel = 'relatorios' | 'imoveis' | 'ambos' | 'admin'
-
-const PAPEL_LABEL: Record<Papel, string> = {
-  relatorios: 'Somente Relatórios',
-  imoveis: 'Imóveis',
-  ambos: 'Imóveis + Financeiro',
-  admin: 'Admin (tudo)',
-}
-
-// Opções do tipo de acesso (base). A Frota é uma caixa extra à parte.
-const TIPOS: { valor: Papel; titulo: string; desc: string }[] = [
-  { valor: 'relatorios', titulo: '📊 Somente Relatórios', desc: 'Só vê os relatórios (Mensal, Em Atraso, Break Even). Não mexe em nada.' },
-  { valor: 'imoveis', titulo: '🏢 Imóveis', desc: 'Gestão de imóveis, inquilinos e pagamentos.' },
-  { valor: 'ambos', titulo: '💰 Imóveis + Financeiro', desc: 'Tudo dos Imóveis mais o módulo Financeiro.' },
-  { valor: 'admin', titulo: '👥 Administrador', desc: 'Vê tudo e gerencia usuários.' },
+// As 5 categorias, na ordem em que aparecem.
+const CATEGORIAS: { chave: keyof Permissoes; titulo: string; desc: string; cor: string }[] = [
+  { chave: 'relatorios', titulo: '📊 Relatórios', desc: 'Relatório Mensal, Em Atraso e Break Even (leitura).', cor: 'accent-blue-600' },
+  { chave: 'imoveis', titulo: '🏢 Imóveis', desc: 'Gestão de imóveis, inquilinos e pagamentos.', cor: 'accent-blue-600' },
+  { chave: 'financeiro', titulo: '💰 Financeiro', desc: 'Módulo financeiro e investimentos.', cor: 'accent-green-600' },
+  { chave: 'frota', titulo: '🚗 Frota', desc: 'Cadastro e gestão dos veículos.', cor: 'accent-amber-600' },
+  { chave: 'administrador', titulo: '👥 Administrador', desc: 'Acesso a TUDO + gerenciar usuários.', cor: 'accent-gray-700' },
 ]
 
-// Resumo curto dos módulos que a pessoa acessa (para a lista).
-function resumoAcessos(u: UsuarioItem): string {
-  if (u.papel === 'relatorios') return '📊 Somente Relatórios'
-  const m = ['🏢 Imóveis']
-  if (u.papel === 'ambos' || u.papel === 'admin') m.push('💰 Financeiro')
-  if (u.frota) m.push('🚗 Frota')
-  if (u.papel === 'admin') m.push('👥 Admin')
-  return m.join(' · ')
-}
+const VAZIO: Permissoes = { relatorios: false, imoveis: false, financeiro: false, frota: false, administrador: false }
 
-const temFrota = (p: Papel) => p === 'imoveis' || p === 'ambos'
+// Resumo curto das categorias liberadas (para a lista).
+function resumo(u: UsuarioItem): string {
+  if (u.administrador) return '👥 Administrador (tudo)'
+  const m: string[] = []
+  if (u.imoveis) m.push('🏢 Imóveis')
+  if (u.financeiro) m.push('💰 Financeiro')
+  if (u.frota) m.push('🚗 Frota')
+  if (u.relatorios) m.push('📊 Relatórios')
+  return m.length ? m.join(' · ') : 'Sem acesso'
+}
 
 export default function UsuariosCliente({ usuarios }: { usuarios: UsuarioItem[] }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
-  const [criado, setCriado] = useState<{ email: string; senha: string; papel: Papel; frota: boolean } | null>(null)
+  const [criado, setCriado] = useState<{ email: string; senha: string; perms: Permissoes } | null>(null)
 
-  // Estado do formulário de criação.
-  const [novoTipo, setNovoTipo] = useState<Papel>('imoveis')
-  const [novoFrota, setNovoFrota] = useState(false)
+  // Permissões do formulário de criação.
+  const [novo, setNovo] = useState<Permissoes>({ ...VAZIO, imoveis: true, relatorios: true })
 
-  // Painel de edição de permissões (por pessoa).
+  // Painel de edição.
   const [editando, setEditando] = useState<UsuarioItem | null>(null)
-  const [edTipo, setEdTipo] = useState<Papel>('imoveis')
-  const [edFrota, setEdFrota] = useState(false)
+  const [edPerms, setEdPerms] = useState<Permissoes>({ ...VAZIO })
   const [salvando, setSalvando] = useState(false)
 
   function abrirEdicao(u: UsuarioItem) {
     setErro('')
     setEditando(u)
-    setEdTipo(u.papel)
-    setEdFrota(u.frota)
+    setEdPerms({ relatorios: u.relatorios, imoveis: u.imoveis, financeiro: u.financeiro, frota: u.frota, administrador: u.administrador })
   }
 
   async function salvarEdicao() {
     if (!editando) return
     setSalvando(true)
     setErro('')
-    const res = await atualizarPermissoes(editando.id, edTipo, temFrota(edTipo) ? edFrota : false)
+    const res = await atualizarPermissoes(editando.id, edPerms)
     setSalvando(false)
     if (!res.ok) { setErro(res.erro); return }
     setEditando(null)
@@ -73,14 +63,12 @@ export default function UsuariosCliente({ usuarios }: { usuarios: UsuarioItem[] 
     setLoading(true)
     const form = e.currentTarget
     const fd = new FormData(form)
-    const frota = temFrota(novoTipo) && novoFrota
     try {
       const res = await criarUsuario(fd)
       if (res.ok) {
-        setCriado({ email: (fd.get('email') as string).trim().toLowerCase(), senha: fd.get('senha') as string, papel: novoTipo, frota })
+        setCriado({ email: (fd.get('email') as string).trim().toLowerCase(), senha: fd.get('senha') as string, perms: novo })
         form.reset()
-        setNovoTipo('imoveis')
-        setNovoFrota(false)
+        setNovo({ ...VAZIO, imoveis: true, relatorios: true })
         router.refresh()
       } else {
         setErro(res.erro)
@@ -100,31 +88,36 @@ export default function UsuariosCliente({ usuarios }: { usuarios: UsuarioItem[] 
 
   const link = typeof window !== 'undefined' ? window.location.origin : ''
 
-  // Bloco reutilizável de escolha do tipo + Frota (usado na criação e na edição).
-  const seletorTipo = (tipo: Papel, setTipo: (p: Papel) => void, frota: boolean, setFrota: (b: boolean) => void, comNames: boolean) => (
+  // Bloco reutilizável das 5 caixinhas. `comNames` gera os inputs com name (para o
+  // FormData da criação). Quando ADMINISTRADOR está marcado, as outras aparecem
+  // marcadas e travadas (admin = tudo), mas o estado real das outras é preservado.
+  const caixas = (perms: Permissoes, setPerms: (p: Permissoes) => void, comNames: boolean) => (
     <div className="flex flex-col gap-2">
-      {TIPOS.map(t => (
-        <label key={t.valor} className={`flex items-start gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${tipo === t.valor ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}>
-          <input
-            type="radio" {...(comNames ? { name: 'tipo' } : {})} value={t.valor}
-            checked={tipo === t.valor} onChange={() => setTipo(t.valor)}
-            className="mt-0.5 w-4 h-4 accent-blue-600"
-          />
-          <span className="text-sm">
-            <span className="font-medium text-gray-800">{t.titulo}</span>
-            <span className="block text-xs text-gray-500">{t.desc}</span>
-          </span>
-        </label>
+      {CATEGORIAS.map(cat => {
+        const ehAdmin = cat.chave === 'administrador'
+        const travado = !ehAdmin && perms.administrador // admin implica tudo
+        const marcado = ehAdmin ? perms.administrador : (perms.administrador || perms[cat.chave])
+        return (
+          <label key={cat.chave} className={`flex items-start gap-2 rounded-lg border px-3 py-2 transition-colors ${marcado ? 'border-blue-300 bg-blue-50/50' : 'border-gray-200'} ${travado ? 'opacity-70' : 'cursor-pointer hover:bg-gray-50'}`}>
+            <input
+              type="checkbox"
+              {...(comNames ? { name: cat.chave } : {})}
+              checked={marcado}
+              disabled={travado}
+              onChange={e => setPerms({ ...perms, [cat.chave]: e.target.checked })}
+              className={`mt-0.5 w-4 h-4 ${cat.cor}`}
+            />
+            <span className="text-sm">
+              <span className="font-medium text-gray-800">{cat.titulo}</span>
+              <span className="block text-xs text-gray-500">{cat.desc}{travado && ' — incluído no Administrador'}</span>
+            </span>
+          </label>
+        )
+      })}
+      {/* Quando admin está marcado, garante que o FormData envie as outras como ligadas. */}
+      {comNames && perms.administrador && CATEGORIAS.filter(c => c.chave !== 'administrador').map(c => (
+        <input key={c.chave} type="hidden" name={c.chave} value="on" />
       ))}
-      <label className={`flex items-center gap-2 mt-1 text-sm ${temFrota(tipo) ? 'text-gray-700 cursor-pointer' : 'text-gray-300'}`}>
-        <input
-          type="checkbox" {...(comNames ? { name: 'frota' } : {})}
-          checked={temFrota(tipo) ? frota : false} disabled={!temFrota(tipo)}
-          onChange={e => setFrota(e.target.checked)}
-          className="w-4 h-4 accent-amber-600"
-        />
-        🚗 Frota {!temFrota(tipo) && <span className="text-xs text-gray-300">(não se aplica)</span>}
-      </label>
     </div>
   )
 
@@ -140,7 +133,7 @@ export default function UsuariosCliente({ usuarios }: { usuarios: UsuarioItem[] 
             <p><b>Link:</b> {link}</p>
             <p><b>E-mail:</b> {criado.email}</p>
             <p><b>Senha:</b> {criado.senha}</p>
-            <p><b>Permissão:</b> {PAPEL_LABEL[criado.papel]}{criado.frota ? ' + 🚗 Frota' : ''}</p>
+            <p><b>Acessos:</b> {resumo({ ...criado.perms, id: '', email: '', nome: '', ehVoce: false })}</p>
           </div>
           <button
             onClick={() => navigator.clipboard?.writeText(`Acesse: ${link}\nE-mail: ${criado.email}\nSenha: ${criado.senha}`)}
@@ -169,10 +162,9 @@ export default function UsuariosCliente({ usuarios }: { usuarios: UsuarioItem[] 
           </div>
         </div>
 
-        {/* Tipo de acesso */}
         <div className="mt-4">
-          <label className="block text-xs font-medium text-gray-600 mb-2">Tipo de acesso</label>
-          {seletorTipo(novoTipo, setNovoTipo, novoFrota, setNovoFrota, true)}
+          <label className="block text-xs font-medium text-gray-600 mb-2">Categorias liberadas</label>
+          {caixas(novo, setNovo, true)}
         </div>
 
         <button type="submit" disabled={loading} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-60">
@@ -189,7 +181,7 @@ export default function UsuariosCliente({ usuarios }: { usuarios: UsuarioItem[] 
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{u.nome || u.email}</p>
                 <p className="text-xs text-gray-500 truncate">{u.email}</p>
-                <p className="text-xs text-gray-400 mt-0.5 truncate">{resumoAcessos(u)}</p>
+                <p className="text-xs text-gray-400 mt-0.5 truncate">{resumo(u)}</p>
               </div>
               {u.ehVoce ? (
                 <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Você</span>
@@ -215,7 +207,7 @@ export default function UsuariosCliente({ usuarios }: { usuarios: UsuarioItem[] 
             <h3 className="font-semibold text-gray-900">Editar permissões</h3>
             <p className="text-sm text-gray-500 mt-0.5 truncate mb-4">{editando.nome || editando.email}</p>
 
-            {seletorTipo(edTipo, setEdTipo, edFrota, setEdFrota, false)}
+            {caixas(edPerms, setEdPerms, false)}
 
             <div className="flex items-center justify-end gap-2 mt-5">
               <button onClick={() => setEditando(null)} disabled={salvando} className="px-4 py-2 text-sm text-gray-600 rounded-lg hover:bg-gray-100">Cancelar</button>

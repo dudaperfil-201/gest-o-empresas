@@ -38,21 +38,39 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
-  // Usuário "Somente Relatórios": só pode navegar nos relatórios (Mensal, Em Atraso,
-  // Break Even) e nos exports de Excel deles. Qualquer outra rota volta pra /relatorio.
+  // Controle de acesso por MÓDULO (permissões independentes na tabela usuarios).
+  // Feito aqui no proxy para cobrir também páginas client (ex.: /empresas/nova).
+  // ADMINISTRADOR (ou o dono) enxerga tudo. Rota sem permissão → primeira disponível.
   if (user) {
     const { data: perfil } = await supabase
       .from('usuarios')
-      .select('papel')
+      .select('relatorios, imoveis, financeiro, frota, administrador')
       .eq('id', user.id)
       .maybeSingle()
-    if (perfil?.papel === 'relatorios') {
-      const permitido =
-        pathname.startsWith('/relatorio') ||        // /relatorio e /relatorio-atraso
-        pathname.startsWith('/break-even') ||
-        pathname.startsWith('/api/relatorio') ||    // exports do mensal e do atraso
-        pathname.startsWith('/api/break-even')
-      if (!permitido) return NextResponse.redirect(new URL('/relatorio', request.url))
+    const OWNER = 'dudaperfil@gmail.com'
+    const ehAdmin = perfil?.administrador === true || user.email === OWNER
+    const perms = {
+      imoveis: ehAdmin || perfil?.imoveis === true,
+      financeiro: ehAdmin || perfil?.financeiro === true,
+      frota: ehAdmin || perfil?.frota === true,
+      relatorios: ehAdmin || perfil?.relatorios === true,
+    }
+
+    const p = pathname
+    const precisa: keyof typeof perms | 'admin' | null =
+      (p.startsWith('/imoveis') || p.startsWith('/empresas') || p.startsWith('/lembretes')) ? 'imoveis' :
+      (p.startsWith('/financeiro') || p.startsWith('/comissao')) ? 'financeiro' :
+      p.startsWith('/frota') ? 'frota' :
+      p.startsWith('/usuarios') ? 'admin' :
+      (p.startsWith('/relatorio') || p.startsWith('/break-even') || p.startsWith('/api/relatorio') || p.startsWith('/api/break-even')) ? 'relatorios' :
+      null
+
+    if (precisa) {
+      const liberado = precisa === 'admin' ? ehAdmin : perms[precisa]
+      if (!liberado) {
+        const destino = perms.imoveis ? '/imoveis' : perms.financeiro ? '/financeiro' : perms.frota ? '/frota' : perms.relatorios ? '/relatorio' : '/'
+        if (destino !== p) return NextResponse.redirect(new URL(destino, request.url))
+      }
     }
   }
 

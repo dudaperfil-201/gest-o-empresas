@@ -1,11 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { carregarRelatorio } from '@/lib/relatorio'
-import { getSessao } from '@/lib/auth'
+import { exigirRelatorios } from '@/lib/auth'
+import AbasRelatorios from '../AbasRelatorios'
 import Link from 'next/link'
 
 export default async function RelatorioPage({ searchParams }: { searchParams: Promise<{ mes?: string; ano?: string }> }) {
+  await exigirRelatorios()
   const supabase = await createClient()
-  const sessao = await getSessao()
 
   // Mês exibido: vem da URL (?mes=&ano=) ou, se não houver, o mês atual.
   const sp = await searchParams
@@ -27,33 +28,24 @@ export default async function RelatorioPage({ searchParams }: { searchParams: Pr
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-        {!sessao?.soRelatorios && (
-          <>
-            <Link href="/" className="hover:text-blue-600">Início</Link>
-            <span>/</span>
-            <Link href="/imoveis" className="hover:text-blue-600">Imóveis</Link>
-            <span>/</span>
-          </>
-        )}
-        <span className="text-gray-900 font-medium">Relatório</span>
+        <Link href="/" className="hover:text-blue-600">Início</Link>
+        <span>/</span>
+        <span className="text-gray-900 font-medium">Relatórios</span>
       </div>
+
+      <AbasRelatorios atual="mensal" />
 
       <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Relatório Mensal</h2>
           <p className="text-sm text-gray-500 capitalize mt-0.5">{nomeMes}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href="/relatorio-atraso" className="border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors">
-            ⚠️ Em Atraso
-          </Link>
-          <a
-            href={`/api/relatorio/export?mes=${mesAtual}&ano=${anoAtual}`}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
-          >
-            📥 Exportar Excel
-          </a>
-        </div>
+        <a
+          href={`/api/relatorio/export?mes=${mesAtual}&ano=${anoAtual}`}
+          className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+        >
+          📥 Exportar Excel
+        </a>
       </div>
 
       {/* Navegação de meses */}
