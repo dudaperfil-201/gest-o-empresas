@@ -99,6 +99,16 @@ export const CARTEIRAS: Carteira[] = [
       { banco: 'Itaú', investimentos: [
         { nome: 'Saldo', valores: [523413.09, 1515205.58, 190041.64, 621564.47, 1173647.88, 2196282.83] },
       ] },
+      // Câmbio em aberto: a IMG é EXPORTADORA, então o câmbio (US$/€ a converter) é
+      // patrimônio dela e mora aqui dentro (antes era a carteira separada 'cambio-aberto').
+      { banco: 'Câmbio', investimentos: [
+        { nome: 'Dólar', moeda: 'US$',
+          valores: [3535454.53, 2350414.73, 3580268.72, 4014214.26, 4978794.34, 3859374.36],
+          valoresMoeda: [678590.12, 448552.43, 695197.81, 819227.40, 985899.87, 756740.07] },
+        { nome: 'Euro', moeda: '€',
+          valores: [241162.15, 168598.56, 166082.16, 161049.37, 163565.77, 327619.63],
+          valoresMoeda: [38959.96, 27959.96, 27959.96, 27959.96, 27959.96, 55528.75] },
+      ] },
     ],
   },
   {
@@ -239,18 +249,6 @@ export const CARTEIRAS: Carteira[] = [
         { nome: 'Saldo', moeda: 'US$',
           valores: [599990.22, 603445.05, 613680.54, 583890.22, 601764.41, 601764.41],
           valoresMoeda: [115161.27, 115161.27, 119161.27, 119161.27, 119161.27, 119161.27] },
-      ] },
-    ],
-  },
-  {
-    slug: 'cambio-aberto', nome: 'Câmbio em aberto (IMG)', tipo: 'internacional', contas: [
-      { banco: 'Câmbio', investimentos: [
-        { nome: 'Dólar', moeda: 'US$',
-          valores: [3535454.53, 2350414.73, 3580268.72, 4014214.26, 4978794.34, 3859374.36],
-          valoresMoeda: [678590.12, 448552.43, 695197.81, 819227.40, 985899.87, 756740.07] },
-        { nome: 'Euro', moeda: '€',
-          valores: [241162.15, 168598.56, 166082.16, 161049.37, 163565.77, 327619.63],
-          valoresMoeda: [38959.96, 27959.96, 27959.96, 27959.96, 27959.96, 55528.75] },
       ] },
     ],
   },
