@@ -204,6 +204,16 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {internacional.map(Card)}
       </div>
+
+      {/* Câmbios da La Jolla — botão no canto inferior esquerdo da seção internacional.
+          Diferente da carteira "Câmbio em aberto (IMG)": aqui ficam as OPERAÇÕES de
+          câmbio (R$→US$) que abastecem a conta, com data, quem fez e comprovantes. */}
+      <div className="mt-4">
+        <Link href="/financeiro/cambios"
+          className="inline-flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:border-green-300 hover:shadow-sm transition-all">
+          💱 CÂMBIOS
+        </Link>
+      </div>
     </div>
   )
 }
