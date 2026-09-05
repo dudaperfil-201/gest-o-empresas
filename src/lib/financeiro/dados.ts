@@ -141,8 +141,12 @@ export const CARTEIRAS: Carteira[] = [
   },
   {
     slug: 'fidic-golden-sky', nome: 'Fidic Golden Sky', tipo: 'brasil', contas: [
+      // Mesma conta (Banco Finaxis), duas linhas: CAIXA = saldo líquido em conta
+      // corrente (histórico); RECEBÍVEIS FUTUROS = FIM Golden Sky CP (extrato Finaxis,
+      // CNPJ 49.411.383/0001-80). São coisas distintas dentro do mesmo fundo/família.
       { banco: 'Banco Finaxis', investimentos: [
-        { nome: 'Saldo', valores: [2003200.98, 507335.27, 1481074.90, 646469.13, 1055220.26, 632974.85] },
+        { nome: 'Caixa', valores: [2003200.98, 507335.27, 1481074.90, 646469.13, 1055220.26, 632974.85] },
+        { nome: 'Recebíveis Futuros', valores: [] },
       ] },
     ],
   },
