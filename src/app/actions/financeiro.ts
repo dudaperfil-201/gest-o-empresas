@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { exigirFinanceiro } from '@/lib/auth'
+import { parseSaldoDiario, type ResultadoImport } from '@/lib/financeiro/importarSaldoDiario'
 
 export type ItemMes = {
   carteira_slug: string
@@ -42,6 +43,31 @@ export async function salvarMesFinanceiro(
     .upsert(rows, { onConflict: 'carteira_slug,banco,investimento,ano,mes' })
   if (error) return { ok: false, erro: error.message }
   return { ok: true, gravados: rows.length }
+}
+
+// Lê a planilha "Saldo Diário" (.xls) enviada e devolve os saldos bancários do último mês
+// FECHADO, mapeados na estrutura do Financeiro — para o usuário conferir e salvar. Não grava
+// nada: só interpreta o arquivo (o salvar continua sendo o salvarMesFinanceiro).
+export async function importarSaldoDiarioAction(
+  formData: FormData,
+): Promise<{ ok: true; resultado: ResultadoImport } | { ok: false; erro: string }> {
+  await exigirFinanceiro()
+  const arquivo = formData.get('arquivo')
+  if (!(arquivo instanceof File) || arquivo.size === 0) return { ok: false, erro: 'Nenhum arquivo enviado.' }
+  const nome = arquivo.name.toLowerCase()
+  if (!nome.endsWith('.xls') && !nome.endsWith('.xlsx')) {
+    return { ok: false, erro: 'Envie a planilha em .xls ou .xlsx.' }
+  }
+  try {
+    const buf = Buffer.from(await arquivo.arrayBuffer())
+    const resultado = parseSaldoDiario(buf)
+    if (resultado.itens.length === 0) {
+      return { ok: false, erro: `Li a aba "${resultado.aba}", mas não encontrei saldos reconhecíveis. Confira se é a planilha certa.` }
+    }
+    return { ok: true, resultado }
+  } catch (e) {
+    return { ok: false, erro: e instanceof Error ? e.message : 'Falha ao ler a planilha.' }
+  }
 }
 
 // Salva (upsert) o Break Even de um mês: os rendimentos digitados (Serginho/Eduardo) e o

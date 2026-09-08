@@ -1,9 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { salvarMesFinanceiro, type ItemMes } from '@/app/actions/financeiro'
+import { salvarMesFinanceiro, importarSaldoDiarioAction, type ItemMes } from '@/app/actions/financeiro'
 
 type Mes = { abrev: string; nome: string; ano: number; mes: number }
 type Item = {
@@ -39,26 +39,87 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
   const [valoresMoeda, setValoresMoeda] = useState<Record<string, string>>({})
   const [iniciado, setIniciado] = useState<number | null>(null)
   const [salvando, setSalvando] = useState(false)
+  const [importando, setImportando] = useState(false)
+  const [destaque, setDestaque] = useState<Set<string>>(new Set())
   const [msg, setMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
-  // Quando a seleção muda: mês existente carrega os valores dele; mês NOVO começa ZERADO
-  // (campos vazios), para preencher com os dados do extrato.
-  if (iniciado !== sel) {
+  // Valores base de um mês: mês existente carrega os dele; mês NOVO começa ZERADO.
+  const baseDoMes = (idx: number, ehNovo: boolean) => {
     const nv: Record<string, string> = {}
     const nvm: Record<string, string> = {}
     for (const it of itens) {
       const key = chave(it)
-      if (atual.novo) { nv[key] = ''; nvm[key] = '' }
+      if (ehNovo) { nv[key] = ''; nvm[key] = '' }
       else {
-        const v = it.valores[sel]
+        const v = it.valores[idx]
         nv[key] = v != null ? String(v) : ''
-        const vm = it.valoresMoeda[sel]
+        const vm = it.valoresMoeda[idx]
         nvm[key] = vm != null ? String(vm) : ''
       }
     }
+    return { nv, nvm }
+  }
+
+  // Quando a seleção muda, recarrega os valores base daquele mês.
+  if (iniciado !== sel) {
+    const { nv, nvm } = baseDoMes(sel, atual.novo)
     setValores(nv)
     setValoresMoeda(nvm)
+    setDestaque(new Set())
     setIniciado(sel)
+  }
+
+  // Importa a planilha "Saldo Diário": lê o último mês fechado, seleciona esse mês e
+  // pré-preenche os saldos bancários (o usuário confere e clica em "Salvar mês").
+  async function importar(file: File) {
+    setImportando(true)
+    setMsg(null)
+    try {
+      const fd = new FormData()
+      fd.append('arquivo', file)
+      const r = await importarSaldoDiarioAction(fd)
+      if (!r.ok) { setMsg({ tipo: 'erro', texto: r.erro }); return }
+      const { ano, mes, itens: importados, dataFecho, parcial, ignorados } = r.resultado
+
+      const idx = navMeses.findIndex(m => m.ano === ano && m.mes === mes)
+      if (idx < 0) {
+        setMsg({ tipo: 'erro', texto: `A planilha trouxe ${String(mes).padStart(2, '0')}/${ano}, mas esse mês não está na navegação. Lance o mês anterior primeiro.` })
+        return
+      }
+
+      // Base do mês escolhido + sobreposição dos valores importados.
+      const { nv, nvm } = baseDoMes(idx, navMeses[idx].novo)
+      const keysApp = new Set(itens.map(chave))
+      const novoDestaque = new Set<string>()
+      const naoEncontrados: string[] = []
+      for (const imp of importados) {
+        const key = `${imp.carteira_slug}|${imp.banco}|${imp.investimento}`
+        if (!keysApp.has(key)) { naoEncontrados.push(imp.rotulo); continue }
+        nv[key] = String(imp.valor)
+        if (imp.valor_moeda != null) nvm[key] = String(imp.valor_moeda)
+        novoDestaque.add(key)
+      }
+
+      setSel(idx)
+      setIniciado(idx) // impede o reset do bloco acima de apagar o que acabamos de preencher
+      setValores(nv)
+      setValoresMoeda(nvm)
+      setDestaque(novoDestaque)
+
+      const avisos = [
+        parcial ? '⚠️ mês ainda em andamento (sem fecho no último dia)' : null,
+        naoEncontrados.length ? `${naoEncontrados.length} linha(s) sem correspondência: ${naoEncontrados.join(', ')}` : null,
+        ignorados.length ? `${ignorados.length} ignorada(s) (investimento)` : null,
+      ].filter(Boolean).join(' · ')
+      setMsg({
+        tipo: 'ok',
+        texto: `Importados ${novoDestaque.size} saldos de ${NOMES_MES[mes - 1]}/${ano}${dataFecho ? ` (fecho ${dataFecho})` : ''}. Confira os campos destacados e clique em Salvar mês.${avisos ? ` — ${avisos}` : ''}`,
+      })
+    } finally {
+      setImportando(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
   }
 
   const grupos = useMemo(() => {
@@ -111,6 +172,28 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
 
       <h2 className="text-xl font-semibold text-gray-900 mb-1">Lançar / editar Financeiro</h2>
       <p className="text-sm text-gray-500 mb-4">Use as setas para correr os meses. O mês novo vem zerado — preencha com os dados do extrato e salve.</p>
+
+      {/* Importar planilha Saldo Diário (.xls) — funciona no computador e no celular */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-blue-900">Importar Saldo Diário (.xls)</p>
+          <p className="text-xs text-blue-700">Suba a planilha da controladoria: eu leio o último mês fechado e preencho os saldos bancários pra você conferir.</p>
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) importar(f) }}
+        />
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={importando}
+          className="shrink-0 bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-60"
+        >
+          {importando ? 'Lendo planilha…' : '📥 Escolher arquivo'}
+        </button>
+      </div>
 
       {/* Faixa verde com navegação de mês (mesma cara do Financeiro) */}
       <div className="bg-green-600 text-white rounded-xl p-5 mb-4 flex items-center justify-between gap-3 text-xl font-bold tracking-wide">
@@ -168,7 +251,7 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
                                 value={valoresMoeda[key] ?? ''}
                                 onChange={e => setValoresMoeda(p => ({ ...p, [key]: e.target.value }))}
                                 placeholder="moeda"
-                                className="w-28 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-right focus:outline-none focus:ring-2 focus:ring-green-200"
+                                className={`w-28 px-2 py-1.5 border rounded-lg text-sm text-right focus:outline-none focus:ring-2 focus:ring-green-200 ${destaque.has(key) ? 'border-blue-400 bg-blue-50' : 'border-gray-300'}`}
                               />
                             </div>
                           )}
@@ -179,7 +262,7 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
                               value={valores[key] ?? ''}
                               onChange={e => setValores(p => ({ ...p, [key]: e.target.value }))}
                               placeholder="0,00"
-                              className="w-36 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-right focus:outline-none focus:ring-2 focus:ring-green-200"
+                              className={`w-36 px-2 py-1.5 border rounded-lg text-sm text-right focus:outline-none focus:ring-2 focus:ring-green-200 ${destaque.has(key) ? 'border-blue-400 bg-blue-50' : 'border-gray-300'}`}
                             />
                           </div>
                         </div>
