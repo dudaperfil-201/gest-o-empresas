@@ -70,8 +70,8 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
     setIniciado(sel)
   }
 
-  // Importa a planilha "Saldo Diário": lê o último mês fechado, seleciona esse mês e
-  // pré-preenche os saldos bancários (o usuário confere e clica em "Salvar mês").
+  // Importa a planilha "Saldo Diário": lê o último mês fechado, preenche os saldos em
+  // aberto e JÁ SALVA automaticamente (só os que estavam vazios — não toca no resto).
   async function importar(file: File) {
     setImportando(true)
     setMsg(null)
@@ -94,6 +94,7 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
       const keysApp = new Set(itens.map(chave))
       const novoDestaque = new Set<string>()
       const naoEncontrados: string[] = []
+      const aSalvar: ItemMes[] = []
       let mantidos = 0
       for (const imp of importados) {
         const key = `${imp.carteira_slug}|${imp.banco}|${imp.investimento}`
@@ -102,6 +103,7 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
         nv[key] = String(imp.valor)
         if (imp.valor_moeda != null) nvm[key] = String(imp.valor_moeda)
         novoDestaque.add(key)
+        aSalvar.push({ carteira_slug: imp.carteira_slug, banco: imp.banco, investimento: imp.investimento, valor: imp.valor, valor_moeda: imp.valor_moeda })
       }
 
       setSel(idx)
@@ -116,10 +118,20 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
         naoEncontrados.length ? `${naoEncontrados.length} sem correspondência: ${naoEncontrados.join(', ')}` : null,
         ignorados.length ? `${ignorados.length} ignorada(s) (investimento)` : null,
       ].filter(Boolean).join(' · ')
-      const resumo = novoDestaque.size > 0
-        ? `Preenchi ${novoDestaque.size} saldo(s) em aberto de ${NOMES_MES[mes - 1]}/${ano}${dataFecho ? ` (fecho ${dataFecho})` : ''}. Confira os campos destacados e clique em Salvar mês.`
-        : `Nada a preencher em ${NOMES_MES[mes - 1]}/${ano}: os saldos da planilha já estavam lançados.`
-      setMsg({ tipo: 'ok', texto: `${resumo}${avisos ? ` — ${avisos}` : ''}` })
+
+      if (aSalvar.length === 0) {
+        setMsg({ tipo: 'ok', texto: `Nada a preencher em ${NOMES_MES[mes - 1]}/${ano}: os saldos da planilha já estavam lançados.${avisos ? ` — ${avisos}` : ''}` })
+        return
+      }
+
+      // Salva na hora — importar já é salvar. Não depende de o usuário lembrar do botão.
+      const s = await salvarMesFinanceiro(ano, mes, aSalvar)
+      if (!s.ok) {
+        setMsg({ tipo: 'erro', texto: `Preenchi ${aSalvar.length} saldo(s), mas falhou ao salvar: ${s.erro}. Confira e clique em Salvar mês.` })
+        return
+      }
+      setMsg({ tipo: 'ok', texto: `✅ Importei e salvei ${s.gravados} saldo(s) em aberto de ${NOMES_MES[mes - 1]}/${ano}${dataFecho ? ` (fecho ${dataFecho})` : ''}.${avisos ? ` — ${avisos}` : ''}` })
+      router.refresh()
     } finally {
       setImportando(false)
       if (fileRef.current) fileRef.current.value = ''
@@ -181,7 +193,7 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="flex-1">
           <p className="text-sm font-semibold text-blue-900">Importar Saldo Diário (.xls)</p>
-          <p className="text-xs text-blue-700">Suba a planilha da controladoria: eu leio o último mês fechado e preencho os saldos bancários pra você conferir.</p>
+          <p className="text-xs text-blue-700">Suba a planilha da controladoria: eu leio o último mês fechado, preencho os saldos em aberto e <b>salvo automaticamente</b> (não mexo no que já estava lançado).</p>
         </div>
         <input
           ref={fileRef}
