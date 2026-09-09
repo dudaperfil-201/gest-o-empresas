@@ -154,20 +154,10 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
     }
   }
 
-  // Importa um extrato XP (PDF) para a conta escolhida: Saldo líquido → linha principal
-  // (a que não é "Em conta"); Saldo em conta → linha "Em conta". Preenche e JÁ SALVA.
+  // Importa um extrato em PDF. Detecta o formato automaticamente:
+  //  - La Jolla (Itaú Miami): preenche a carteira La Jolla ATIVO POR ATIVO (US$ + R$).
+  //  - XP: preenche a CONTA escolhida (Saldo líquido → linha principal; em conta → "Em conta").
   async function importarPdf(file: File) {
-    if (!contaPdf) { setMsg({ tipo: 'erro', texto: 'Escolha a conta do extrato primeiro.' }); return }
-    const [slug, banco] = contaPdf.split('|')
-    const linhas = itens.filter(it => it.slug === slug && it.banco === banco)
-    const emContaItem = linhas.find(it => /em\s*conta/i.test(it.nome))
-    const principais = linhas.filter(it => it !== emContaItem)
-    if (principais.length !== 1) {
-      setMsg({ tipo: 'erro', texto: `A conta "${contasPdf.find(c => c.valor === contaPdf)?.rotulo}" tem ${principais.length} linhas além de "Em conta" — o modo Total não sabe em qual lançar. Use o preenchimento manual nessa conta.` })
-      return
-    }
-    const principal = principais[0]
-
     setImportando(true)
     setMsg(null)
     try {
@@ -175,39 +165,65 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
       fd.append('arquivo', file)
       const r = await importarExtratoPdfAction(fd)
       if (!r.ok) { setMsg({ tipo: 'erro', texto: r.erro }); return }
-      const { ano, mes, dataPosicao, saldoLiquido, saldoEmConta } = r.resultado
 
+      // ————— La Jolla: por ativo —————
+      if (r.tipo === 'lajolla') {
+        const { ano, mes, dataPosicao, cambioBRL, itens: ativos } = r.resultado
+        const idx = navMeses.findIndex(m => m.ano === ano && m.mes === mes)
+        if (idx < 0) {
+          setMsg({ tipo: 'erro', texto: `O statement é de ${String(mes).padStart(2, '0')}/${ano}, mas esse mês não está na navegação. Lance o mês anterior primeiro.` })
+          return
+        }
+        const { nv, nvm } = baseDoMes(idx, navMeses[idx].novo)
+        const novoDestaque = new Set<string>()
+        const aSalvar: ItemMes[] = []
+        const novos: string[] = []
+        for (const a of ativos) {
+          const key = `la-jolla|${a.banco}|${a.investimento}`
+          nv[key] = String(a.valor); nvm[key] = String(a.valorMoeda); novoDestaque.add(key)
+          aSalvar.push({ carteira_slug: 'la-jolla', banco: a.banco, investimento: a.investimento, valor: a.valor, valor_moeda: a.valorMoeda })
+          if (a.novo) novos.push(`${a.banco} · ${a.investimento}`)
+        }
+        setSel(idx); setIniciado(idx); setValores(nv); setValoresMoeda(nvm); setDestaque(novoDestaque)
+        const s = await salvarMesFinanceiro(ano, mes, aSalvar)
+        if (!s.ok) { setMsg({ tipo: 'erro', texto: `Li o statement, mas falhou ao salvar: ${s.erro}.` }); return }
+        const extra = novos.length ? ` — criei ${novos.length} linha(s) nova(s): ${novos.join(', ')}` : ''
+        setMsg({ tipo: 'ok', texto: `✅ La Jolla importada e salva — ${NOMES_MES[mes - 1]}/${ano}${dataPosicao ? ` (posição ${dataPosicao})` : ''}: ${s.gravados} ativos${cambioBRL ? `, câmbio R$ ${cambioBRL.toLocaleString('pt-BR', { minimumFractionDigits: 4 })}` : ''}.${extra}` })
+        router.refresh()
+        return
+      }
+
+      // ————— XP: total + em conta na conta escolhida —————
+      if (!contaPdf) { setMsg({ tipo: 'erro', texto: 'Escolha a conta do extrato XP primeiro.' }); return }
+      const [slug, banco] = contaPdf.split('|')
+      const linhas = itens.filter(it => it.slug === slug && it.banco === banco)
+      const emContaItem = linhas.find(it => /em\s*conta/i.test(it.nome))
+      const principais = linhas.filter(it => it !== emContaItem)
+      if (principais.length !== 1) {
+        setMsg({ tipo: 'erro', texto: `A conta "${contasPdf.find(c => c.valor === contaPdf)?.rotulo}" tem ${principais.length} linhas além de "Em conta" — o modo Total não sabe em qual lançar. Use o preenchimento manual.` })
+        return
+      }
+      const principal = principais[0]
+      const { ano, mes, dataPosicao, saldoLiquido, saldoEmConta } = r.resultado
       const idx = navMeses.findIndex(m => m.ano === ano && m.mes === mes)
       if (idx < 0) {
         setMsg({ tipo: 'erro', texto: `O extrato é de ${String(mes).padStart(2, '0')}/${ano}, mas esse mês não está na navegação. Lance o mês anterior primeiro.` })
         return
       }
-
       const { nv, nvm } = baseDoMes(idx, navMeses[idx].novo)
       const novoDestaque = new Set<string>()
       const aSalvar: ItemMes[] = []
       if (saldoLiquido != null) {
-        const k = chave(principal)
-        nv[k] = String(saldoLiquido); novoDestaque.add(k)
+        const k = chave(principal); nv[k] = String(saldoLiquido); novoDestaque.add(k)
         aSalvar.push({ carteira_slug: slug, banco, investimento: principal.nome, valor: saldoLiquido, valor_moeda: null })
       }
       if (emContaItem && saldoEmConta != null) {
-        const k = chave(emContaItem)
-        nv[k] = String(saldoEmConta); novoDestaque.add(k)
+        const k = chave(emContaItem); nv[k] = String(saldoEmConta); novoDestaque.add(k)
         aSalvar.push({ carteira_slug: slug, banco, investimento: emContaItem.nome, valor: saldoEmConta, valor_moeda: null })
       }
-
-      setSel(idx)
-      setIniciado(idx)
-      setValores(nv)
-      setValoresMoeda(nvm)
-      setDestaque(novoDestaque)
-
+      setSel(idx); setIniciado(idx); setValores(nv); setValoresMoeda(nvm); setDestaque(novoDestaque)
       const s = await salvarMesFinanceiro(ano, mes, aSalvar)
-      if (!s.ok) {
-        setMsg({ tipo: 'erro', texto: `Li o extrato, mas falhou ao salvar: ${s.erro}. Confira os campos e clique em Salvar mês.` })
-        return
-      }
+      if (!s.ok) { setMsg({ tipo: 'erro', texto: `Li o extrato, mas falhou ao salvar: ${s.erro}. Confira e clique em Salvar mês.` }); return }
       const detalhe = `${principal.nome} R$ ${saldoLiquido?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` +
         (emContaItem && saldoEmConta != null ? ` · Em conta R$ ${saldoEmConta.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '')
       setMsg({ tipo: 'ok', texto: `✅ Extrato importado e salvo em ${contasPdf.find(c => c.valor === contaPdf)?.rotulo} — ${NOMES_MES[mes - 1]}/${ano}${dataPosicao ? ` (posição ${dataPosicao})` : ''}: ${detalhe}.` })
@@ -294,7 +310,7 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
       {/* Importar extrato de corretora (PDF) — escolhe a conta e sobe o PDF */}
       <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 mb-4">
         <p className="text-sm font-semibold text-violet-900">Importar extrato (PDF)</p>
-        <p className="text-xs text-violet-700 mb-3">Extrato XP &quot;Posição a mercado&quot;: escolha a conta, suba o PDF e eu preencho o <b>Saldo líquido</b> e o <b>Saldo em conta</b> — e <b>salvo automaticamente</b>.</p>
+        <p className="text-xs text-violet-700 mb-3"><b>XP &quot;Posição a mercado&quot;</b>: escolha a conta e suba o PDF (preencho Saldo líquido + Em conta). <b>La Jolla (Itaú Miami)</b>: pode subir direto — eu detecto e preencho a carteira ativo por ativo (US$ + R$). Salva automaticamente.</p>
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <select
             value={contaPdf}

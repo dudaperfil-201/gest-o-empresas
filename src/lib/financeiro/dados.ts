@@ -243,6 +243,9 @@ export const CARTEIRAS: Carteira[] = [
       { banco: 'Hedge Funds', investimentos: [
         { nome: 'KKR Infrastructure Fund N1A', moeda: 'US$', valores: [], valoresMoeda: [] },
       ] },
+      { banco: 'Balanceados', investimentos: [
+        { nome: 'Itaú AAA Core Cl2 (USD)', moeda: 'US$', valores: [], valoresMoeda: [] },
+      ] },
     ],
   },
   {

@@ -1,8 +1,7 @@
 // Parser de extrato XP "Posição a mercado mensal" (PDF de texto) → saldos do fecho do mês.
 // Extrai Saldo bruto / líquido / em conta e a data da posição. O PDF NÃO identifica a
 // carteira do app (titular mascarado), então o vínculo com a conta é feito na tela (o
-// usuário escolhe a carteira antes de importar).
-import pdfParse from 'pdf-parse/lib/pdf-parse.js'
+// usuário escolhe a carteira antes de importar). Recebe o TEXTO já extraído do PDF.
 
 export type ExtratoPdf = {
   ano: number
@@ -21,8 +20,7 @@ function num(texto: string, re: RegExp): number | null {
   return Number.isFinite(v) ? Math.round(v * 100) / 100 : null
 }
 
-export async function parseExtratoXP(buf: Buffer): Promise<ExtratoPdf> {
-  const { text } = await pdfParse(buf)
+export function parseExtratoXP(text: string): ExtratoPdf {
   // Os rótulos do XP quebram linha no meio ("Saldo \nlíquido") — daí o \s+.
   const saldoBruto = num(text, /Saldo\s+bruto\s*R\$\s*([\d.,]+)/i)
   const saldoLiquido = num(text, /Saldo\s+l[íi]quido\s*R\$\s*([\d.,]+)/i)

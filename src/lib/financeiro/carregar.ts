@@ -140,5 +140,29 @@ export async function carregarFinanceiro(): Promise<{ carteiras: Carteira[]; mes
     })),
   }))
 
+  // Linhas que existem SÓ no banco (ex.: ativos novos criados por importação de extrato):
+  // anexa à carteira correspondente para que apareçam e sejam editáveis.
+  const skelKeys = new Set<string>()
+  for (const c of CARTEIRAS) for (const ct of c.contas) for (const inv of ct.investimentos) skelKeys.add(`${c.slug}|${ct.banco}|${inv.nome}`)
+  const porSlug = new Map(carteiras.map(c => [c.slug, c]))
+  const extrasVistos = new Set<string>()
+  for (const r of rows) {
+    const k = `${r.carteira_slug}|${r.banco}|${r.investimento}`
+    if (skelKeys.has(k) || extrasVistos.has(k)) continue
+    extrasVistos.add(k)
+    const cart = porSlug.get(r.carteira_slug)
+    if (!cart) continue // sem carteira no código → ignora (linha órfã)
+    let conta = cart.contas.find(ct => ct.banco === r.banco)
+    if (!conta) { conta = { banco: r.banco, investimentos: [] }; cart.contas.push(conta) }
+    const temMoeda = r.valor_moeda != null
+    const valores = meses.map(m => { const rr = val(r.carteira_slug, r.banco, r.investimento, m.ano, m.mes); return rr ? Number(rr.valor) : undefined }) as unknown as number[]
+    const inv: Carteira['contas'][number]['investimentos'][number] = { nome: r.investimento, valores }
+    if (temMoeda) {
+      inv.moeda = 'US$'
+      inv.valoresMoeda = meses.map(m => { const rr = val(r.carteira_slug, r.banco, r.investimento, m.ano, m.mes); return rr && rr.valor_moeda != null ? Number(rr.valor_moeda) : undefined }) as unknown as number[]
+    }
+    conta.investimentos.push(inv)
+  }
+
   return { carteiras, meses }
 }
