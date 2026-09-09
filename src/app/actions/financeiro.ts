@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { exigirFinanceiro } from '@/lib/auth'
 import { parseSaldoDiario, type ResultadoImport } from '@/lib/financeiro/importarSaldoDiario'
+import { parseExtratoXP, type ExtratoPdf } from '@/lib/financeiro/importarExtratoPdf'
 
 export type ItemMes = {
   carteira_slug: string
@@ -67,6 +68,27 @@ export async function importarSaldoDiarioAction(
     return { ok: true, resultado }
   } catch (e) {
     return { ok: false, erro: e instanceof Error ? e.message : 'Falha ao ler a planilha.' }
+  }
+}
+
+// Lê um extrato XP (PDF) e devolve os saldos do fecho do mês. Não grava e não decide a
+// carteira — o vínculo com a conta é feito na tela (o usuário escolhe a carteira).
+export async function importarExtratoPdfAction(
+  formData: FormData,
+): Promise<{ ok: true; resultado: ExtratoPdf } | { ok: false; erro: string }> {
+  await exigirFinanceiro()
+  const arquivo = formData.get('arquivo')
+  if (!(arquivo instanceof File) || arquivo.size === 0) return { ok: false, erro: 'Nenhum arquivo enviado.' }
+  if (!arquivo.name.toLowerCase().endsWith('.pdf')) return { ok: false, erro: 'Envie o extrato em PDF.' }
+  try {
+    const buf = Buffer.from(await arquivo.arrayBuffer())
+    const resultado = await parseExtratoXP(buf)
+    if (resultado.saldoLiquido == null || !resultado.mes) {
+      return { ok: false, erro: 'Não consegui ler os saldos deste PDF. Confira se é o extrato XP "Posição a mercado mensal".' }
+    }
+    return { ok: true, resultado }
+  } catch (e) {
+    return { ok: false, erro: e instanceof Error ? e.message : 'Falha ao ler o PDF.' }
   }
 }
 

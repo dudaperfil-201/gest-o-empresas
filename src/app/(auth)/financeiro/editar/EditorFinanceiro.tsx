@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { salvarMesFinanceiro, importarSaldoDiarioAction, type ItemMes } from '@/app/actions/financeiro'
+import { salvarMesFinanceiro, importarSaldoDiarioAction, importarExtratoPdfAction, type ItemMes } from '@/app/actions/financeiro'
 
 type Mes = { abrev: string; nome: string; ano: number; mes: number }
 type Item = {
@@ -43,6 +43,22 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
   const [destaque, setDestaque] = useState<Set<string>>(new Set())
   const [msg, setMsg] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const pdfRef = useRef<HTMLInputElement>(null)
+  // Conta escolhida para o extrato PDF, no formato "slug|banco". Começa no Itaú Serginho se existir.
+  const contasPdf = useMemo(() => {
+    const seen = new Set<string>()
+    const out: { valor: string; rotulo: string }[] = []
+    for (const it of itens) {
+      const v = `${it.slug}|${it.banco}`
+      if (seen.has(v)) continue
+      seen.add(v)
+      out.push({ valor: v, rotulo: `${it.carteiraNome} · ${it.banco}` })
+    }
+    return out
+  }, [itens])
+  const [contaPdf, setContaPdf] = useState<string>(() =>
+    contasPdf.find(c => c.valor === 'itau-serginho|Itaú')?.valor ?? contasPdf[0]?.valor ?? '',
+  )
 
   // Valores base de um mês: mês existente carrega os dele; mês NOVO começa ZERADO.
   const baseDoMes = (idx: number, ehNovo: boolean) => {
@@ -138,6 +154,70 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
     }
   }
 
+  // Importa um extrato XP (PDF) para a conta escolhida: Saldo líquido → linha principal
+  // (a que não é "Em conta"); Saldo em conta → linha "Em conta". Preenche e JÁ SALVA.
+  async function importarPdf(file: File) {
+    if (!contaPdf) { setMsg({ tipo: 'erro', texto: 'Escolha a conta do extrato primeiro.' }); return }
+    const [slug, banco] = contaPdf.split('|')
+    const linhas = itens.filter(it => it.slug === slug && it.banco === banco)
+    const emContaItem = linhas.find(it => /em\s*conta/i.test(it.nome))
+    const principais = linhas.filter(it => it !== emContaItem)
+    if (principais.length !== 1) {
+      setMsg({ tipo: 'erro', texto: `A conta "${contasPdf.find(c => c.valor === contaPdf)?.rotulo}" tem ${principais.length} linhas além de "Em conta" — o modo Total não sabe em qual lançar. Use o preenchimento manual nessa conta.` })
+      return
+    }
+    const principal = principais[0]
+
+    setImportando(true)
+    setMsg(null)
+    try {
+      const fd = new FormData()
+      fd.append('arquivo', file)
+      const r = await importarExtratoPdfAction(fd)
+      if (!r.ok) { setMsg({ tipo: 'erro', texto: r.erro }); return }
+      const { ano, mes, dataPosicao, saldoLiquido, saldoEmConta } = r.resultado
+
+      const idx = navMeses.findIndex(m => m.ano === ano && m.mes === mes)
+      if (idx < 0) {
+        setMsg({ tipo: 'erro', texto: `O extrato é de ${String(mes).padStart(2, '0')}/${ano}, mas esse mês não está na navegação. Lance o mês anterior primeiro.` })
+        return
+      }
+
+      const { nv, nvm } = baseDoMes(idx, navMeses[idx].novo)
+      const novoDestaque = new Set<string>()
+      const aSalvar: ItemMes[] = []
+      if (saldoLiquido != null) {
+        const k = chave(principal)
+        nv[k] = String(saldoLiquido); novoDestaque.add(k)
+        aSalvar.push({ carteira_slug: slug, banco, investimento: principal.nome, valor: saldoLiquido, valor_moeda: null })
+      }
+      if (emContaItem && saldoEmConta != null) {
+        const k = chave(emContaItem)
+        nv[k] = String(saldoEmConta); novoDestaque.add(k)
+        aSalvar.push({ carteira_slug: slug, banco, investimento: emContaItem.nome, valor: saldoEmConta, valor_moeda: null })
+      }
+
+      setSel(idx)
+      setIniciado(idx)
+      setValores(nv)
+      setValoresMoeda(nvm)
+      setDestaque(novoDestaque)
+
+      const s = await salvarMesFinanceiro(ano, mes, aSalvar)
+      if (!s.ok) {
+        setMsg({ tipo: 'erro', texto: `Li o extrato, mas falhou ao salvar: ${s.erro}. Confira os campos e clique em Salvar mês.` })
+        return
+      }
+      const detalhe = `${principal.nome} R$ ${saldoLiquido?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` +
+        (emContaItem && saldoEmConta != null ? ` · Em conta R$ ${saldoEmConta.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '')
+      setMsg({ tipo: 'ok', texto: `✅ Extrato importado e salvo em ${contasPdf.find(c => c.valor === contaPdf)?.rotulo} — ${NOMES_MES[mes - 1]}/${ano}${dataPosicao ? ` (posição ${dataPosicao})` : ''}: ${detalhe}.` })
+      router.refresh()
+    } finally {
+      setImportando(false)
+      if (pdfRef.current) pdfRef.current.value = ''
+    }
+  }
+
   const grupos = useMemo(() => {
     const map = new Map<string, { nome: string; tipo: string; bancos: Map<string, Item[]> }>()
     for (const it of itens) {
@@ -209,6 +289,35 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
         >
           {importando ? 'Lendo planilha…' : '📥 Escolher arquivo'}
         </button>
+      </div>
+
+      {/* Importar extrato de corretora (PDF) — escolhe a conta e sobe o PDF */}
+      <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 mb-4">
+        <p className="text-sm font-semibold text-violet-900">Importar extrato (PDF)</p>
+        <p className="text-xs text-violet-700 mb-3">Extrato XP &quot;Posição a mercado&quot;: escolha a conta, suba o PDF e eu preencho o <b>Saldo líquido</b> e o <b>Saldo em conta</b> — e <b>salvo automaticamente</b>.</p>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <select
+            value={contaPdf}
+            onChange={e => setContaPdf(e.target.value)}
+            className="flex-1 px-3 py-2.5 border border-violet-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-200"
+          >
+            {contasPdf.map(c => <option key={c.valor} value={c.valor}>{c.rotulo}</option>)}
+          </select>
+          <input
+            ref={pdfRef}
+            type="file"
+            accept=".pdf,application/pdf"
+            className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) importarPdf(f) }}
+          />
+          <button
+            onClick={() => pdfRef.current?.click()}
+            disabled={importando}
+            className="shrink-0 bg-violet-600 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-violet-700 transition-colors disabled:opacity-60"
+          >
+            {importando ? 'Lendo PDF…' : '📄 Escolher PDF'}
+          </button>
+        </div>
       </div>
 
       {/* Faixa verde com navegação de mês (mesma cara do Financeiro) */}
