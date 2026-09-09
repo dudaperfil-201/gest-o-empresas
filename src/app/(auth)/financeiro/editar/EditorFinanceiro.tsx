@@ -88,14 +88,17 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
         return
       }
 
-      // Base do mês escolhido + sobreposição dos valores importados.
+      // Base do mês escolhido + sobreposição dos importados — SÓ nos campos VAZIOS.
+      // O que já está preenchido não é tocado (mantém o valor que já havia).
       const { nv, nvm } = baseDoMes(idx, navMeses[idx].novo)
       const keysApp = new Set(itens.map(chave))
       const novoDestaque = new Set<string>()
       const naoEncontrados: string[] = []
+      let mantidos = 0
       for (const imp of importados) {
         const key = `${imp.carteira_slug}|${imp.banco}|${imp.investimento}`
         if (!keysApp.has(key)) { naoEncontrados.push(imp.rotulo); continue }
+        if ((nv[key] ?? '').trim() !== '') { mantidos++; continue } // já preenchido → não mexe
         nv[key] = String(imp.valor)
         if (imp.valor_moeda != null) nvm[key] = String(imp.valor_moeda)
         novoDestaque.add(key)
@@ -109,13 +112,14 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
 
       const avisos = [
         parcial ? '⚠️ mês ainda em andamento (sem fecho no último dia)' : null,
-        naoEncontrados.length ? `${naoEncontrados.length} linha(s) sem correspondência: ${naoEncontrados.join(', ')}` : null,
+        mantidos ? `${mantidos} já preenchido(s) — mantidos` : null,
+        naoEncontrados.length ? `${naoEncontrados.length} sem correspondência: ${naoEncontrados.join(', ')}` : null,
         ignorados.length ? `${ignorados.length} ignorada(s) (investimento)` : null,
       ].filter(Boolean).join(' · ')
-      setMsg({
-        tipo: 'ok',
-        texto: `Importados ${novoDestaque.size} saldos de ${NOMES_MES[mes - 1]}/${ano}${dataFecho ? ` (fecho ${dataFecho})` : ''}. Confira os campos destacados e clique em Salvar mês.${avisos ? ` — ${avisos}` : ''}`,
-      })
+      const resumo = novoDestaque.size > 0
+        ? `Preenchi ${novoDestaque.size} saldo(s) em aberto de ${NOMES_MES[mes - 1]}/${ano}${dataFecho ? ` (fecho ${dataFecho})` : ''}. Confira os campos destacados e clique em Salvar mês.`
+        : `Nada a preencher em ${NOMES_MES[mes - 1]}/${ano}: os saldos da planilha já estavam lançados.`
+      setMsg({ tipo: 'ok', texto: `${resumo}${avisos ? ` — ${avisos}` : ''}` })
     } finally {
       setImportando(false)
       if (fileRef.current) fileRef.current.value = ''
