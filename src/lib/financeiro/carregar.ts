@@ -4,7 +4,7 @@
 // REDE DE SEGURANÇA: se o banco falhar/estiver vazio, cai no código (dados.ts).
 
 import { createClient } from '@/lib/supabase/server'
-import { CARTEIRAS, MESES_2026, saldoCarteira, type Carteira } from './dados'
+import { CARTEIRAS, MESES_2026, saldoCarteira, cambioUsdCarteira, type Carteira } from './dados'
 
 export type Mes = { abrev: string; nome: string; ano: number; mes: number }
 
@@ -162,6 +162,37 @@ export async function carregarFinanceiro(): Promise<{ carteiras: Carteira[]; mes
       inv.valoresMoeda = meses.map(m => { const rr = val(r.carteira_slug, r.banco, r.investimento, m.ano, m.mes); return rr && rr.valor_moeda != null ? Number(rr.valor_moeda) : undefined }) as unknown as number[]
     }
     conta.investimentos.push(inv)
+  }
+
+  // Carteiras CONSTANTES (ex.: imóvel): carrega sozinho os meses sem lançamento, repetindo
+  // o valor em moeda do mês anterior e recalculando o R$ pelo câmbio do mês (derivado da
+  // La Jolla; se indisponível, mantém a razão R$/moeda anterior). Valor vindo do banco vence.
+  const laJolla = carteiras.find(c => c.slug === 'la-jolla')
+  const cent = (n: number) => Math.round(n * 100) / 100
+  for (const cart of carteiras) {
+    if (!cart.constante) continue
+    for (const conta of cart.contas) {
+      for (const inv of conta.investimentos) {
+        let ultMoeda: number | undefined
+        let ultRs: number | undefined
+        for (let i = 0; i < meses.length; i++) {
+          const rs = inv.valores[i]
+          const moeda = inv.valoresMoeda?.[i]
+          if (rs != null || moeda != null) { // mês com lançamento real → referência
+            if (rs != null) ultRs = rs
+            if (moeda != null) ultMoeda = moeda
+            continue
+          }
+          if (ultRs == null && ultMoeda == null) continue // ainda não há de onde repetir
+          const taxa = (laJolla ? cambioUsdCarteira(laJolla, i) : null)
+            ?? (ultMoeda && ultRs ? ultRs / ultMoeda : null)
+          const novoRs = ultMoeda != null && taxa != null ? cent(ultMoeda * taxa) : ultRs
+          inv.valores[i] = novoRs as number
+          if (inv.valoresMoeda) inv.valoresMoeda[i] = (ultMoeda ?? inv.valoresMoeda[i]) as number
+          if (novoRs != null) ultRs = novoRs
+        }
+      }
+    }
   }
 
   return { carteiras, meses }

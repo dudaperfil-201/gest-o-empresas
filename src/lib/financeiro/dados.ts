@@ -20,7 +20,10 @@ export interface Investimento { nome: string; valores: number[]; moeda?: string;
 // aparece/conta nos meses em que realmente tem dado; nunca é cobrada como "aguardando
 // extrato" nos meses seguintes. Ex.: o "Saldo" único da La Jolla, trocado pelas 6 classes.
 export interface Conta { banco: string; investimentos: Investimento[]; historico?: boolean }
-export interface Carteira { slug: string; nome: string; tipo: 'brasil' | 'internacional'; contas: Conta[] }
+// `constante: true` = carteira de valor que não muda por conta própria (ex.: imóvel).
+// O app CARREGA sozinho cada mês novo: repete o valor em moeda do mês anterior e recalcula
+// o R$ pelo câmbio do mês (derivado da La Jolla). Um valor lançado à mão prevalece.
+export interface Carteira { slug: string; nome: string; tipo: 'brasil' | 'internacional'; contas: Conta[]; constante?: boolean }
 
 export const CARTEIRAS: Carteira[] = [
   {
@@ -251,7 +254,7 @@ export const CARTEIRAS: Carteira[] = [
   {
     // Real State USA: valor CONSTANTE (sem variação) — repetir o valor do mês
     // anterior até o usuário avisar que mudou.
-    slug: 'real-state-usa', nome: 'Real State USA', tipo: 'internacional', contas: [
+    slug: 'real-state-usa', nome: 'Real State USA', tipo: 'internacional', constante: true, contas: [
       { banco: 'Imóvel (EUA)', investimentos: [
         { nome: 'Saldo', moeda: 'US$',
           valores: [599990.22, 603445.05, 613680.54, 583890.22, 601764.41, 601764.41],
