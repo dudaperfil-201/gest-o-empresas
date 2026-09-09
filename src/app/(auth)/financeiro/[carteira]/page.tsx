@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import {
-  saldoConta, saldoCarteira, brl,
+  saldoConta, saldoCarteira, saldoCarteiraUsd, brl, fmtMoeda,
   contaTemMes, carteiraParcial, bancosPendentes, contaRelevanteNoMes, cambioUsdCarteira,
 } from '@/lib/financeiro/dados'
 import { carregarFinanceiro, proximoMes } from '@/lib/financeiro/carregar'
@@ -28,6 +28,8 @@ export default async function CarteiraPage({ params, searchParams }: {
   if (i > ultimo) i = ultimo
 
   const total = saldoCarteira(carteira, i)
+  // Total em dólar (só carteiras internacionais, quando há ativos em US$ no mês).
+  const totalUsd = carteira.tipo === 'internacional' ? saldoCarteiraUsd(carteira, i) : 0
   const parcial = carteiraParcial(carteira, i)
   const pendentes = bancosPendentes(carteira, i)
 
@@ -77,7 +79,12 @@ export default async function CarteiraPage({ params, searchParams }: {
             <span className="w-8 h-8 flex items-center justify-center rounded-full bg-green-700/40 text-2xl leading-none opacity-40">›</span>
           )}
         </span>
-        <span>{brl(total)}</span>
+        <span className="flex flex-col items-end leading-tight">
+          <span>{brl(total)}</span>
+          {totalUsd > 0 && (
+            <span className="text-sm font-semibold text-green-100">{fmtMoeda('US$', totalUsd)}</span>
+          )}
+        </span>
       </div>
 
       {/* Aviso de mês parcial ou variação no mês */}

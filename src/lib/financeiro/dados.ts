@@ -290,6 +290,13 @@ export const saldoConta = (c: Conta, i: number) =>
 export const saldoCarteira = (c: Carteira, i: number) =>
   c.contas.reduce((s, ct) => s + (contaTemMes(ct, i) ? saldoConta(ct, i) : 0), 0)
 
+// Total em US$ da carteira no mês i (soma valoresMoeda dos ativos em US$ das contas com
+// extrato). Para carteiras internacionais mostrar o total em dólar junto do total em R$.
+export const saldoCarteiraUsd = (c: Carteira, i: number) =>
+  c.contas.reduce((s, ct) => contaTemMes(ct, i)
+    ? s + ct.investimentos.reduce((a, inv) => a + (inv.moeda === 'US$' ? (inv.valoresMoeda?.[i] ?? 0) : 0), 0)
+    : s, 0)
+
 // Mês i é parcial: entre as contas RELEVANTES do mês, parte tem extrato e parte não.
 export const carteiraParcial = (c: Carteira, i: number) => {
   const rel = c.contas.filter(ct => contaRelevanteNoMes(ct, i))
