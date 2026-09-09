@@ -2,8 +2,10 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { exigirFinanceiro } from '@/lib/auth'
+import pdfParse from 'pdf-parse/lib/pdf-parse.js'
 import { parseSaldoDiario, type ResultadoImport } from '@/lib/financeiro/importarSaldoDiario'
 import { parseExtratoXP, type ExtratoPdf } from '@/lib/financeiro/importarExtratoPdf'
+import { parseExtratoLaJolla, type ResultadoLaJolla } from '@/lib/financeiro/importarExtratoLaJolla'
 
 export type ItemMes = {
   carteira_slug: string
@@ -71,22 +73,40 @@ export async function importarSaldoDiarioAction(
   }
 }
 
-// Lê um extrato XP (PDF) e devolve os saldos do fecho do mês. Não grava e não decide a
-// carteira — o vínculo com a conta é feito na tela (o usuário escolhe a carteira).
-export async function importarExtratoPdfAction(
-  formData: FormData,
-): Promise<{ ok: true; resultado: ExtratoPdf } | { ok: false; erro: string }> {
+// Lê um extrato em PDF e devolve os saldos, detectando o formato:
+//  - 'lajolla' → statement Itaú Private Bank (Miami): posição por ativo (US$ + R$).
+//  - 'xp'      → extrato XP "Posição a mercado": Saldo líquido + Em conta.
+// Não grava e não decide a carteira (o vínculo é feito na tela).
+export type ResultadoPdf =
+  | { ok: true; tipo: 'xp'; resultado: ExtratoPdf }
+  | { ok: true; tipo: 'lajolla'; resultado: ResultadoLaJolla }
+  | { ok: false; erro: string }
+
+export async function importarExtratoPdfAction(formData: FormData): Promise<ResultadoPdf> {
   await exigirFinanceiro()
   const arquivo = formData.get('arquivo')
   if (!(arquivo instanceof File) || arquivo.size === 0) return { ok: false, erro: 'Nenhum arquivo enviado.' }
   if (!arquivo.name.toLowerCase().endsWith('.pdf')) return { ok: false, erro: 'Envie o extrato em PDF.' }
   try {
     const buf = Buffer.from(await arquivo.arrayBuffer())
-    const resultado = await parseExtratoXP(buf)
-    if (resultado.saldoLiquido == null || !resultado.mes) {
-      return { ok: false, erro: 'Não consegui ler os saldos deste PDF. Confira se é o extrato XP "Posição a mercado mensal".' }
+    const { text } = await pdfParse(buf)
+
+    if (/LA JOLLA|Itaú Private Bank|Itau Private Bank|My Portfolio Position/i.test(text)) {
+      const resultado = parseExtratoLaJolla(text)
+      if (resultado.itens.length === 0 || !resultado.mes) {
+        return { ok: false, erro: 'Reconheci um statement do Itaú Private Bank, mas não consegui ler os ativos.' }
+      }
+      if (!resultado.reconciliado) {
+        return { ok: false, erro: `A soma dos ativos lidos (US$ ${resultado.somaExtraidaUSD.toLocaleString('en-US', { minimumFractionDigits: 2 })}) não bateu com o total do statement (US$ ${resultado.totalUSD?.toLocaleString('en-US', { minimumFractionDigits: 2 }) ?? '—'}). Não vou gravar para não lançar valor errado — me mande o PDF que eu ajusto o leitor.` }
+      }
+      return { ok: true, tipo: 'lajolla', resultado }
     }
-    return { ok: true, resultado }
+
+    const resultado = parseExtratoXP(text)
+    if (resultado.saldoLiquido == null || !resultado.mes) {
+      return { ok: false, erro: 'Não consegui ler os saldos deste PDF. Confira se é o extrato XP "Posição a mercado mensal" ou o statement da La Jolla.' }
+    }
+    return { ok: true, tipo: 'xp', resultado }
   } catch (e) {
     return { ok: false, erro: e instanceof Error ? e.message : 'Falha ao ler o PDF.' }
   }
