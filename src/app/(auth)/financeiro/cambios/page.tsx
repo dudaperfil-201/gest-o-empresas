@@ -2,13 +2,18 @@ import Link from 'next/link'
 import { exigirFinanceiro } from '@/lib/auth'
 import { brl } from '@/lib/financeiro/dados'
 import { listarCambios } from '@/app/actions/cambios'
-import { type Cambio } from '@/lib/cambios'
+import { type Cambio, formatarMoeda } from '@/lib/cambios'
 import CambioForm from './CambioForm'
 import RemoverBtn from './RemoverBtn'
 
 export const dynamic = 'force-dynamic'
 
-const usd = (n: number) => 'US$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+// Soma por moeda de uma lista de câmbios, formatada: "US$ 27.000,00 · CHF 10.000,00"
+function somasPorMoeda(lista: Cambio[]): string {
+  const m = new Map<string, number>()
+  for (const c of lista) m.set(c.moeda, (m.get(c.moeda) ?? 0) + c.valorMoeda)
+  return [...m.entries()].map(([cod, v]) => formatarMoeda(cod, v)).join(' · ')
+}
 const dataBR = (iso: string) => {
   const [a, m, d] = iso.split('T')[0].split('-')
   return `${d}/${m}/${a}`
@@ -27,7 +32,7 @@ export default async function CambiosPage() {
     grupos.get(chave)!.push(c)
   }
 
-  const totalUsd = cambios.reduce((s, c) => s + c.valorUsd, 0)
+  const totalPorMoeda = somasPorMoeda(cambios)
   const totalBrl = cambios.reduce((s, c) => s + (c.valorBrl ?? 0), 0)
 
   const corPessoa = (quem: string) =>
@@ -48,7 +53,7 @@ export default async function CambiosPage() {
           <span className="text-3xl">💱</span>
           <div>
             <h2 className="text-xl font-semibold text-gray-900">Câmbios — La Jolla</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Operações R$ → US$ para abastecer a conta (Itaú Miami)</p>
+            <p className="text-sm text-gray-500 mt-0.5">Operações de câmbio (R$ → moeda estrangeira) para abastecer a conta (Itaú Miami)</p>
           </div>
         </div>
         <CambioForm />
@@ -57,8 +62,8 @@ export default async function CambiosPage() {
       {/* Totais */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
-          <p className="text-sm text-gray-500">Total enviado (US$)</p>
-          <p className="text-xl font-bold text-green-700 mt-1">{usd(totalUsd)}</p>
+          <p className="text-sm text-gray-500">Total enviado</p>
+          <p className="text-xl font-bold text-green-700 mt-1 break-words">{totalPorMoeda || 'US$ 0,00'}</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-4 text-center">
           <p className="text-sm text-gray-500">Total em R$</p>
@@ -76,13 +81,12 @@ export default async function CambiosPage() {
         <div className="space-y-6">
           {[...grupos.entries()].map(([chave, lista]) => {
             const [ano, mes] = chave.split('-').map(Number)
-            const somaUsd = lista.reduce((s, c) => s + c.valorUsd, 0)
             const somaBrl = lista.reduce((s, c) => s + (c.valorBrl ?? 0), 0)
             return (
               <div key={chave}>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide capitalize">{MES_NOME[mes - 1]} / {ano}</h3>
-                  <span className="text-xs text-gray-500">{usd(somaUsd)} · {brl(somaBrl)}</span>
+                  <span className="text-xs text-gray-500">{somasPorMoeda(lista)} · {brl(somaBrl)}</span>
                 </div>
                 <div className="space-y-2">
                   {lista.map(c => (
@@ -94,7 +98,7 @@ export default async function CambiosPage() {
                             <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${corPessoa(c.quem)}`}>{c.quem}</span>
                             {c.instituicao && <span className="text-xs text-gray-400">{c.instituicao}</span>}
                           </div>
-                          <p className="text-lg font-bold text-green-700 mt-1">{usd(c.valorUsd)}</p>
+                          <p className="text-lg font-bold text-green-700 mt-1">{formatarMoeda(c.moeda, c.valorMoeda)}</p>
                           <p className="text-xs text-gray-500">
                             {c.valorBrl != null && <>{brl(c.valorBrl)}</>}
                             {c.taxa != null && <span> · taxa {c.taxa.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</span>}

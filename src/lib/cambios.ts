@@ -4,13 +4,31 @@
 export const PESSOAS = ['Eduardo', 'Serginho'] as const
 export type Pessoa = (typeof PESSOAS)[number]
 
+// Moedas estrangeiras aceitas no câmbio. `cod` é o que vai pro banco (coluna `moeda`).
+export const MOEDAS = [
+  { cod: 'USD', simbolo: 'US$', nome: 'Dólar americano' },
+  { cod: 'CHF', simbolo: 'CHF', nome: 'Franco suíço' },
+  { cod: 'EUR', simbolo: '€',   nome: 'Euro' },
+  { cod: 'GBP', simbolo: '£',   nome: 'Libra esterlina' },
+] as const
+export type MoedaCod = (typeof MOEDAS)[number]['cod']
+export const MOEDAS_COD = MOEDAS.map(m => m.cod) as readonly string[]
+
+export const simboloMoeda = (cod: string): string =>
+  MOEDAS.find(m => m.cod === cod)?.simbolo ?? cod
+
+// Ex.: formatarMoeda('CHF', 10000) → "CHF 10.000,00"
+export const formatarMoeda = (cod: string, valor: number): string =>
+  `${simboloMoeda(cod)} ${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
 export type Comprovante = { nome: string; path: string; url: string }
 
 export type Cambio = {
   id: string
   data: string          // ISO date
   quem: string
-  valorUsd: number
+  moeda: string         // moeda estrangeira (USD, CHF, EUR…)
+  valorMoeda: number    // valor na moeda estrangeira (coluna valor_usd, por herança)
   taxa: number | null
   valorBrl: number | null
   iof: number

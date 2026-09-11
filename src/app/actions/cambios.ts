@@ -3,7 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSessao } from '@/lib/auth'
 import { revalidatePath } from 'next/cache'
-import { PESSOAS, type Pessoa, type Cambio, type Comprovante } from '@/lib/cambios'
+import { PESSOAS, MOEDAS_COD, type Pessoa, type Cambio, type Comprovante } from '@/lib/cambios'
 
 // Câmbios da La Jolla — operações R$→US$ mensais que abastecem a conta (Itaú Miami).
 // Registros na tabela `lajolla_cambios`; comprovantes (PDFs) no bucket privado
@@ -58,7 +58,8 @@ export async function listarCambios(): Promise<Cambio[]> {
       id: r.id,
       data: r.data,
       quem: r.quem,
-      valorUsd: Number(r.valor_usd),
+      moeda: r.moeda ?? 'USD',
+      valorMoeda: Number(r.valor_usd),
       taxa: r.taxa != null ? Number(r.taxa) : null,
       valorBrl: r.valor_brl != null ? Number(r.valor_brl) : null,
       iof: Number(r.iof ?? 0),
@@ -79,10 +80,12 @@ export async function adicionarCambio(formData: FormData): Promise<Resultado> {
 
   const data = String(formData.get('data') || '').trim()
   const quem = String(formData.get('quem') || '').trim()
-  const valorUsd = paraNumero(formData.get('valorUsd'))
+  const moeda = String(formData.get('moeda') || 'USD').trim().toUpperCase()
+  const valorMoeda = paraNumero(formData.get('valorMoeda'))
   if (!data) return { ok: false, erro: 'Informe a data da operação.' }
   if (!PESSOAS.includes(quem as Pessoa)) return { ok: false, erro: 'Selecione quem fez o câmbio.' }
-  if (valorUsd == null || valorUsd <= 0) return { ok: false, erro: 'Informe o valor em US$.' }
+  if (!MOEDAS_COD.includes(moeda)) return { ok: false, erro: 'Selecione uma moeda válida.' }
+  if (valorMoeda == null || valorMoeda <= 0) return { ok: false, erro: 'Informe o valor na moeda estrangeira.' }
 
   const admin = createAdminClient()
   const { data: inserido, error } = await admin
@@ -90,7 +93,8 @@ export async function adicionarCambio(formData: FormData): Promise<Resultado> {
     .insert({
       data,
       quem,
-      valor_usd: valorUsd,
+      moeda,
+      valor_usd: valorMoeda,
       taxa: paraNumero(formData.get('taxa')),
       valor_brl: paraNumero(formData.get('valorBrl')),
       iof: paraNumero(formData.get('iof')) ?? 0,

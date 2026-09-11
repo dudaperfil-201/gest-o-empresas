@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { adicionarCambio } from '@/app/actions/cambios'
-import { PESSOAS } from '@/lib/cambios'
+import { PESSOAS, MOEDAS } from '@/lib/cambios'
 
 // Formulário para lançar um câmbio (com comprovantes). Colapsado por padrão.
 export default function CambioForm() {
@@ -58,12 +58,18 @@ export default function CambioForm() {
           </select>
         </div>
         <div className="col-span-1">
-          <label className={rot}>Valor em US$ *</label>
-          <input name="valorUsd" inputMode="decimal" placeholder="4.695,37" required className={campo} />
+          <label className={rot}>Moeda *</label>
+          <select name="moeda" required defaultValue="USD" className={campo}>
+            {MOEDAS.map(m => <option key={m.cod} value={m.cod}>{m.simbolo} — {m.nome}</option>)}
+          </select>
         </div>
         <div className="col-span-1">
-          <label className={rot}>Taxa (R$/US$)</label>
-          <input name="taxa" inputMode="decimal" placeholder="5,1822" className={campo} />
+          <label className={rot}>Valor na moeda *</label>
+          <input name="valorMoeda" inputMode="decimal" placeholder="27.000,00" required className={campo} />
+        </div>
+        <div className="col-span-1">
+          <label className={rot}>Taxa (R$)</label>
+          <input name="taxa" inputMode="decimal" placeholder="5,1125" className={campo} />
         </div>
         <div className="col-span-1">
           <label className={rot}>Valor em R$</label>
