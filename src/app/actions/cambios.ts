@@ -1,9 +1,10 @@
 'use server'
 
+import pdfParse from 'pdf-parse/lib/pdf-parse.js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSessao } from '@/lib/auth'
 import { revalidatePath } from 'next/cache'
-import { PESSOAS, MOEDAS_COD, type Pessoa, type Cambio, type Comprovante } from '@/lib/cambios'
+import { PESSOAS, MOEDAS_COD, type Pessoa, type Cambio, type Comprovante, type DadosComprovante } from '@/lib/cambios'
 
 // Câmbios da La Jolla — operações R$→US$ mensais que abastecem a conta (Itaú Miami).
 // Registros na tabela `lajolla_cambios`; comprovantes (PDFs) no bucket privado
@@ -138,4 +139,82 @@ export async function removerCambio(id: string): Promise<Resultado> {
   if (error) return { ok: false, erro: error.message }
   revalidatePath('/financeiro/cambios')
   return { ok: true }
+}
+
+// ── Leitura automática do comprovante de câmbio (Itaú) ───────────────────────
+// O PDF do Itaú vem com "rótulo\nvalor" linha a linha — dá pra extrair por âncora.
+const normTxt = (s: string) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+
+// "10,000.00" (US) ou "63.399,00" (BR) → número. Decide pelo separador que vem por último.
+function numeroFlex(s: string): number | null {
+  if (!s) return null
+  const limpo = String(s).replace(/\(.*$/, '').trim().replace(/[^\d.,-]/g, '')
+  if (!limpo) return null
+  const lc = limpo.lastIndexOf(','), ld = limpo.lastIndexOf('.')
+  let n: string
+  if (lc > ld) n = limpo.replace(/\./g, '').replace(',', '.')
+  else if (ld > lc) n = limpo.replace(/,/g, '')
+  else n = limpo.replace(',', '.')
+  const v = Number(n)
+  return Number.isFinite(v) ? v : null
+}
+const paraISO = (s: string): string => {
+  const m = (s || '').match(/(\d{2})\/(\d{2})\/(\d{4})/)
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : ''
+}
+
+function parseComprovanteCambio(text: string): DadosComprovante {
+  const L = text.split('\n').map(x => x.trim()).filter(Boolean)
+  const apos = (rot: string): string => {
+    const a = normTxt(rot)
+    for (let i = 0; i < L.length; i++) {
+      if (normTxt(L[i]) === a || normTxt(L[i]).startsWith(a)) return L[i + 1] ?? ''
+    }
+    return ''
+  }
+  const nomeCliente = (): string => {
+    const i = L.findIndex(l => normTxt(l) === 'cliente')
+    if (i < 0) return ''
+    for (let j = i + 1; j < L.length; j++) if (normTxt(L[j]) === 'nome') return L[j + 1] ?? ''
+    return ''
+  }
+  const quem = (() => {
+    const n = normTxt(nomeCliente())
+    if (n.includes('eduardo')) return 'Eduardo'
+    if (n.includes('sergio') || n.includes('serginho')) return 'Serginho'
+    return ''
+  })()
+  const valorBrl = numeroFlex(apos('Valor em moeda nacional'))
+  const iof = numeroFlex(apos('IOF (R$)')) ?? 0
+  const tarifa = numeroFlex(apos('Tarifa (R$)')) ?? 0
+  return {
+    data: paraISO(apos('Data da operação')),
+    referencia: apos('Referência'),
+    quem,
+    moeda: apos('Cód. da moeda estrangeira').toUpperCase().slice(0, 3),
+    valorMoeda: numeroFlex(apos('Valor em moeda estrangeira')),
+    taxa: numeroFlex(apos('Taxa cambial')),
+    valorBrl,
+    iof,
+    valorDebitado: valorBrl != null ? Number((valorBrl + iof + tarifa).toFixed(2)) : null,
+    instituicao: apos('Nome'), // 1º "Nome" = o da Instituição Financeira
+  }
+}
+
+// Lê UM comprovante (PDF) e devolve os campos pra pré-preencher o formulário.
+export async function lerComprovanteCambio(
+  formData: FormData,
+): Promise<{ ok: true; dados: DadosComprovante } | { ok: false; erro: string }> {
+  const sessao = await getSessao()
+  if (!sessao?.podeFinanceiro) return { ok: false, erro: 'Sem permissão.' }
+  const file = formData.get('arquivo')
+  if (!(file instanceof File) || file.size === 0) return { ok: false, erro: 'Nenhum arquivo enviado.' }
+  if (!file.name.toLowerCase().endsWith('.pdf')) return { ok: false, erro: 'O leitor automático funciona com PDF. Anexe o comprovante em PDF (ou preencha à mão).' }
+  try {
+    const buf = Buffer.from(await file.arrayBuffer())
+    const { text } = await pdfParse(buf)
+    return { ok: true, dados: parseComprovanteCambio(text) }
+  } catch (e) {
+    return { ok: false, erro: e instanceof Error ? e.message : 'Não consegui ler o PDF.' }
+  }
 }

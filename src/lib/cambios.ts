@@ -23,6 +23,20 @@ export const formatarMoeda = (cod: string, valor: number): string =>
 
 export type Comprovante = { nome: string; path: string; url: string }
 
+// Campos extraídos automaticamente de um comprovante de câmbio (Itaú) lido do PDF.
+export type DadosComprovante = {
+  data: string          // ISO (yyyy-mm-dd) ou ''
+  referencia: string
+  quem: string          // 'Eduardo' | 'Serginho' | '' (pelo nome do cliente)
+  moeda: string         // USD, CHF, EUR…
+  valorMoeda: number | null
+  taxa: number | null
+  valorBrl: number | null
+  iof: number | null
+  valorDebitado: number | null
+  instituicao: string
+}
+
 export type Cambio = {
   id: string
   data: string          // ISO date
