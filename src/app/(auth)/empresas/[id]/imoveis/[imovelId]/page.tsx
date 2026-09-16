@@ -3,9 +3,11 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import InquilinoForm from './InquilinoForm'
+import InquilinoAnterior from './InquilinoAnterior'
 import DocumentosInquilino from './DocumentosInquilino'
 import HistoricoPagamentos from './HistoricoPagamentos'
 import DesocuparBotao from './DesocuparBotao'
+import { lerAcertosInquilino } from '@/app/actions/empresas'
 
 export default async function ImovelPage({ params }: { params: Promise<{ id: string; imovelId: string }> }) {
   const { id, imovelId } = await params
@@ -26,13 +28,17 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
     .limit(1)
     .maybeSingle()
 
-  // Inquilinos ANTERIORES (que já saíram) — o histórico deles fica guardado.
+  // Inquilinos ANTERIORES (que já saíram) — editáveis e com registro de acertos/rescisões.
   const { data: anteriores } = await supabase
     .from('inquilinos')
-    .select('id, nome, telefone, data_inicio, data_saida')
+    .select('id, nome, telefone, email, data_inicio, data_saida')
     .eq('imovel_id', imovelId)
     .eq('ativo', false)
     .order('data_saida', { ascending: false })
+
+  // Acertos/rescisões de cada ex-inquilino (extras vinculados a ele).
+  const acertosPorInquilino: Record<string, Awaited<ReturnType<typeof lerAcertosInquilino>>> = {}
+  await Promise.all((anteriores ?? []).map(async a => { acertosPorInquilino[a.id] = await lerAcertosInquilino(a.id) }))
 
   // Documentos do inquilino (contrato + boletos) para a Área do Inquilino.
   let contratosDocs: { name: string; path: string; url: string | null }[] = []
@@ -159,19 +165,16 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
       {anteriores && anteriores.length > 0 && (
         <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-5 mt-4">
           <h3 className="font-medium text-gray-900 mb-1">Inquilinos anteriores</h3>
-          <p className="text-xs text-gray-500 mb-3">Já saíram deste imóvel. O histórico de pagamentos deles continua no “Histórico de pagamentos” acima.</p>
+          <p className="text-xs text-gray-500 mb-3">Já saíram deste imóvel. Dá para <strong>editar</strong> os dados e registrar <strong>acertos/rescisões</strong> que eles pagam depois de sair — que entram no relatório do mês e no histórico da sala.</p>
           <div className="space-y-2">
             {anteriores.map(a => (
-              <div key={a.id} className="flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-lg px-3 py-2">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{a.nome}</p>
-                  {a.telefone && <p className="text-xs text-gray-500">Tel: {a.telefone}</p>}
-                </div>
-                <div className="text-right text-xs text-gray-500 shrink-0">
-                  {a.data_inicio && <div>Entrou: {new Date(a.data_inicio + 'T12:00:00').toLocaleDateString('pt-BR')}</div>}
-                  {a.data_saida && <div>Saiu: {new Date(a.data_saida + 'T12:00:00').toLocaleDateString('pt-BR')}</div>}
-                </div>
-              </div>
+              <InquilinoAnterior
+                key={a.id}
+                anterior={{ id: a.id, nome: a.nome, telefone: a.telefone ?? null, email: a.email ?? null, data_inicio: a.data_inicio ?? null, data_saida: a.data_saida ?? null }}
+                empresaId={id}
+                imovelId={imovelId}
+                acertos={acertosPorInquilino[a.id] ?? []}
+              />
             ))}
           </div>
         </div>

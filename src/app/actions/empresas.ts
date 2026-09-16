@@ -140,15 +140,18 @@ export async function adicionarExtra(
   valor: number,
   mesSel?: number,
   anoSel?: number,
+  inquilinoId?: string | null, // vincula o extra a um EX-inquilino (acerto/rescisão); opcional
 ): Promise<ExtraItem | null> {
   const supabase = await createClient()
   const agora = new Date()
   const mes = mesSel && mesSel >= 1 && mesSel <= 12 ? mesSel : agora.getMonth() + 1
   const ano = anoSel && anoSel >= 2000 ? anoSel : agora.getFullYear()
 
+  const linha: Record<string, unknown> = { imovel_id: imovelId, ano, mes, descricao: descricao.trim() || null, valor: valor > 0 ? valor : 0 }
+  if (inquilinoId) linha.inquilino_id = inquilinoId
   const { data } = await supabase
     .from('extras_itens')
-    .insert({ imovel_id: imovelId, ano, mes, descricao: descricao.trim() || null, valor: valor > 0 ? valor : 0 })
+    .insert(linha)
     .select('id, descricao, valor')
     .single()
 
@@ -347,6 +350,49 @@ export async function salvarInquilino(formData: FormData) {
   revalidatePath(`/empresas/${empresa_id}/imoveis/${imovel_id}`)
   revalidatePath(`/empresas/${empresa_id}`)
   revalidatePath('/imoveis')
+}
+
+// Atualiza os DADOS PRÓPRIOS de um inquilino (por id): serve principalmente para editar um
+// EX-inquilino (seção "Inquilinos anteriores") sem mexer no imóvel nem no status ativo —
+// para corrigir contato/datas e manter o histórico de acertos ligado a ele.
+export async function atualizarInquilino(
+  id: string,
+  empresaId: string,
+  imovelId: string,
+  dados: { nome?: string; telefone?: string | null; email?: string | null; cpf?: string | null; data_inicio?: string | null; data_saida?: string | null },
+): Promise<{ ok: true } | { ok: false; erro: string }> {
+  if (!id) return { ok: false, erro: 'Inquilino inválido.' }
+  const supabase = await createClient()
+  const patch: Record<string, unknown> = {}
+  if (dados.nome != null) { const n = dados.nome.trim(); if (!n) return { ok: false, erro: 'O nome não pode ficar vazio.' }; patch.nome = n }
+  if (dados.telefone !== undefined) patch.telefone = dados.telefone?.trim() || null
+  if (dados.email !== undefined) patch.email = dados.email?.trim() || null
+  if (dados.cpf !== undefined) patch.cpf = dados.cpf?.trim() || null
+  if (dados.data_inicio !== undefined) patch.data_inicio = dados.data_inicio || null
+  if (dados.data_saida !== undefined) patch.data_saida = dados.data_saida || null
+  const { error } = await supabase.from('inquilinos').update(patch).eq('id', id)
+  if (error) return { ok: false, erro: error.message }
+  revalidatePath(`/empresas/${empresaId}/imoveis/${imovelId}`)
+  revalidatePath(`/empresas/${empresaId}`)
+  revalidatePath('/imoveis')
+  return { ok: true }
+}
+
+// Acertos/rescisões de um ex-inquilino = os EXTRAS do imóvel vinculados a ele. Já contam
+// no relatório (por imóvel/mês). Tolera a coluna inquilino_id ainda não existir (migration
+// 017 não rodada): nesse caso devolve lista vazia.
+export type AcertoInquilino = { id: string; ano: number; mes: number; descricao: string | null; valor: number }
+export async function lerAcertosInquilino(inquilinoId: string): Promise<AcertoInquilino[]> {
+  if (!inquilinoId) return []
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('extras_itens')
+    .select('id, ano, mes, descricao, valor')
+    .eq('inquilino_id', inquilinoId)
+    .order('ano', { ascending: false })
+    .order('mes', { ascending: false })
+  if (error) return [] // coluna ainda não migrada, etc.
+  return (data ?? []) as AcertoInquilino[]
 }
 
 export async function registrarPagamento(formData: FormData) {
