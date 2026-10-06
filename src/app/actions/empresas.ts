@@ -280,6 +280,19 @@ export async function desocuparImovel(imovelId: string, empresaId: string): Prom
   return { ok: true }
 }
 
+// Oculta / reexibe um imóvel (arquivar SEM apagar): some das listas, totais e lembretes,
+// mas os registros e o histórico de pagamentos ficam guardados. Ex.: garagem incorporada a
+// uma sala — para de ser cobrada à parte, mas o histórico permanece.
+export async function ocultarImovel(imovelId: string, empresaId: string, oculto: boolean): Promise<{ ok: true } | { ok: false; erro: string }> {
+  const supabase = await createClient()
+  const { error } = await supabase.from('imoveis').update({ oculto }).eq('id', imovelId)
+  if (error) return { ok: false, erro: error.message }
+  revalidatePath(`/empresas/${empresaId}/imoveis/${imovelId}`)
+  revalidatePath(`/empresas/${empresaId}`)
+  revalidatePath('/imoveis')
+  return { ok: true }
+}
+
 export async function editarImovel(formData: FormData) {
   const supabase = await createClient()
   const id = formData.get('id') as string
