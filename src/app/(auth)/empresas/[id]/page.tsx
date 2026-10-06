@@ -15,17 +15,13 @@ export default async function EmpresaPage({ params, searchParams }: { params: Pr
 
   const { data: imoveisRaw } = await supabase
     .from('imoveis')
-    .select('id, endereco, valor_aluguel, ativo, oculto, dia_vencimento, inquilinos(nome, data_inicio, ativo)')
+    .select('id, endereco, valor_aluguel, ativo, dia_vencimento, inquilinos(nome, data_inicio, ativo)')
     .eq('empresa_id', id)
 
   // Ordenação numérica natural: SALA-1, SALA-2, ... SALA-10 (e não SALA-1, SALA-10, SALA-2)
-  const ordenados = [...(imoveisRaw ?? [])].sort((a, b) =>
+  const imoveis = [...(imoveisRaw ?? [])].sort((a, b) =>
     a.endereco.localeCompare(b.endereco, 'pt-BR', { numeric: true, sensitivity: 'base' })
   )
-  // OCULTOS (arquivados) saem da lista principal, dos ids (sem pagamentos/totais) e ficam
-  // numa seção "Arquivados" só para consulta/reexibição — o histórico é preservado.
-  const imoveis = ordenados.filter(i => !i.oculto)
-  const ocultos = ordenados.filter(i => i.oculto)
 
   // Mês exibido: vem da URL (?mes=&ano=, herdado do dashboard) ou, se não houver, o
   // mês atual. É por ele que a página mostra pagamentos/extras — permitindo ver o
@@ -189,25 +185,6 @@ export default async function EmpresaPage({ params, searchParams }: { params: Pr
           </div>
         )}
       </div>
-
-      {/* Imóveis ARQUIVADOS (ocultos) — fora das listas/totais, só para consulta/reexibição. */}
-      {ocultos.length > 0 && (
-        <details className="mb-8 bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
-          <summary className="px-4 py-3 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden text-sm font-semibold text-gray-500 hover:bg-gray-100 flex items-center gap-2 flex-wrap">
-            🗄️ Arquivados ({ocultos.length})
-            <span className="text-xs font-normal text-gray-400">— ocultos das listas e totais; histórico preservado</span>
-          </summary>
-          <div className="divide-y divide-gray-100 border-t border-gray-100">
-            {ocultos.map(im => (
-              <Link key={im.id} href={`/empresas/${id}/imoveis/${im.id}?mes=${mesAtual}&ano=${anoAtual}`}
-                className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-gray-100 transition-colors">
-                <span className="text-sm font-medium text-gray-700">{im.endereco}</span>
-                <span className="text-xs text-gray-400 whitespace-nowrap">abrir / reexibir ↗</span>
-              </Link>
-            ))}
-          </div>
-        </details>
-      )}
 
       {/* Legenda dos selos de reputação do inquilino — tudo em uma linha. */}
       {(imoveis ?? []).length > 0 && (

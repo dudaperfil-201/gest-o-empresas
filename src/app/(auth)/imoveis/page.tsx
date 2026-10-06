@@ -36,7 +36,6 @@ export default async function ImoveisPage({ searchParams }: { searchParams: Prom
       .select('id, valor_aluguel, inquilinos(id, ativo)')
       .eq('empresa_id', empresa.id)
       .eq('ativo', true)
-      .eq('oculto', false)
 
     // Só conta inquilino ATIVO (quem saiu, ativo=false, não conta → imóvel disponível).
     const temInquilino = (im: { inquilinos: unknown }) => {

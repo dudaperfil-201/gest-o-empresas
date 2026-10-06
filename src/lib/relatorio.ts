@@ -25,7 +25,6 @@ export async function carregarRelatorio(supabase: Supabase, mes: number, ano: nu
       .select('id, endereco, valor_aluguel, inquilinos(nome)')
       .eq('empresa_id', empresa.id)
       .eq('ativo', true)
-      .eq('oculto', false)
       .order('endereco')
 
     const ids = (imoveis ?? []).map(i => i.id)

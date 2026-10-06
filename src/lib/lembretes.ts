@@ -91,7 +91,6 @@ export async function buscarLembretes(
     .select('id, endereco, dia_vencimento, empresas(nome), inquilinos(nome, email, telefone)')
     .not('dia_vencimento', 'is', null)
     .eq('ativo', true)
-    .eq('oculto', false)
 
   const linhas = (data ?? []) as unknown as LinhaImovel[]
   const itens: Lembrete[] = []

@@ -49,7 +49,7 @@ export async function carregarAtrasos(supabase: Supabase) {
 
   const [{ data: empresas }, { data: imoveis }, { data: inquilinos }, { data: pagamentos }] = await Promise.all([
     supabase.from('empresas').select('id, nome').order('nome'),
-    supabase.from('imoveis').select('id, empresa_id, endereco, valor_aluguel, dia_vencimento').eq('ativo', true).eq('oculto', false),
+    supabase.from('imoveis').select('id, empresa_id, endereco, valor_aluguel, dia_vencimento').eq('ativo', true),
     supabase.from('inquilinos').select('imovel_id, nome, telefone, data_inicio, juros_mes, ativo'),
     supabase.from('pagamentos').select('imovel_id, mes, ano, status'),
   ])

@@ -7,7 +7,6 @@ import InquilinoAnterior from './InquilinoAnterior'
 import DocumentosInquilino from './DocumentosInquilino'
 import HistoricoPagamentos from './HistoricoPagamentos'
 import DesocuparBotao from './DesocuparBotao'
-import OcultarBotao from './OcultarBotao'
 import { lerAcertosInquilino } from '@/app/actions/empresas'
 
 export default async function ImovelPage({ params }: { params: Promise<{ id: string; imovelId: string }> }) {
@@ -126,14 +125,6 @@ export default async function ImovelPage({ params }: { params: Promise<{ id: str
             <DesocuparBotao imovelId={imovelId} empresaId={id} inquilinoNome={inquilino.nome} />
           </div>
         )}
-        <div className="mt-4 pt-4 border-t border-blue-200 flex items-center justify-between gap-2 flex-wrap">
-          <p className="text-xs text-gray-500">
-            {imovel.oculto
-              ? 'Imóvel arquivado (oculto das listas e totais). O histórico está guardado — reexiba quando quiser.'
-              : 'Imóvel incorporado/inativo? Arquive — ele some das listas, totais e lembretes, mas o histórico fica guardado.'}
-          </p>
-          <OcultarBotao imovelId={imovelId} empresaId={id} oculto={!!imovel.oculto} endereco={imovel.endereco} />
-        </div>
       </div>
 
       <div className="bg-green-50/60 border-2 border-green-300 rounded-xl p-5 mb-4">
