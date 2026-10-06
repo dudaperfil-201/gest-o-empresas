@@ -83,12 +83,16 @@ export default async function CambiosPage() {
             const [ano, mes] = chave.split('-').map(Number)
             const somaBrl = lista.reduce((s, c) => s + (c.valorBrl ?? 0), 0)
             return (
-              <div key={chave}>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide capitalize">{MES_NOME[mes - 1]} / {ano}</h3>
-                  <span className="text-xs text-gray-500">{somasPorMoeda(lista)} · {brl(somaBrl)}</span>
-                </div>
-                <div className="space-y-2">
+              <details key={chave} className="group bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <summary className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden hover:bg-gray-50">
+                  <span className="flex items-center gap-2 min-w-0">
+                    <span className="text-gray-400 text-xs transition-transform group-open:rotate-90">▶</span>
+                    <span className="text-sm font-semibold text-gray-700 capitalize">{MES_NOME[mes - 1]} / {ano}</span>
+                    <span className="text-[11px] text-gray-400 whitespace-nowrap">· {lista.length} {lista.length === 1 ? 'câmbio' : 'câmbios'}</span>
+                  </span>
+                  <span className="text-xs text-gray-500 text-right shrink-0">{somasPorMoeda(lista)} · {brl(somaBrl)}</span>
+                </summary>
+                <div className="px-3 pb-3 pt-3 space-y-2 border-t border-gray-100">
                   {lista.map(c => (
                     <div key={c.id} className="bg-white border border-gray-200 rounded-xl p-4">
                       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -124,7 +128,7 @@ export default async function CambiosPage() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </details>
             )
           })}
         </div>
