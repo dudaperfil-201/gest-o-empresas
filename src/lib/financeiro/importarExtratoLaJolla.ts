@@ -79,7 +79,10 @@ export function parseExtratoLaJolla(text: string): ResultadoLaJolla {
   // Câmbio BRL do statement (linha de CURRENCIES: "...GBP 0.7381 BRL 5.1848" — evita o
   // "BRL 0.0%" da distribuição por moeda) e o total da posição.
   const cambioBRL = (() => {
-    const m = text.match(/GBP\s+[\d.]+\s+BRL\s+([\d.]+)/i) || text.match(/BRL\s+(\d+\.\d{3,})/i)
+    // A linha "CURRENCIES (USD)" às vezes vem colada e com 2 casas (ex.: "GBP 0.7536BRL 5.18").
+    // 1ª tentativa: pega o nº logo após BRL na sequência de moedas (com ou sem espaços).
+    // 2ª: qualquer "BRL <n.nn>" com 2+ casas — evita o "BRL 0.0%" da distribuição (1 casa).
+    const m = text.match(/GBP\s*[\d.]+\s*BRL\s*([\d.]+)/i) || text.match(/\bBRL\s*(\d+\.\d{2,})/i)
     return m ? Number(m[1]) : null
   })()
   const totalUSD = (() => { const m = text.match(/Portfolio Position:\s*USD\s*([\d,]+\.\d{2})/i); return m ? mUS(m[1]) : null })()
