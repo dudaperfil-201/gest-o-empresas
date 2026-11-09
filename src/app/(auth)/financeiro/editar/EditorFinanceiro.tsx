@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { salvarMesFinanceiro, importarSaldoDiarioAction, importarExtratoPdfAction, type ItemMes } from '@/app/actions/financeiro'
+import { cotacaoDaMoeda, type Ptax } from '@/lib/ptax'
 
 type Mes = { abrev: string; nome: string; ano: number; mes: number }
 type Item = {
@@ -15,7 +16,7 @@ const NOMES_MES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', '
 const ABREV_MES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
 const chave = (it: Item) => `${it.slug}|${it.banco}|${it.nome}`
 
-export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; meses: Mes[] }) {
+export default function EditorFinanceiro({ itens, meses, ptax }: { itens: Item[]; meses: Mes[]; ptax: Ptax }) {
   const router = useRouter()
 
   // Meses navegáveis = os existentes + UM mês novo no fim (o seguinte ao último).
@@ -245,6 +246,20 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
     return [...map.entries()]
   }, [itens])
 
+  // Ao digitar o valor em moeda estrangeira (US$/€/CHF), o R$ preenche sozinho pelo câmbio
+  // PTAX do dia (o mesmo do painel INDICADORES). Se não houver cotação da moeda, só guarda
+  // o valor em moeda (o dono preenche o R$ na mão). R$ continua editável p/ ajuste manual.
+  function aplicarMoeda(it: Item, key: string, raw: string) {
+    setValoresMoeda(p => ({ ...p, [key]: raw }))
+    const cot = cotacaoDaMoeda(it.moeda, ptax)
+    if (cot == null) return
+    const t = raw.trim()
+    if (t === '') { setValores(p => ({ ...p, [key]: '' })); return }
+    const n = Number(t.replace(',', '.'))
+    if (!Number.isFinite(n)) return
+    setValores(p => ({ ...p, [key]: String(Math.round(n * cot * 100) / 100) }))
+  }
+
   async function salvar() {
     const payload: ItemMes[] = []
     for (const it of itens) {
@@ -366,6 +381,17 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
         </div>
       )}
 
+      {/* Câmbio em uso na conversão automática (mesmo do painel INDICADORES / PTAX-BCB) */}
+      {(ptax.usd || ptax.eur || ptax.chf) && (
+        <div className="mb-3 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-800 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="font-semibold">💱 Câmbio automático (PTAX/BCB{ptax.data ? ` · ${new Date(ptax.data + 'T12:00:00').toLocaleDateString('pt-BR')}` : ''}):</span>
+          {ptax.usd != null && <span>US$ R$ {ptax.usd.toLocaleString('pt-BR', { minimumFractionDigits: 4 })}</span>}
+          {ptax.eur != null && <span>€ R$ {ptax.eur.toLocaleString('pt-BR', { minimumFractionDigits: 4 })}</span>}
+          {ptax.chf != null && <span>CHF R$ {ptax.chf.toLocaleString('pt-BR', { minimumFractionDigits: 4 })}</span>}
+          <span className="text-blue-500">— ao digitar o valor em moeda, o R$ preenche sozinho.</span>
+        </div>
+      )}
+
       {/* Grade de investimentos */}
       <div className="space-y-4">
         {grupos.map(([slug, g]) => (
@@ -390,8 +416,9 @@ export default function EditorFinanceiro({ itens, meses }: { itens: Item[]; mese
                               <input
                                 type="number" step="0.01" inputMode="decimal"
                                 value={valoresMoeda[key] ?? ''}
-                                onChange={e => setValoresMoeda(p => ({ ...p, [key]: e.target.value }))}
+                                onChange={e => aplicarMoeda(it, key, e.target.value)}
                                 placeholder="moeda"
+                                title={cotacaoDaMoeda(it.moeda, ptax) ? `R$ preenche sozinho = ${it.moeda} × ${cotacaoDaMoeda(it.moeda, ptax)!.toLocaleString('pt-BR', { minimumFractionDigits: 4 })} (PTAX)` : undefined}
                                 className={`w-28 px-2 py-1.5 border rounded-lg text-sm text-right focus:outline-none focus:ring-2 focus:ring-green-200 ${destaque.has(key) ? 'border-blue-400 bg-blue-50' : 'border-gray-300'}`}
                               />
                             </div>

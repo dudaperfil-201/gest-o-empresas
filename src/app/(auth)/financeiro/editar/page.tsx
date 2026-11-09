@@ -1,12 +1,13 @@
 import { carregarFinanceiro } from '@/lib/financeiro/carregar'
 import { exigirFinanceiro } from '@/lib/auth'
+import { fetchPtax } from '@/lib/ptax'
 import EditorFinanceiro from './EditorFinanceiro'
 
 export const dynamic = 'force-dynamic'
 
 export default async function EditarFinanceiroPage() {
   await exigirFinanceiro()
-  const { carteiras, meses } = await carregarFinanceiro()
+  const [{ carteiras, meses }, ptax] = await Promise.all([carregarFinanceiro(), fetchPtax()])
 
   // Lista plana de investimentos (com os valores de cada mês, para pré-preencher).
   const itens = carteiras.flatMap(c => c.contas.flatMap(ct => ct.investimentos.map(inv => ({
@@ -20,5 +21,5 @@ export default async function EditarFinanceiroPage() {
     valoresMoeda: meses.map((_, i) => inv.valoresMoeda?.[i] ?? null),
   }))))
 
-  return <EditorFinanceiro itens={itens} meses={meses} />
+  return <EditorFinanceiro itens={itens} meses={meses} ptax={ptax} />
 }

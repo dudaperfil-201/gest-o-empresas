@@ -5,6 +5,7 @@
 // CUB-SC não tem API pública → último valor conhecido (atualizado junto do robô do CUB).
 
 import { createClient } from '@/lib/supabase/server'
+import { fetchPtax } from '@/lib/ptax'
 
 const CUB_SC = { valor: '3.121,62', ref: 'jul/26' }
 
@@ -28,31 +29,6 @@ async function fetchJson(url: string, revalidate = 3600): Promise<any | null> {
   } catch {
     return null
   }
-}
-
-// Câmbio OFICIAL do Banco Central (PTAX) — dólar, euro e franco em R$ (cotação de VENDA).
-// Consulta o período dos últimos ~12 dias (cobre fins de semana/feriados) e pega a
-// cotação mais recente. Datas no formato MM-DD-YYYY exigido pela API Olinda do BCB.
-type Ptax = { usd: number | null; eur: number | null; chf: number | null; data: string | null }
-async function fetchPtax(revalidate = 1800): Promise<Ptax> {
-  const base = 'https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata'
-  const hoje = new Date()
-  const di = new Date(hoje); di.setDate(di.getDate() - 12)
-  const fmt = (d: Date) => `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}-${d.getFullYear()}`
-  const periodo = `@di=%27${fmt(di)}%27&@df=%27${fmt(hoje)}%27&$top=1&$orderby=dataHoraCotacao%20desc&$format=json`
-  const dolarUrl = `${base}/CotacaoDolarPeriodo(dataInicial=@di,dataFinalCotacao=@df)?${periodo}`
-  const moedaUrl = (m: string) => `${base}/CotacaoMoedaPeriodo(moeda=@m,dataInicial=@di,dataFinalCotacao=@df)?@m=%27${m}%27&${periodo}`
-  const [usdJ, eurJ, chfJ] = await Promise.all([
-    fetchJson(dolarUrl, revalidate),
-    fetchJson(moedaUrl('EUR'), revalidate),
-    fetchJson(moedaUrl('CHF'), revalidate),
-  ])
-  const venda = (j: any): number | null => {
-    const v = j?.value?.[0]?.cotacaoVenda
-    return typeof v === 'number' && isFinite(v) ? v : null
-  }
-  const dataCot: string | null = usdJ?.value?.[0]?.dataHoraCotacao?.slice(0, 10) ?? null
-  return { usd: venda(usdJ), eur: venda(eurJ), chf: venda(chfJ), data: dataCot }
 }
 
 // Curva de juros do Tesouro americano (par yield curve), fonte oficial do US Treasury.
