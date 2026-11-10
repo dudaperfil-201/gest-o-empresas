@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { saldoCarteira, brl, contaTemMes, carteiraParcial, carteiraTemMes, type Carteira } from '@/lib/financeiro/dados'
+import { saldoCarteira, brl, contaTemMes, contaRelevanteNoMes, carteiraParcial, carteiraTemMes, type Carteira } from '@/lib/financeiro/dados'
 import { carregarFinanceiro, proximoMes } from '@/lib/financeiro/carregar'
 import { exigirFinanceiro } from '@/lib/auth'
 
@@ -96,14 +96,24 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
             )}
           </p>
         )}
-        <p className="text-xs mt-1">
-          {c.contas.map((ct, idx) => (
-            <span key={ct.banco}>
-              {idx > 0 && <span className="text-gray-300"> · </span>}
-              <span className={contaTemMes(ct, i) ? 'text-gray-400' : 'text-red-600 font-semibold'}>{ct.banco}</span>
-            </span>
-          ))}
-        </p>
+        {/* Só as instituições PENDENTES no mês (relevantes e ainda sem valor) aparecem — em
+            vermelho, lembrando o que falta lançar. Assim que os valores de uma instituição
+            são carregados, ela some do card. */}
+        {(() => {
+          const pendentes = c.contas.filter(ct => contaRelevanteNoMes(ct, i) && !contaTemMes(ct, i))
+          if (pendentes.length === 0) return null
+          return (
+            <p className="text-xs mt-1">
+              <span className="text-gray-400">Falta: </span>
+              {pendentes.map((ct, idx) => (
+                <span key={ct.banco}>
+                  {idx > 0 && <span className="text-gray-300"> · </span>}
+                  <span className="text-red-600 font-semibold">{ct.banco}</span>
+                </span>
+              ))}
+            </p>
+          )
+        })()}
       </Link>
     )
   }
