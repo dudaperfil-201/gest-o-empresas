@@ -26,11 +26,19 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      {/* Topo: apenas o logotipo */}
-      <header className="bg-white shadow-sm px-4 py-2 flex items-center justify-center">
-        <Link href="/" className="shrink-0">
-          <img src="/logo-hase.png" alt="HASE Management" className="h-48 w-auto object-contain" />
-        </Link>
+      {/* Topo: apenas o logotipo. No desktop, um espaçador invisível com a MESMA largura da
+          barra lateral (mesmo botão mais largo + o gap) empurra o logo para que ele fique
+          centralizado SOBRE O CONTEÚDO, não sobre a tela inteira. No mobile (sem barra) o
+          espaçador some e o logo centraliza na tela. */}
+      <header className="bg-white shadow-sm px-4 md:px-6 py-2 flex items-center">
+        <div aria-hidden className="hidden md:block mr-4 shrink-0 invisible">
+          <span className="block px-4 py-2 text-sm font-medium border rounded-lg whitespace-nowrap">📊 Relatório e Documentos</span>
+        </div>
+        <div className="flex-1 flex justify-center">
+          <Link href="/" className="shrink-0">
+            <img src="/logo-hase.png" alt="HASE Management" className="h-48 w-auto object-contain" />
+          </Link>
+        </div>
       </header>
 
       {/* Conteúdo: botões compactos à esquerda, ao lado das empresas */}
