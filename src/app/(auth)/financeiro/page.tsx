@@ -121,7 +121,6 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
           <span className="text-3xl">💰</span>
           <div>
             <h2 className="text-xl font-semibold text-gray-900">Financeiro</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Carteiras de investimento — Brasil e Internacional</p>
           </div>
         </div>
         <Link href="/financeiro/editar" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
