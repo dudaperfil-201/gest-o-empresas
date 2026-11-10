@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import {
-  saldoConta, saldoCarteira, saldoCarteiraUsd, brl, fmtMoeda,
+  saldoConta, saldoCarteira, saldoCarteiraUsd, brl, brlCompacto, fmtMoeda,
   contaTemMes, carteiraParcial, bancosPendentes, contaRelevanteNoMes, cambioUsdCarteira,
 } from '@/lib/financeiro/dados'
 import { carregarFinanceiro, proximoMes } from '@/lib/financeiro/carregar'
@@ -118,15 +118,15 @@ export default async function CarteiraPage({ params, searchParams }: {
               <Link key={idx} href={`/financeiro/${slug}?mes=${idx + 1}`}
                 className={`rounded-lg py-3 px-1 transition-colors ${selecionado ? 'bg-green-50 ring-1 ring-green-300' : 'bg-gray-50 hover:bg-gray-100'}`}>
                 <p className="text-[11px] font-medium text-gray-400">{navMeses[idx].abrev}</p>
-                <p className="text-sm font-semibold text-gray-800 mt-1">{brl(v)}</p>
+                <p className="text-sm font-semibold text-gray-800 mt-1 whitespace-nowrap" title={brl(v)}>{brlCompacto(v)}</p>
                 {cambio && (
                   <p className="text-[10px] text-gray-400 mt-0.5">💵 {cambio.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 )}
                 {p ? (
                   <p className="text-[10px] mt-0.5 text-yellow-600">parcial</p>
                 ) : delta !== null && (
-                  <p className={`text-[11px] mt-0.5 ${delta >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                    {delta >= 0 ? '▲' : '▼'} {brl(Math.abs(delta))}
+                  <p className={`text-[11px] mt-0.5 whitespace-nowrap ${delta >= 0 ? 'text-green-600' : 'text-red-500'}`} title={brl(Math.abs(delta))}>
+                    {delta >= 0 ? '▲' : '▼'} {brlCompacto(Math.abs(delta))}
                   </p>
                 )}
               </Link>

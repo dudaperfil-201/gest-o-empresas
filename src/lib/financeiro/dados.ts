@@ -319,5 +319,18 @@ export const getCarteira = (slug: string) => CARTEIRAS.find(c => c.slug === slug
 
 export const brl = (n: number) => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
 
+// Valor ABREVIADO para visões compactas (ex.: a faixa "Evolução em 2026", onde cabem 12
+// colunas): "R$ 18,46 mi", "R$ 507,3 mil", "R$ 1,20 bi". Mantém o sinal; o valor cheio
+// continua no cabeçalho e na lista de contas.
+export const brlCompacto = (n: number): string => {
+  const s = n < 0 ? '−' : ''
+  const a = Math.abs(n)
+  const fmt = (x: number, casas: number) => x.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas })
+  if (a >= 1e9) return `${s}R$ ${fmt(a / 1e9, 2)} bi`
+  if (a >= 1e6) return `${s}R$ ${fmt(a / 1e6, 2)} mi`
+  if (a >= 1e3) return `${s}R$ ${fmt(a / 1e3, 1)} mil`
+  return `${s}R$ ${fmt(a, 0)}`
+}
+
 export const fmtMoeda = (simbolo: string, n: number) =>
   `${simbolo} ${n.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
