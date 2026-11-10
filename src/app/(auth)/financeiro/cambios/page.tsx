@@ -53,7 +53,6 @@ export default async function CambiosPage() {
           <span className="text-3xl">💱</span>
           <div>
             <h2 className="text-xl font-semibold text-gray-900">Câmbios — La Jolla</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Operações de câmbio (R$ → moeda estrangeira) para abastecer a conta (Itaú Miami)</p>
           </div>
         </div>
         <CambioForm />
