@@ -104,7 +104,6 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
           if (pendentes.length === 0) return null
           return (
             <p className="text-xs mt-1">
-              <span className="text-gray-400">Falta: </span>
               {pendentes.map((ct, idx) => (
                 <span key={ct.banco}>
                   {idx > 0 && <span className="text-gray-300"> · </span>}
