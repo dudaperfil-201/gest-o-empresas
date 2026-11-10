@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import {
-  saldoConta, saldoCarteira, saldoCarteiraUsd, brl, brlCompacto, fmtMoeda,
+  saldoConta, saldoCarteira, saldoCarteiraUsd, brl, fmtMoeda,
   contaTemMes, carteiraParcial, bancosPendentes, contaRelevanteNoMes, cambioUsdCarteira,
 } from '@/lib/financeiro/dados'
 import { carregarFinanceiro, proximoMes } from '@/lib/financeiro/carregar'
@@ -105,30 +105,40 @@ export default async function CarteiraPage({ params, searchParams }: {
       {/* Evolução no ano */}
       <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
         <h3 className="font-medium text-gray-900 mb-3">Evolução em 2026</h3>
-        <div className={`grid gap-2 text-center`} style={{ gridTemplateColumns: `repeat(${ultimo + 1}, minmax(0, 1fr))` }}>
+        {/* Vertical: uma linha por mês (mês · saldo cheio · variação com %). Bem mais legível
+            que espremer 12 colunas numa linha só. Clicar leva ao mês. */}
+        <div className="divide-y divide-gray-100">
           {Array.from({ length: ultimo + 1 }, (_, idx) => idx).map(idx => {
             const v = saldoCarteira(carteira, idx)
             const p = carteiraParcial(carteira, idx)
-            const delta = idx > 0 && !p && !carteiraParcial(carteira, idx - 1) ? v - saldoCarteira(carteira, idx - 1) : null
+            const anterior = idx > 0 ? saldoCarteira(carteira, idx - 1) : null
+            const delta = idx > 0 && !p && !carteiraParcial(carteira, idx - 1) ? v - (anterior ?? 0) : null
+            const deltaPct = delta !== null && anterior ? (delta / anterior) * 100 : null
             const selecionado = idx === i
             // Câmbio do dólar usado no fechamento — só internacional e de julho/2026 em diante.
             const mDetalhe = navMeses[idx].ano > 2026 || (navMeses[idx].ano === 2026 && navMeses[idx].mes >= 7)
             const cambio = carteira.tipo === 'internacional' && mDetalhe ? cambioUsdCarteira(carteira, idx) : null
+            const rotuloMes = `${navMeses[idx].abrev}/${String(navMeses[idx].ano).slice(2)}`
             return (
               <Link key={idx} href={`/financeiro/${slug}?mes=${idx + 1}`}
-                className={`rounded-lg py-3 px-1 transition-colors ${selecionado ? 'bg-green-50 ring-1 ring-green-300' : 'bg-gray-50 hover:bg-gray-100'}`}>
-                <p className="text-[11px] font-medium text-gray-400">{navMeses[idx].abrev}</p>
-                <p className="text-sm font-semibold text-gray-800 mt-1 whitespace-nowrap" title={brl(v)}>{brlCompacto(v)}</p>
+                className={`flex items-center gap-3 px-2 -mx-2 py-2 rounded-lg transition-colors ${selecionado ? 'bg-green-50 ring-1 ring-green-300' : 'hover:bg-gray-50'}`}>
+                <span className="w-14 shrink-0 text-xs font-semibold text-gray-400">{rotuloMes}</span>
+                <span className="flex-1 text-right text-sm font-semibold text-gray-800 tabular-nums whitespace-nowrap">{brl(v)}</span>
                 {cambio && (
-                  <p className="text-[10px] text-gray-400 mt-0.5">💵 {cambio.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  <span className="hidden sm:block w-16 shrink-0 text-right text-[11px] text-gray-400 tabular-nums">💵 {cambio.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 )}
-                {p ? (
-                  <p className="text-[10px] mt-0.5 text-yellow-600">parcial</p>
-                ) : delta !== null && (
-                  <p className={`text-[11px] mt-0.5 whitespace-nowrap ${delta >= 0 ? 'text-green-600' : 'text-red-500'}`} title={brl(Math.abs(delta))}>
-                    {delta >= 0 ? '▲' : '▼'} {brlCompacto(Math.abs(delta))}
-                  </p>
-                )}
+                <span className="w-40 sm:w-48 shrink-0 text-right text-xs tabular-nums whitespace-nowrap">
+                  {p ? (
+                    <span className="text-yellow-600">parcial</span>
+                  ) : delta !== null ? (
+                    <span className={delta >= 0 ? 'text-green-600' : 'text-red-500'}>
+                      {delta >= 0 ? '▲' : '▼'} {delta >= 0 ? '+' : '−'}{brl(Math.abs(delta))}
+                      {deltaPct !== null && ` (${delta >= 0 ? '+' : '−'}${Math.abs(deltaPct).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%)`}
+                    </span>
+                  ) : (
+                    <span className="text-gray-300">—</span>
+                  )}
+                </span>
               </Link>
             )
           })}
