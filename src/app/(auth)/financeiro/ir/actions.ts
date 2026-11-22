@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 
 const P = '/financeiro/ir'
 type R = { ok: true } | { ok: false; erro: string }
+const TRILHAS = ['holding', 'direta', 'offshore', 'fundo', 'intermediaria']
 
 async function pode(): Promise<boolean> {
   const s = await getSessao()
@@ -13,9 +14,10 @@ async function pode(): Promise<boolean> {
 }
 const msgTabela = (m: string) =>
   /does not exist|schema cache|could not find the table/i.test(m)
-    ? 'As tabelas do IR ainda não existem — rode a migration 019_ir_distribuicao.sql no SQL Editor do Supabase.'
+    ? 'As tabelas do IR ainda não existem — rode a migration 020_ir_trilhas.sql (e a 019) no SQL Editor do Supabase.'
     : m
 
+// ── Pessoas ──
 export async function addPessoa(nome: string, tipo: string): Promise<R> {
   if (!(await pode())) return { ok: false, erro: 'Sem permissão.' }
   const n = (nome || '').trim()
@@ -47,12 +49,47 @@ export async function removerPessoa(id: string): Promise<R> {
   return { ok: true }
 }
 
-export async function setDistribuicao(ano: number, empresaId: string, pessoaId: string, valorMensal: number): Promise<R> {
+// ── Fontes (empresas/veículos classificados por trilha) ──
+export async function addFonte(nome: string, trilha: string): Promise<R> {
+  if (!(await pode())) return { ok: false, erro: 'Sem permissão.' }
+  const n = (nome || '').trim()
+  if (!n) return { ok: false, erro: 'Informe o nome da fonte.' }
+  const t = TRILHAS.includes(trilha) ? trilha : 'direta'
+  const sb = await createClient()
+  const { error } = await sb.from('ir_fontes').insert({ nome: n, trilha: t, ordem: 999 })
+  if (error) return { ok: false, erro: msgTabela(error.message) }
+  revalidatePath(P)
+  return { ok: true }
+}
+
+export async function atualizarFonte(id: string, nome: string, trilha: string): Promise<R> {
+  if (!(await pode())) return { ok: false, erro: 'Sem permissão.' }
+  const n = (nome || '').trim()
+  if (!n) return { ok: false, erro: 'Informe o nome da fonte.' }
+  const t = TRILHAS.includes(trilha) ? trilha : 'direta'
+  const sb = await createClient()
+  const { error } = await sb.from('ir_fontes').update({ nome: n, trilha: t }).eq('id', id)
+  if (error) return { ok: false, erro: error.message }
+  revalidatePath(P)
+  return { ok: true }
+}
+
+export async function removerFonte(id: string): Promise<R> {
+  if (!(await pode())) return { ok: false, erro: 'Sem permissão.' }
+  const sb = await createClient()
+  const { error } = await sb.from('ir_fontes').delete().eq('id', id)
+  if (error) return { ok: false, erro: error.message }
+  revalidatePath(P)
+  return { ok: true }
+}
+
+// ── Lançamentos ──
+export async function setDistribuicao(ano: number, fonteId: string, pessoaId: string, valor: number): Promise<R> {
   if (!(await pode())) return { ok: false, erro: 'Sem permissão.' }
   const sb = await createClient()
   const { error } = await sb.from('ir_distribuicoes').upsert(
-    { ano, empresa_id: empresaId, pessoa_id: pessoaId, valor_mensal: valorMensal > 0 ? valorMensal : 0 },
-    { onConflict: 'ano,empresa_id,pessoa_id' },
+    { ano, fonte_id: fonteId, pessoa_id: pessoaId, valor: valor > 0 ? valor : 0 },
+    { onConflict: 'ano,fonte_id,pessoa_id' },
   )
   if (error) return { ok: false, erro: msgTabela(error.message) }
   revalidatePath(P)

@@ -11,18 +11,20 @@ export default async function IRPage({ searchParams }: { searchParams: Promise<{
   const sp = await searchParams
   const ano = sp.ano ? parseInt(sp.ano, 10) : 2026
 
-  const [eRes, pRes, dRes, oRes] = await Promise.all([
-    sb.from('empresas').select('id, nome').order('nome'),
+  const [fRes, pRes, dRes, oRes] = await Promise.all([
+    sb.from('ir_fontes').select('id, nome, trilha, ordem').order('ordem').order('created_at'),
     sb.from('ir_pessoas').select('id, nome, tipo, ordem').order('ordem').order('created_at'),
-    sb.from('ir_distribuicoes').select('empresa_id, pessoa_id, valor_mensal').eq('ano', ano),
+    sb.from('ir_distribuicoes').select('fonte_id, pessoa_id, valor').eq('ano', ano),
     sb.from('ir_pessoa_ano').select('pessoa_id, outros_rendimentos').eq('ano', ano),
   ])
 
-  const semTabela = !!pRes.error && /does not exist|schema cache|could not find the table/i.test(pRes.error.message)
+  const semTabela =
+    (!!fRes.error && /does not exist|schema cache|could not find the table/i.test(fRes.error.message)) ||
+    (!!pRes.error && /does not exist|schema cache|could not find the table/i.test(pRes.error.message))
 
-  const empresas = (eRes.data ?? []) as { id: string; nome: string }[]
+  const fontes = (fRes.data ?? []) as { id: string; nome: string; trilha: string; ordem: number }[]
   const pessoas = (pRes.data ?? []) as { id: string; nome: string; tipo: string; ordem: number }[]
-  const distrib = (dRes.data ?? []) as { empresa_id: string; pessoa_id: string; valor_mensal: number }[]
+  const distrib = (dRes.data ?? []) as { fonte_id: string; pessoa_id: string; valor: number }[]
   const outros = (oRes.data ?? []) as { pessoa_id: string; outros_rendimentos: number }[]
 
   return (
@@ -35,7 +37,7 @@ export default async function IRPage({ searchParams }: { searchParams: Promise<{
 
       <IRCalculadora
         ano={ano}
-        empresas={empresas}
+        fontes={fontes}
         pessoas={pessoas}
         distrib={distrib}
         outros={outros}
