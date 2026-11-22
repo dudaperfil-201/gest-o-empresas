@@ -132,9 +132,14 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
             <h2 className="text-xl font-semibold text-gray-900">Financeiro</h2>
           </div>
         </div>
-        <Link href="/financeiro/editar" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
-          ✏️ Lançar / editar mês
-        </Link>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link href="/financeiro/ir" className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
+            🧾 IR 2026
+          </Link>
+          <Link href="/financeiro/editar" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+            ✏️ Lançar / editar mês
+          </Link>
+        </div>
       </div>
 
       {/* Banner com patrimônio total e navegação de mês */}
