@@ -125,22 +125,22 @@ export default async function CarteiraPage({ params, searchParams }: {
               <Link key={idx} href={`/financeiro/${slug}?mes=${idx + 1}#contas`} scroll
                 className={`aspect-square rounded-xl border p-2.5 flex flex-col justify-between transition-colors ${selecionado ? 'bg-green-50 border-green-400 ring-1 ring-green-300' : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300'}`}>
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">{rotuloMes}</span>
-                  {p && <span className="text-[8px] font-bold bg-yellow-400 text-yellow-900 px-1 py-0.5 rounded">PARCIAL</span>}
+                  <span className="text-xs sm:text-sm font-bold text-gray-500 uppercase tracking-wide">{rotuloMes}</span>
+                  {p && <span className="text-[9px] font-bold bg-yellow-400 text-yellow-900 px-1 py-0.5 rounded">PARCIAL</span>}
                 </div>
                 <div className="text-center leading-tight">
-                  <div className="text-sm sm:text-base font-bold text-gray-800 tabular-nums">{brlCompacto(v)}</div>
+                  <div className="text-lg sm:text-2xl font-bold text-gray-800 tabular-nums">{brlCompacto(v)}</div>
                   {cambio && (
-                    <div className="text-[10px] text-gray-400 tabular-nums mt-0.5">💵 {cambio.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    <div className="text-[11px] text-gray-400 tabular-nums mt-0.5">💵 {cambio.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                   )}
                 </div>
-                <div className="text-center text-[11px] tabular-nums leading-tight">
+                <div className="text-center text-xs sm:text-sm tabular-nums leading-tight">
                   {p ? (
                     <span className="text-yellow-600">parcial</span>
                   ) : delta !== null ? (
                     <span className={delta >= 0 ? 'text-green-600' : 'text-red-500'}>
                       {delta >= 0 ? '▲' : '▼'} {delta >= 0 ? '+' : '−'}{brlCompacto(Math.abs(delta))}
-                      {deltaPct !== null && <span className="block text-[10px]">{delta >= 0 ? '+' : '−'}{Math.abs(deltaPct).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</span>}
+                      {deltaPct !== null && <span className="block text-[11px] sm:text-xs">{delta >= 0 ? '+' : '−'}{Math.abs(deltaPct).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</span>}
                     </span>
                   ) : (
                     <span className="text-gray-300">—</span>
