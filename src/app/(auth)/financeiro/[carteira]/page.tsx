@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import {
-  saldoConta, saldoCarteira, saldoCarteiraUsd, brl, fmtMoeda,
+  saldoConta, saldoCarteira, saldoCarteiraUsd, brl, brlCompacto, fmtMoeda,
   contaTemMes, carteiraParcial, bancosPendentes, contaRelevanteNoMes, cambioUsdCarteira,
 } from '@/lib/financeiro/dados'
 import { carregarFinanceiro, proximoMes } from '@/lib/financeiro/carregar'
@@ -102,12 +102,14 @@ export default async function CarteiraPage({ params, searchParams }: {
         </div>
       )}
 
-      {/* Evolução no ano */}
+      {/* Evolução no ano — um card QUADRADO por mês, 3 por linha. Clicar leva ao mês e
+          abre o leque de investimentos da carteira (seção "Contas", logo abaixo). */}
       <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
-        <h3 className="font-medium text-gray-900 mb-3">Evolução em 2026</h3>
-        {/* Vertical: uma linha por mês (mês · saldo cheio · variação com %). Bem mais legível
-            que espremer 12 colunas numa linha só. Clicar leva ao mês. */}
-        <div className="divide-y divide-gray-100">
+        <div className="flex items-baseline justify-between mb-3">
+          <h3 className="font-medium text-gray-900">Evolução em 2026</h3>
+          <span className="text-[11px] text-gray-400">clique num mês para ver os investimentos ↓</span>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
           {Array.from({ length: ultimo + 1 }, (_, idx) => idx).map(idx => {
             const v = saldoCarteira(carteira, idx)
             const p = carteiraParcial(carteira, idx)
@@ -120,32 +122,39 @@ export default async function CarteiraPage({ params, searchParams }: {
             const cambio = carteira.tipo === 'internacional' && mDetalhe ? cambioUsdCarteira(carteira, idx) : null
             const rotuloMes = `${navMeses[idx].abrev}/${String(navMeses[idx].ano).slice(2)}`
             return (
-              <Link key={idx} href={`/financeiro/${slug}?mes=${idx + 1}`}
-                className={`flex items-center gap-3 px-2 -mx-2 py-2 rounded-lg transition-colors ${selecionado ? 'bg-green-50 ring-1 ring-green-300' : 'hover:bg-gray-50'}`}>
-                <span className="w-14 shrink-0 text-xs font-semibold text-gray-400">{rotuloMes}</span>
-                <span className="flex-1 text-right text-sm font-semibold text-gray-800 tabular-nums whitespace-nowrap">{brl(v)}</span>
-                {cambio && (
-                  <span className="hidden sm:block w-16 shrink-0 text-right text-[11px] text-gray-400 tabular-nums">💵 {cambio.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                )}
-                <span className="w-40 sm:w-48 shrink-0 text-right text-xs tabular-nums whitespace-nowrap">
+              <Link key={idx} href={`/financeiro/${slug}?mes=${idx + 1}#contas`} scroll
+                className={`aspect-square rounded-xl border p-3 flex flex-col justify-between transition-colors ${selecionado ? 'bg-green-50 border-green-400 ring-1 ring-green-300' : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300'}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">{rotuloMes}</span>
+                  {p && <span className="text-[8px] font-bold bg-yellow-400 text-yellow-900 px-1 py-0.5 rounded">PARCIAL</span>}
+                </div>
+                <div className="text-center leading-tight">
+                  <div className="text-sm sm:text-lg font-bold text-gray-800 tabular-nums">{brlCompacto(v)}</div>
+                  {cambio && (
+                    <div className="text-[10px] text-gray-400 tabular-nums mt-0.5">💵 {cambio.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  )}
+                </div>
+                <div className="text-center text-[11px] tabular-nums leading-tight">
                   {p ? (
                     <span className="text-yellow-600">parcial</span>
                   ) : delta !== null ? (
                     <span className={delta >= 0 ? 'text-green-600' : 'text-red-500'}>
-                      {delta >= 0 ? '▲' : '▼'} {delta >= 0 ? '+' : '−'}{brl(Math.abs(delta))}
-                      {deltaPct !== null && ` (${delta >= 0 ? '+' : '−'}${Math.abs(deltaPct).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%)`}
+                      {delta >= 0 ? '▲' : '▼'} {delta >= 0 ? '+' : '−'}{brlCompacto(Math.abs(delta))}
+                      {deltaPct !== null && <span className="block text-[10px]">{delta >= 0 ? '+' : '−'}{Math.abs(deltaPct).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</span>}
                     </span>
                   ) : (
                     <span className="text-gray-300">—</span>
                   )}
-                </span>
+                </div>
               </Link>
             )
           })}
         </div>
       </div>
 
-      {/* Contas por banco — editáveis no próprio perfil da empresa (mês selecionado) */}
+      {/* Contas por banco — editáveis no próprio perfil da empresa (mês selecionado).
+          Âncora #contas: clicar num card de mês rola até aqui (o leque de investimentos). */}
+      <div id="contas" className="scroll-mt-4">
       <CarteiraContas
         key={`${navMeses[i].ano}-${navMeses[i].mes}`}
         slug={slug}
@@ -166,6 +175,7 @@ export default async function CarteiraPage({ params, searchParams }: {
           })),
         }))}
       />
+      </div>
     </div>
   )
 }
