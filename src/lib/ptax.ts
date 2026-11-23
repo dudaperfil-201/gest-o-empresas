@@ -3,6 +3,9 @@
 // para que a conversão US$/€/CHF → R$ seja sempre igual à que aparece na lateral.
 // Consulta os últimos ~12 dias (cobre fins de semana/feriados) e pega a cotação mais recente.
 // Datas no formato MM-DD-YYYY exigido pela API Olinda do BCB.
+// Cache curto (10 min): o câmbio mexe durante o dia e o PTAX é republicado em boletins
+// intradiários; janela longa deixava o card preso no fechamento de dias anteriores
+// (ex.: após feriado + fim de semana ficava no PTAX da quinta).
 
 export type Ptax = { usd: number | null; eur: number | null; chf: number | null; data: string | null }
 
@@ -16,7 +19,7 @@ async function fetchJson(url: string, revalidate: number): Promise<any | null> {
   }
 }
 
-export async function fetchPtax(revalidate = 1800): Promise<Ptax> {
+export async function fetchPtax(revalidate = 600): Promise<Ptax> {
   const base = 'https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata'
   const hoje = new Date()
   const di = new Date(hoje); di.setDate(di.getDate() - 12)
