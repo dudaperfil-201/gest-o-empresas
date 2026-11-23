@@ -15,7 +15,11 @@ export const MESES_2026 = [
 // Cada carteira/conta pode ter menos meses que o total (dados chegam por extrato,
 // mês a mês). valores[i] === undefined = "ainda sem extrato" para aquele mês.
 
-export interface Investimento { nome: string; valores: number[]; moeda?: string; valoresMoeda?: number[]; variacoes?: number[] }
+// `tributavel`: true = o rendimento é tributado (IR); false = isento/incentivado
+// (CRI, CRA, LIG, debênture incentivada, FI-Infra, FII, ISEN…); undefined = não
+// classificado (caixa, títulos sem rendimento tributável, meses antigos). Vem da
+// coluna "IR + IOF" do extrato "Posição a mercado" do Itaú (IR>0 → tributável).
+export interface Investimento { nome: string; valores: number[]; moeda?: string; valoresMoeda?: number[]; variacoes?: number[]; tributavel?: boolean }
 // `historico: true` = conta "aposentada" (foi substituída por outras contas). Ela só
 // aparece/conta nos meses em que realmente tem dado; nunca é cobrada como "aguardando
 // extrato" nos meses seguintes. Ex.: o "Saldo" único da La Jolla, trocado pelas 6 classes.
@@ -163,20 +167,46 @@ export const CARTEIRAS: Carteira[] = [
       ] },
     ],
   },
+  // Itaú Eduardo / Itaú Serginho: até JUNHO, posição AGREGADA (um número "Investido").
+  // De NOVEMBRO/2026 em diante a carteira é DETALHADA ativo por ativo pelas CLASSES abaixo,
+  // importando o PDF "Posição a mercado" do Itaú — o importador cria cada ativo como linha
+  // no banco e marca tributável/isento pela coluna "IR + IOF" do extrato. O agregado vira
+  // `historico` (só conta nos meses em que tem dado; não é cobrado nos meses detalhados).
+  // Mesmo padrão da La Jolla (classes vazias aqui, ativos vêm do banco).
   {
     slug: 'itau-eduardo', nome: 'Itaú Eduardo', tipo: 'brasil', contas: [
-      { banco: 'Itaú', investimentos: [
+      { banco: 'Itaú', historico: true, investimentos: [
         { nome: 'Investido', valores: [7582517.75, 7761608.55, 8008361.95, 8321989.27, 8329546.46, 8344142.13] },
         { nome: 'Em conta', valores: [2.12, 6229.25, 30737.14, 3162.91, 10378.78, 26516.85] },
       ] },
+      { banco: 'Pós-fixado', investimentos: [] },
+      { banco: 'Prefixado', investimentos: [] },
+      { banco: 'Inflação', investimentos: [] },
+      { banco: 'Renda Fixa Ativo', investimentos: [] },
+      { banco: 'Multimercado', investimentos: [] },
+      { banco: 'Renda Variável', investimentos: [] },
+      { banco: 'Internacional', investimentos: [] },
+      { banco: 'Alternativos Líquidos', investimentos: [] },
+      { banco: 'Alternativos Ilíquidos', investimentos: [] },
+      { banco: 'Caixa', investimentos: [] },
     ],
   },
   {
     slug: 'itau-serginho', nome: 'Itaú Serginho', tipo: 'brasil', contas: [
-      { banco: 'Itaú', investimentos: [
+      { banco: 'Itaú', historico: true, investimentos: [
         { nome: 'Investido', valores: [7577661.61, 7727593.93, 7942308.52, 8319071.98, 8332182.43, 8354659.08] },
         { nome: 'Em conta', valores: [1.17, 25702.49, 7839.71, 5065.81, 10378.78, 32977.26] },
       ] },
+      { banco: 'Pós-fixado', investimentos: [] },
+      { banco: 'Prefixado', investimentos: [] },
+      { banco: 'Inflação', investimentos: [] },
+      { banco: 'Renda Fixa Ativo', investimentos: [] },
+      { banco: 'Multimercado', investimentos: [] },
+      { banco: 'Renda Variável', investimentos: [] },
+      { banco: 'Internacional', investimentos: [] },
+      { banco: 'Alternativos Líquidos', investimentos: [] },
+      { banco: 'Alternativos Ilíquidos', investimentos: [] },
+      { banco: 'Caixa', investimentos: [] },
     ],
   },
   // ── Internacional ──────────────────────────────────────────────────────

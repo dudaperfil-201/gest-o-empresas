@@ -6,6 +6,7 @@ import pdfParse from 'pdf-parse/lib/pdf-parse.js'
 import { parseSaldoDiario, type ResultadoImport } from '@/lib/financeiro/importarSaldoDiario'
 import { parseExtratoXP, type ExtratoPdf } from '@/lib/financeiro/importarExtratoPdf'
 import { parseExtratoLaJolla, type ResultadoLaJolla } from '@/lib/financeiro/importarExtratoLaJolla'
+import { parsePosicaoItau, type ResultadoItau } from '@/lib/financeiro/importarPosicaoItau'
 
 export type ItemMes = {
   carteira_slug: string
@@ -13,6 +14,7 @@ export type ItemMes = {
   investimento: string
   valor: number
   valor_moeda: number | null
+  tributavel?: boolean | null // só o import do Itaú define (classificação IR do extrato)
 }
 
 // Salva (upsert) os valores de um mês inteiro. Só grava os itens preenchidos — item em
@@ -35,6 +37,9 @@ export async function salvarMesFinanceiro(
       mes,
       valor: it.valor,
       valor_moeda: it.valor_moeda,
+      // tributavel só entra quando foi definido (import do Itaú); assim os demais
+      // lançamentos não exigem a coluna (migration 021) nem a sobrescrevem.
+      ...(it.tributavel !== undefined ? { tributavel: it.tributavel } : {}),
       atualizado_em: new Date().toISOString(),
     }))
 
@@ -80,6 +85,7 @@ export async function importarSaldoDiarioAction(
 export type ResultadoPdf =
   | { ok: true; tipo: 'xp'; resultado: ExtratoPdf }
   | { ok: true; tipo: 'lajolla'; resultado: ResultadoLaJolla }
+  | { ok: true; tipo: 'itau'; resultado: ResultadoItau }
   | { ok: false; erro: string }
 
 export async function importarExtratoPdfAction(formData: FormData): Promise<ResultadoPdf> {
@@ -100,6 +106,20 @@ export async function importarExtratoPdfAction(formData: FormData): Promise<Resu
         return { ok: false, erro: `A soma dos ativos lidos (US$ ${resultado.somaExtraidaUSD.toLocaleString('en-US', { minimumFractionDigits: 2 })}) não bateu com o total do statement (US$ ${resultado.totalUSD?.toLocaleString('en-US', { minimumFractionDigits: 2 }) ?? '—'}). Não vou gravar para não lançar valor errado — me mande o PDF que eu ajusto o leitor.` }
       }
       return { ok: true, tipo: 'lajolla', resultado }
+    }
+
+    // Itaú "Posição a mercado" DETALHADA (carteiras PF Eduardo/Serginho): tem o
+    // detalhamento ativo por ativo com a coluna IR+IOF. O titular vem mascarado, então a
+    // carteira (Eduardo × Serginho) é escolhida na tela.
+    if (/Detalhamento de Ativos/i.test(text) && /IR \+ IOF/i.test(text)) {
+      const resultado = parsePosicaoItau(text)
+      if (resultado.itens.length === 0 || !resultado.mes) {
+        return { ok: false, erro: 'Reconheci um extrato "Posição a mercado" do Itaú, mas não consegui ler os ativos.' }
+      }
+      if (!resultado.reconciliado) {
+        return { ok: false, erro: `A soma dos ativos lidos (R$ ${resultado.somaExtraida.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) não bateu com o Saldo bruto do extrato (R$ ${resultado.totalBruto?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) ?? '—'}). Não vou gravar para não lançar valor errado — me mande o PDF que eu ajusto o leitor.` }
+      }
+      return { ok: true, tipo: 'itau', resultado }
     }
 
     const resultado = parseExtratoXP(text)

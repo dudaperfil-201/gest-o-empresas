@@ -162,6 +162,7 @@ export default async function CarteiraPage({ params, searchParams }: {
             valor: inv.valores[i] ?? null,
             valorMoeda: inv.valoresMoeda?.[i] ?? null,
             variacao: inv.variacoes?.[i] ?? null,
+            tributavel: inv.tributavel ?? null,
           })),
         }))}
       />

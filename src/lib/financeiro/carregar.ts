@@ -14,7 +14,7 @@ const NOMES_MES: [string, string][] = [
   ['SET', 'SETEMBRO'], ['OUT', 'OUTUBRO'], ['NOV', 'NOVEMBRO'], ['DEZ', 'DEZEMBRO'],
 ]
 
-type Row = { carteira_slug: string; banco: string; investimento: string; ano: number; mes: number; valor: number; valor_moeda: number | null; variacao_pct?: number | null }
+type Row = { carteira_slug: string; banco: string; investimento: string; ano: number; mes: number; valor: number; valor_moeda: number | null; variacao_pct?: number | null; tributavel?: boolean | null }
 
 // Dados do Break Even do MÊS CORRENTE (o último mês com dados no Financeiro):
 //  - mês/ano;  - rnxRendimento (auto: diferença dos 2 últimos meses da RNX);
@@ -89,9 +89,10 @@ export async function carregarFinanceiro(): Promise<{ carteiras: Carteira[]; mes
   try {
     const supabase = await createClient()
     const COLS = 'carteira_slug,banco,investimento,ano,mes,valor,valor_moeda'
-    // Tenta com variacao_pct; se a coluna ainda não existir (migração não rodada),
-    // busca sem ela para não quebrar o financeiro.
-    let { data, error } = await supabase.from('financeiro_valores').select(`${COLS},variacao_pct`)
+    // Tenta com as colunas opcionais (variacao_pct, tributavel); se alguma ainda não
+    // existir (migração não rodada), degrada sem ela para não quebrar o financeiro.
+    let { data, error } = await supabase.from('financeiro_valores').select(`${COLS},variacao_pct,tributavel`)
+    if (error) ({ data, error } = await supabase.from('financeiro_valores').select(`${COLS},variacao_pct`))
     if (error) ({ data, error } = await supabase.from('financeiro_valores').select(COLS))
     if (!error && data && data.length > 0) rows = data as Row[]
   } catch {
@@ -114,6 +115,16 @@ export async function carregarFinanceiro(): Promise<{ carteiras: Carteira[]; mes
   const val = (slug: string, banco: string, inv: string, ano: number, mes: number) =>
     mapa.get(`${slug}|${banco}|${inv}|${ano}|${mes}`)
 
+  // Classificação tributável/isento do ativo = a mais recente informada no banco (não
+  // muda mês a mês). Varre do último mês ao primeiro e pega o primeiro valor não-nulo.
+  const trib = (slug: string, banco: string, inv: string): boolean | undefined => {
+    for (let k = meses.length - 1; k >= 0; k--) {
+      const r = val(slug, banco, inv, meses[k].ano, meses[k].mes)
+      if (r && r.tributavel != null) return r.tributavel
+    }
+    return undefined
+  }
+
   // Monta as carteiras do esqueleto do código, preenchendo valores por índice de mês.
   // valores[i] === undefined = "sem extrato" naquele mês (mesma semântica de antes).
   const carteiras: Carteira[] = CARTEIRAS.map(cart => ({
@@ -130,12 +141,14 @@ export async function carregarFinanceiro(): Promise<{ carteiras: Carteira[]; mes
           const r = val(cart.slug, conta.banco, inv.nome, m.ano, m.mes)
           return r && r.variacao_pct != null ? Number(r.variacao_pct) : undefined
         }) as unknown as number[]
-        if (!inv.moeda) return { ...inv, valores, variacoes }
+        // Selo tributável vem do banco quando houver; senão mantém o do esqueleto.
+        const tributavel = trib(cart.slug, conta.banco, inv.nome) ?? inv.tributavel
+        if (!inv.moeda) return { ...inv, valores, variacoes, tributavel }
         const valoresMoeda = meses.map(m => {
           const r = val(cart.slug, conta.banco, inv.nome, m.ano, m.mes)
           return r && r.valor_moeda != null ? Number(r.valor_moeda) : undefined
         }) as unknown as number[]
-        return { ...inv, valores, valoresMoeda, variacoes }
+        return { ...inv, valores, valoresMoeda, variacoes, tributavel }
       }),
     })),
   }))
@@ -157,6 +170,8 @@ export async function carregarFinanceiro(): Promise<{ carteiras: Carteira[]; mes
     const temMoeda = r.valor_moeda != null
     const valores = meses.map(m => { const rr = val(r.carteira_slug, r.banco, r.investimento, m.ano, m.mes); return rr ? Number(rr.valor) : undefined }) as unknown as number[]
     const inv: Carteira['contas'][number]['investimentos'][number] = { nome: r.investimento, valores }
+    const t = trib(r.carteira_slug, r.banco, r.investimento)
+    if (t != null) inv.tributavel = t
     if (temMoeda) {
       inv.moeda = 'US$'
       inv.valoresMoeda = meses.map(m => { const rr = val(r.carteira_slug, r.banco, r.investimento, m.ano, m.mes); return rr && rr.valor_moeda != null ? Number(rr.valor_moeda) : undefined }) as unknown as number[]

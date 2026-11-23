@@ -4,7 +4,15 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { salvarMesFinanceiro, type ItemMes } from '@/app/actions/financeiro'
 
-type Inv = { nome: string; moeda: string | null; valor: number | null; valorMoeda: number | null; variacao: number | null }
+type Inv = { nome: string; moeda: string | null; valor: number | null; valorMoeda: number | null; variacao: number | null; tributavel?: boolean | null }
+
+// Selo tributável/isento do ativo. Verde = isento/incentivado; âmbar = tributável.
+function SeloTrib({ t }: { t?: boolean | null }) {
+  if (t == null) return null
+  return t
+    ? <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 shrink-0">tributável</span>
+    : <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-green-100 text-green-700 shrink-0">isento</span>
+}
 
 // Variação % colorida (verde sobe / vermelho cai). "—" quando não há dado.
 const fmtPct = (n: number) => `${n >= 0 ? '▲ +' : '▼ '}${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
@@ -68,6 +76,21 @@ export default function CarteiraContas({ slug, mesNome, ano, mes, contas }: {
   const totalCarteira = contas.reduce((s, c) => s + (c.temMes ? c.saldo : 0), 0)
   const mostrarPct = contas.length > 1 && totalCarteira > 0
 
+  // Resumo tributável × isento: soma os ativos classificados das contas com dado no mês.
+  // Só aparece quando há pelo menos um ativo classificado (carteiras do Itaú detalhadas).
+  let somaTrib = 0, somaIsento = 0, temClassif = false
+  for (const c of contas) {
+    if (!c.temMes) continue
+    for (const inv of c.investimentos) {
+      if (inv.tributavel == null) continue
+      temClassif = true
+      if (inv.tributavel) somaTrib += inv.valor ?? 0
+      else somaIsento += inv.valor ?? 0
+    }
+  }
+  const somaClassif = somaTrib + somaIsento
+  const pct = (n: number) => somaClassif > 0 ? ((n / somaClassif) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) : '0'
+
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
@@ -90,6 +113,22 @@ export default function CarteiraContas({ slug, mesNome, ano, mes, contas }: {
       </div>
 
       {msg && <div className="mb-3 px-3 py-2 rounded-lg text-sm bg-red-100 text-red-800">{msg}</div>}
+
+      {/* Resumo tributável × isento (carteiras detalhadas ativo por ativo) */}
+      {!editando && temClassif && (
+        <div className="mb-4 grid grid-cols-2 gap-3">
+          <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+            <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">🟢 Isento / incentivado</p>
+            <p className="text-lg font-bold text-green-800 leading-tight mt-1">{brl(somaIsento)}</p>
+            <p className="text-[11px] text-green-600">{pct(somaIsento)}% do classificado</p>
+          </div>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">🔴 Tributável</p>
+            <p className="text-lg font-bold text-amber-800 leading-tight mt-1">{brl(somaTrib)}</p>
+            <p className="text-[11px] text-amber-600">{pct(somaTrib)}% do classificado</p>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-3">
         {contas.map(conta => {
@@ -182,7 +221,10 @@ export default function CarteiraContas({ slug, mesNome, ano, mes, contas }: {
               <div className="space-y-1.5 mt-3">
                 {conta.investimentos.filter(inv => !(conta.investimentos.length === 1 && inv.nome === 'Saldo')).map(inv => (
                   <div key={inv.nome} className="flex items-center justify-between gap-2 text-sm border-b border-gray-50 last:border-0 pb-1.5 last:pb-0">
-                    <span className="text-gray-600 flex-1 min-w-0 truncate">{inv.nome}</span>
+                    <span className="flex-1 min-w-0 flex items-center gap-1.5">
+                      <span className="text-gray-600 min-w-0 truncate">{inv.nome}</span>
+                      <SeloTrib t={inv.tributavel} />
+                    </span>
                     {/* Variação % no mês */}
                     <span className={`w-20 text-right text-xs font-semibold shrink-0 ${
                       inv.variacao == null ? 'text-gray-300' : inv.variacao >= 0 ? 'text-green-600' : 'text-red-500'

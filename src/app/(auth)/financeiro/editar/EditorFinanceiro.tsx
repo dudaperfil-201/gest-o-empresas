@@ -194,6 +194,33 @@ export default function EditorFinanceiro({ itens, meses, ptax }: { itens: Item[]
         return
       }
 
+      // ————— Itaú "Posição a mercado" detalhada: ativo por ativo + tributável/isento —————
+      if (r.tipo === 'itau') {
+        const slug = (contaPdf || '').split('|')[0]
+        if (slug !== 'itau-eduardo' && slug !== 'itau-serginho') {
+          setMsg({ tipo: 'erro', texto: 'Escolha a conta (Itaú Eduardo ou Itaú Serginho) no seletor antes de importar — o extrato não identifica o titular.' })
+          return
+        }
+        const { ano, mes, dataPosicao, itens: ativos, somaTrib, somaIsento, emConta } = r.resultado
+        const idx = navMeses.findIndex(m => m.ano === ano && m.mes === mes)
+        if (idx < 0) {
+          setMsg({ tipo: 'erro', texto: `O extrato é de ${String(mes).padStart(2, '0')}/${ano}, mas esse mês não está na navegação. Lance o mês anterior primeiro.` })
+          return
+        }
+        const aSalvar: ItemMes[] = ativos.map(a => ({
+          carteira_slug: slug, banco: a.banco, investimento: a.investimento,
+          valor: a.valor, valor_moeda: null, tributavel: a.tributavel,
+        }))
+        const s = await salvarMesFinanceiro(ano, mes, aSalvar)
+        if (!s.ok) { setMsg({ tipo: 'erro', texto: `Li o extrato, mas falhou ao salvar: ${s.erro}.` }); return }
+        setSel(idx); setIniciado(idx)
+        const rotulo = slug === 'itau-eduardo' ? 'Itaú Eduardo' : 'Itaú Serginho'
+        const fmtBRL = (n: number) => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+        setMsg({ tipo: 'ok', texto: `✅ ${rotulo} importado e salvo — ${NOMES_MES[mes - 1]}/${ano}${dataPosicao ? ` (posição ${dataPosicao})` : ''}: ${s.gravados} ativos classificados. Tributável ${fmtBRL(somaTrib)} · Isento ${fmtBRL(somaIsento)}${emConta ? ` · Em conta ${fmtBRL(emConta)}` : ''}.` })
+        router.refresh()
+        return
+      }
+
       // ————— XP: total + em conta na conta escolhida —————
       if (!contaPdf) { setMsg({ tipo: 'erro', texto: 'Escolha a conta do extrato XP primeiro.' }); return }
       const [slug, banco] = contaPdf.split('|')
@@ -325,7 +352,7 @@ export default function EditorFinanceiro({ itens, meses, ptax }: { itens: Item[]
       {/* Importar extrato de corretora (PDF) — escolhe a conta e sobe o PDF */}
       <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 mb-4">
         <p className="text-sm font-semibold text-violet-900">Importar extrato (PDF)</p>
-        <p className="text-xs text-violet-700 mb-3"><b>XP &quot;Posição a mercado&quot;</b>: escolha a conta e suba o PDF (preencho Saldo líquido + Em conta). <b>La Jolla (Itaú Miami)</b>: pode subir direto — eu detecto e preencho a carteira ativo por ativo (US$ + R$). Salva automaticamente.</p>
+        <p className="text-xs text-violet-700 mb-3"><b>Itaú &quot;Posição a mercado&quot; (Eduardo/Serginho)</b>: escolha a conta e suba o PDF — leio <b>ativo por ativo</b> e classifico <b>tributável/isento</b> pela coluna IR do extrato. <b>XP &quot;Posição a mercado&quot;</b>: escolha a conta (preencho Saldo líquido + Em conta). <b>La Jolla (Itaú Miami)</b>: pode subir direto (US$ + R$). Confiro a soma com o total do extrato antes de gravar; salva automaticamente.</p>
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <select
             value={contaPdf}
