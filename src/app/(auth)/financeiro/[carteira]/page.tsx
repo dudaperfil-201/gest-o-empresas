@@ -109,7 +109,7 @@ export default async function CarteiraPage({ params, searchParams }: {
           <h3 className="font-medium text-gray-900">Evolução em 2026</h3>
           <span className="text-[11px] text-gray-400">clique num mês para ver os investimentos ↓</span>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5">
           {Array.from({ length: ultimo + 1 }, (_, idx) => idx).map(idx => {
             const v = saldoCarteira(carteira, idx)
             const p = carteiraParcial(carteira, idx)
@@ -123,13 +123,13 @@ export default async function CarteiraPage({ params, searchParams }: {
             const rotuloMes = `${navMeses[idx].abrev}/${String(navMeses[idx].ano).slice(2)}`
             return (
               <Link key={idx} href={`/financeiro/${slug}?mes=${idx + 1}#contas`} scroll
-                className={`aspect-square rounded-xl border p-3 flex flex-col justify-between transition-colors ${selecionado ? 'bg-green-50 border-green-400 ring-1 ring-green-300' : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300'}`}>
+                className={`aspect-square rounded-xl border p-2.5 flex flex-col justify-between transition-colors ${selecionado ? 'bg-green-50 border-green-400 ring-1 ring-green-300' : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300'}`}>
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">{rotuloMes}</span>
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">{rotuloMes}</span>
                   {p && <span className="text-[8px] font-bold bg-yellow-400 text-yellow-900 px-1 py-0.5 rounded">PARCIAL</span>}
                 </div>
                 <div className="text-center leading-tight">
-                  <div className="text-sm sm:text-lg font-bold text-gray-800 tabular-nums">{brlCompacto(v)}</div>
+                  <div className="text-sm sm:text-base font-bold text-gray-800 tabular-nums">{brlCompacto(v)}</div>
                   {cambio && (
                     <div className="text-[10px] text-gray-400 tabular-nums mt-0.5">💵 {cambio.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                   )}
