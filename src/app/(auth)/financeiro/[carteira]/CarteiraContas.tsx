@@ -31,6 +31,8 @@ export default function CarteiraContas({ slug, mesNome, ano, mes, contas }: {
   const [msg, setMsg] = useState<string | null>(null)
   // Quais classes estão expandidas (mostrando os ativos). Começa tudo fechado.
   const [abertas, setAbertas] = useState<Set<string>>(new Set())
+  // Card de critério aberto (lista todos os ativos isentos OU tributáveis, cruzando classes).
+  const [criterio, setCriterio] = useState<null | 'isento' | 'tributavel'>(null)
   const alternar = (banco: string) => setAbertas(prev => {
     const n = new Set(prev)
     if (n.has(banco)) n.delete(banco); else n.add(banco)
@@ -91,6 +93,20 @@ export default function CarteiraContas({ slug, mesNome, ano, mes, contas }: {
   const somaClassif = somaTrib + somaIsento
   const pct = (n: number) => somaClassif > 0 ? ((n / somaClassif) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) : '0'
 
+  // Lista achatada de ativos classificados (todas as classes) — para a visão "por tributação".
+  type AtivoFlat = Inv & { classe: string }
+  const ativosClassif: AtivoFlat[] = []
+  for (const c of contas) {
+    if (!c.temMes) continue
+    for (const inv of c.investimentos) {
+      if (inv.tributavel == null) continue
+      ativosClassif.push({ ...inv, classe: c.banco })
+    }
+  }
+  const listaCriterio = criterio == null ? [] : ativosClassif
+    .filter(a => (criterio === 'isento' ? a.tributavel === false : a.tributavel === true))
+    .sort((a, b) => (b.valor ?? 0) - (a.valor ?? 0))
+
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
@@ -114,19 +130,58 @@ export default function CarteiraContas({ slug, mesNome, ano, mes, contas }: {
 
       {msg && <div className="mb-3 px-3 py-2 rounded-lg text-sm bg-red-100 text-red-800">{msg}</div>}
 
-      {/* Resumo tributável × isento (carteiras detalhadas ativo por ativo) */}
+      {/* Resumo tributável × isento (carteiras detalhadas ativo por ativo).
+          Cada card é CLICÁVEL: abre a lista de todos os ativos daquele critério,
+          cruzando as classes (segunda forma de ver a carteira). */}
       {!editando && temClassif && (
-        <div className="mb-4 grid grid-cols-2 gap-3">
-          <div className="rounded-xl border border-green-200 bg-green-50 p-4">
-            <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">🟢 Isento / incentivado</p>
-            <p className="text-lg font-bold text-green-800 leading-tight mt-1">{brl(somaIsento)}</p>
-            <p className="text-[11px] text-green-600">{pct(somaIsento)}% do classificado</p>
+        <div className="mb-4">
+          <div className="grid grid-cols-2 gap-3">
+            <button type="button" onClick={() => setCriterio(c => c === 'isento' ? null : 'isento')}
+              aria-expanded={criterio === 'isento'}
+              className={`text-left rounded-xl border p-4 transition-colors ${criterio === 'isento' ? 'border-green-400 bg-green-100 ring-1 ring-green-300' : 'border-green-200 bg-green-50 hover:bg-green-100'}`}>
+              <p className="text-xs font-semibold text-green-700 uppercase tracking-wide flex items-center justify-between">
+                🟢 Isento / incentivado <span className="text-green-500">{criterio === 'isento' ? '▾' : '▸'}</span>
+              </p>
+              <p className="text-lg font-bold text-green-800 leading-tight mt-1">{brl(somaIsento)}</p>
+              <p className="text-[11px] text-green-600">{pct(somaIsento)}% do classificado · {ativosClassif.filter(a => a.tributavel === false).length} ativos</p>
+            </button>
+            <button type="button" onClick={() => setCriterio(c => c === 'tributavel' ? null : 'tributavel')}
+              aria-expanded={criterio === 'tributavel'}
+              className={`text-left rounded-xl border p-4 transition-colors ${criterio === 'tributavel' ? 'border-amber-400 bg-amber-100 ring-1 ring-amber-300' : 'border-amber-200 bg-amber-50 hover:bg-amber-100'}`}>
+              <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide flex items-center justify-between">
+                🔴 Tributável <span className="text-amber-500">{criterio === 'tributavel' ? '▾' : '▸'}</span>
+              </p>
+              <p className="text-lg font-bold text-amber-800 leading-tight mt-1">{brl(somaTrib)}</p>
+              <p className="text-[11px] text-amber-600">{pct(somaTrib)}% do classificado · {ativosClassif.filter(a => a.tributavel === true).length} ativos</p>
+            </button>
           </div>
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-            <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">🔴 Tributável</p>
-            <p className="text-lg font-bold text-amber-800 leading-tight mt-1">{brl(somaTrib)}</p>
-            <p className="text-[11px] text-amber-600">{pct(somaTrib)}% do classificado</p>
-          </div>
+
+          {/* Lista do critério escolhido — todos os ativos isentos OU tributáveis */}
+          {criterio && (
+            <div className={`mt-3 rounded-xl border p-4 ${criterio === 'isento' ? 'border-green-200 bg-green-50/50' : 'border-amber-200 bg-amber-50/50'}`}>
+              <div className="flex items-center justify-between gap-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wide pb-1.5 border-b border-gray-200">
+                <span className="flex-1 min-w-0">{criterio === 'isento' ? 'Ativos isentos' : 'Ativos tributáveis'} — por classe</span>
+                <span className="w-20 text-right shrink-0">Desempenho</span>
+                <span className="text-right shrink-0">Saldo</span>
+              </div>
+              <div className="space-y-1.5 mt-2">
+                {listaCriterio.map((a, idx) => (
+                  <div key={`${a.classe}|${a.nome}|${idx}`} className="flex items-center justify-between gap-2 text-sm border-b border-gray-100 last:border-0 pb-1.5 last:pb-0">
+                    <span className="flex-1 min-w-0">
+                      <span className="text-gray-700 block truncate">{a.nome}</span>
+                      <span className="text-[10px] text-gray-400">{a.classe}</span>
+                    </span>
+                    <span className={`w-20 text-right text-xs font-semibold shrink-0 ${
+                      a.variacao == null ? 'text-gray-300' : a.variacao >= 0 ? 'text-green-600' : 'text-red-500'
+                    }`}>
+                      {a.variacao == null ? '—' : fmtPct(a.variacao)}
+                    </span>
+                    <span className="text-right shrink-0 text-gray-800 font-medium">{brl(a.valor ?? 0)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
