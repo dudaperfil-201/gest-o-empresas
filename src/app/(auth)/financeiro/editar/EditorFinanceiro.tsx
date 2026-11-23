@@ -209,7 +209,7 @@ export default function EditorFinanceiro({ itens, meses, ptax }: { itens: Item[]
         }
         const aSalvar: ItemMes[] = ativos.map(a => ({
           carteira_slug: slug, banco: a.banco, investimento: a.investimento,
-          valor: a.valor, valor_moeda: null, tributavel: a.tributavel,
+          valor: a.valor, valor_moeda: null, tributavel: a.tributavel, variacao_pct: a.desempenho,
         }))
         const s = await salvarMesFinanceiro(ano, mes, aSalvar)
         if (!s.ok) { setMsg({ tipo: 'erro', texto: `Li o extrato, mas falhou ao salvar: ${s.erro}.` }); return }

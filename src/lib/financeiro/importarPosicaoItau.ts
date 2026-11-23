@@ -16,6 +16,7 @@ export type ItemItau = {
   investimento: string // nome do ativo
   valor: number // Saldo bruto (R$)
   tributavel: boolean | null // true=tributável, false=isento, null=não classificado
+  desempenho: number | null // rentabilidade do MÊS (%) — coluna do próprio extrato
   novo?: boolean
 }
 
@@ -83,7 +84,7 @@ export function parsePosicaoItau(text: string): ResultadoItau {
   // do mês (não um regex genérico de data, que pegaria data de início/alocação também).
   const anchor = md ? `${md[1]}/${md[2]}/${md[3].slice(2)}` : null
 
-  type Bruto = { classe: string; nome: string; valor: number; tributavel: boolean | null }
+  type Bruto = { classe: string; nome: string; valor: number; tributavel: boolean | null; desempenho: number | null }
   const brutos: Bruto[] = []
   let classe = ''
   if (ini >= 0 && anchor) {
@@ -110,7 +111,11 @@ export function parsePosicaoItau(text: string): ResultadoItau {
       const ir = L[j - 1]
       const irNum = ir === '-' || ir === '' ? null : numBR(ir)
       const tributavel = irNum == null ? classifPorNome(nome) : irNum > 0
-      brutos.push({ classe: classe || 'Outros', nome, valor: numBR(bruto) ?? 0, tributavel })
+      // Desempenho do MÊS (%): após a âncora vêm [Alocação %, Data de início, Rentab Out].
+      // O 3º token (j+3) é a rentabilidade do mês que o próprio extrato calcula.
+      const rp = L[j + 3]
+      const desempenho = /^-?\d{1,3},\d{2}$/.test(rp || '') ? numBR(rp) : null
+      brutos.push({ classe: classe || 'Outros', nome, valor: numBR(bruto) ?? 0, tributavel, desempenho })
     }
   }
 
@@ -121,9 +126,9 @@ export function parsePosicaoItau(text: string): ResultadoItau {
   // Itens para gravar: exclui "Valores a liquidar" (recebíveis transitórios) e saldos zero.
   const itens: ItemItau[] = brutos
     .filter(b => b.classe !== 'Valores a liquidar' && b.valor !== 0)
-    .map(b => ({ banco: b.classe, investimento: b.nome, valor: b.valor, tributavel: b.tributavel }))
+    .map(b => ({ banco: b.classe, investimento: b.nome, valor: b.valor, tributavel: b.tributavel, desempenho: b.desempenho }))
   // Caixa (Saldo em conta) — fora do "Saldo bruto", entra como linha própria não classificada.
-  if (emConta != null && emConta > 0) itens.push({ banco: 'Caixa', investimento: 'Em conta', valor: emConta, tributavel: null })
+  if (emConta != null && emConta > 0) itens.push({ banco: 'Caixa', investimento: 'Em conta', valor: emConta, tributavel: null, desempenho: null })
 
   const somaTrib = Math.round(itens.filter(i => i.tributavel === true).reduce((s, i) => s + i.valor, 0) * 100) / 100
   const somaIsento = Math.round(itens.filter(i => i.tributavel === false).reduce((s, i) => s + i.valor, 0) * 100) / 100

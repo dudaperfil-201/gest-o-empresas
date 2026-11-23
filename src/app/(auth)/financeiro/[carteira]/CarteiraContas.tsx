@@ -219,6 +219,11 @@ export default function CarteiraContas({ slug, mesNome, ano, mes, contas }: {
               </div>
             ) : conta.temMes && aberta && (
               <div className="space-y-1.5 mt-3">
+                <div className="flex items-center justify-between gap-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wide pb-1.5 border-b border-gray-100">
+                  <span className="flex-1 min-w-0">Ativo</span>
+                  <span className="w-20 text-right shrink-0">Desempenho</span>
+                  <span className="text-right shrink-0">Saldo</span>
+                </div>
                 {conta.investimentos.filter(inv => !(conta.investimentos.length === 1 && inv.nome === 'Saldo')).map(inv => (
                   <div key={inv.nome} className="flex items-center justify-between gap-2 text-sm border-b border-gray-50 last:border-0 pb-1.5 last:pb-0">
                     <span className="flex-1 min-w-0 flex items-center gap-1.5">

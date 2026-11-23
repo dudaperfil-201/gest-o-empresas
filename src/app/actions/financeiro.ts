@@ -15,6 +15,7 @@ export type ItemMes = {
   valor: number
   valor_moeda: number | null
   tributavel?: boolean | null // só o import do Itaú define (classificação IR do extrato)
+  variacao_pct?: number | null // desempenho do mês (%) — ex.: import do Itaú
 }
 
 // Salva (upsert) os valores de um mês inteiro. Só grava os itens preenchidos — item em
@@ -37,9 +38,10 @@ export async function salvarMesFinanceiro(
       mes,
       valor: it.valor,
       valor_moeda: it.valor_moeda,
-      // tributavel só entra quando foi definido (import do Itaú); assim os demais
-      // lançamentos não exigem a coluna (migration 021) nem a sobrescrevem.
+      // tributavel/variacao_pct só entram quando definidos (import do Itaú); assim os
+      // demais lançamentos não exigem as colunas nem as sobrescrevem.
       ...(it.tributavel !== undefined ? { tributavel: it.tributavel } : {}),
+      ...(it.variacao_pct !== undefined ? { variacao_pct: it.variacao_pct } : {}),
       atualizado_em: new Date().toISOString(),
     }))
 
