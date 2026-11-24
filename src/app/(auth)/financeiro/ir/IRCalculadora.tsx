@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
-  addFonte, atualizarFonte, removerFonte,
+  atualizarFonte, removerFonte,
   setDistribuicao, setOutrosRendimentos,
 } from './actions'
 import {
@@ -66,8 +66,6 @@ export default function IRCalculadora({
     return m
   })
 
-  const [novaFonte, setNovaFonte] = useState('')
-  const [novaTrilha, setNovaTrilha] = useState<Trilha>('direta')
   const [busy, setBusy] = useState(false)
   const [erro, setErro] = useState('')
   const [pessoasAberto, setPessoasAberto] = useState(false) // card começa FECHADO
@@ -90,15 +88,6 @@ export default function IRCalculadora({
     setOutroTxt(m => ({ ...m, [pessoaId]: paraTexto(v) }))
     const r = await setOutrosRendimentos(ano, pessoaId, v)
     if (!r.ok) setErro(r.erro)
-  }
-  async function criarFonte() {
-    if (!novaFonte.trim()) { setErro('Informe o nome da fonte.'); return }
-    setBusy(true); setErro('')
-    try {
-      const r = await addFonte(novaFonte, novaTrilha)
-      if (!r.ok) { setErro(r.erro); return }
-      setNovaFonte(''); router.refresh()
-    } finally { setBusy(false) }
   }
   async function mudarTrilha(f: Fonte, trilha: Trilha) {
     setBusy(true); setErro('')
@@ -140,7 +129,6 @@ export default function IRCalculadora({
 
   const fontesDiv = fontes.filter(f => ehDividendo(f.trilha as Trilha))
   const fontesEsp = fontes.filter(f => ehEspecial(f.trilha as Trilha))
-  const fontesIsentas = fontes.filter(f => (f.trilha as Trilha) === 'intermediaria')
 
   const inputCelula = 'w-full min-w-[6.5rem] text-right text-sm bg-transparent outline-none px-2 py-1.5 rounded border border-transparent hover:border-gray-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100'
 
@@ -351,48 +339,6 @@ export default function IRCalculadora({
             <GradeFontes lista={fontesEsp} modo="anual" />
           </section>
 
-          {/* Cadeia isenta */}
-          {fontesIsentas.length > 0 && (
-            <section className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
-              <h3 className="text-sm font-bold text-slate-600 mb-2">🔗 Cadeia isenta <span className="font-normal text-slate-400">(PJ→PJ, não gera imposto na família)</span></h3>
-              <ul className="flex flex-wrap gap-2">
-                {fontesIsentas.map(f => (
-                  <li key={f.id} className="inline-flex items-center gap-1.5 bg-white border border-slate-200 rounded-full pl-3 pr-1.5 py-1">
-                    <span className="text-sm text-slate-600">{f.nome}</span>
-                    <select
-                      value={f.trilha} disabled={busy}
-                      onChange={e => mudarTrilha(f, e.target.value as Trilha)}
-                      title="Trilha tributária"
-                      className={`text-[10px] font-bold rounded-full px-1.5 py-0.5 border-0 cursor-pointer ${CHIP[f.trilha as Trilha]}`}
-                    >
-                      {TRILHA_KEYS.map(k => <option key={k} value={k}>{TRILHA_INFO[k].curto}</option>)}
-                    </select>
-                    <button onClick={() => excluirFonte(f)} disabled={busy} title="Remover" className="w-4 h-4 rounded-full text-slate-300 hover:text-rose-600 hover:bg-rose-50 leading-none text-xs">×</button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {/* Adicionar fonte */}
-          <section className="bg-white border border-gray-200 rounded-2xl p-4">
-            <h3 className="text-sm font-bold text-gray-700 mb-3">🏢 Adicionar fonte</h3>
-            <div className="flex gap-2 flex-wrap">
-              <input
-                value={novaFonte} onChange={e => setNovaFonte(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') criarFonte() }}
-                placeholder="Nome da empresa / veículo"
-                className="flex-1 min-w-[12rem] px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              />
-              <select
-                value={novaTrilha} onChange={e => setNovaTrilha(e.target.value as Trilha)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
-              >
-                {TRILHA_KEYS.map(k => <option key={k} value={k}>{TRILHA_INFO[k].label}</option>)}
-              </select>
-              <button onClick={criarFonte} disabled={busy} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60">＋ Adicionar</button>
-            </div>
-          </section>
         </>
       )}
 
