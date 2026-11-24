@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
-  addPessoa,
   addFonte, atualizarFonte, removerFonte,
   setDistribuicao, setOutrosRendimentos,
 } from './actions'
@@ -67,15 +66,11 @@ export default function IRCalculadora({
     return m
   })
 
-  const [novoNome, setNovoNome] = useState('')
-  const [novoTipo, setNovoTipo] = useState<TipoPessoa>('pf')
   const [novaFonte, setNovaFonte] = useState('')
   const [novaTrilha, setNovaTrilha] = useState<Trilha>('direta')
   const [busy, setBusy] = useState(false)
   const [erro, setErro] = useState('')
   const [pessoasAberto, setPessoasAberto] = useState(false) // card começa FECHADO
-  const [novoInativo, setNovoInativo] = useState(false)      // nova pessoa já entra inativa (ex.: crianças)
-  const [novoGrupo, setNovoGrupo] = useState('')             // família (PF) ou holding (PJ) da nova pessoa
   const [abaPessoas, setAbaPessoas] = useState<'pf' | 'pj'>('pf') // card mostra PF OU PJ (nunca os dois juntos)
 
   const key = (f: string, p: string) => `${f}:${p}`
@@ -95,15 +90,6 @@ export default function IRCalculadora({
     setOutroTxt(m => ({ ...m, [pessoaId]: paraTexto(v) }))
     const r = await setOutrosRendimentos(ano, pessoaId, v)
     if (!r.ok) setErro(r.erro)
-  }
-  async function criarPessoa() {
-    if (!novoNome.trim()) { setErro('Informe o nome.'); return }
-    setBusy(true); setErro('')
-    try {
-      const r = await addPessoa(novoNome, novoTipo, !novoInativo, novoGrupo || null)
-      if (!r.ok) { setErro(r.erro); return }
-      setNovoNome(''); setNovoTipo('pf'); setNovoInativo(false); setNovoGrupo(''); router.refresh()
-    } finally { setBusy(false) }
   }
   async function criarFonte() {
     if (!novaFonte.trim()) { setErro('Informe o nome da fonte.'); return }
@@ -311,17 +297,17 @@ export default function IRCalculadora({
         {pessoasAberto && (
           <div className="mt-3 space-y-4">
             {pessoas.length === 0 ? (
-              <p className="text-xs text-gray-400">Nenhuma pessoa ainda — adicione quem recebe os lucros.</p>
+              <p className="text-xs text-gray-400">Nenhuma pessoa cadastrada.</p>
             ) : (
               <>
                 {/* Alternador PF | PJ — mostra um grupo de cada vez */}
                 <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden text-sm">
                   <button
-                    type="button" onClick={() => { setAbaPessoas('pf'); setNovoTipo('pf'); setNovoGrupo('') }}
+                    type="button" onClick={() => setAbaPessoas('pf')}
                     className={`px-4 py-1.5 font-semibold ${abaPessoas === 'pf' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
                   >PF · Pessoas <span className={abaPessoas === 'pf' ? 'text-indigo-200' : 'text-gray-400'}>({pessoasPF.length})</span></button>
                   <button
-                    type="button" onClick={() => { setAbaPessoas('pj'); setNovoTipo('pj'); setNovoGrupo('') }}
+                    type="button" onClick={() => setAbaPessoas('pj')}
                     className={`px-4 py-1.5 font-semibold border-l border-gray-200 ${abaPessoas === 'pj' ? 'bg-slate-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
                   >PJ · Empresas <span className={abaPessoas === 'pj' ? 'text-slate-300' : 'text-gray-400'}>({pessoasPJ.length})</span></button>
                 </div>
@@ -345,33 +331,6 @@ export default function IRCalculadora({
                 )}
               </>
             )}
-            {/* Adicionar pessoa/empresa */}
-            <div className="flex gap-2 flex-wrap items-center pt-2 border-t border-gray-100">
-              <input
-                value={novoNome} onChange={e => setNovoNome(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') criarPessoa() }}
-                placeholder="Nome da pessoa / empresa"
-                className="flex-1 min-w-[11rem] px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              />
-              <div className="inline-flex rounded-lg border border-gray-300 overflow-hidden text-sm">
-                <button onClick={() => { setNovoTipo('pf'); setNovoGrupo('') }} className={`px-3 py-2 ${novoTipo === 'pf' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'}`}>PF</button>
-                <button onClick={() => { setNovoTipo('pj'); setNovoGrupo('') }} className={`px-3 py-2 ${novoTipo === 'pj' ? 'bg-slate-600 text-white' : 'bg-white text-gray-600'}`}>PJ</button>
-              </div>
-              <select
-                value={novoGrupo} onChange={e => setNovoGrupo(e.target.value)}
-                title={novoTipo === 'pj' ? 'Holding' : 'Família'}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 bg-white"
-              >
-                <option value="">{novoTipo === 'pj' ? 'Holding…' : 'Família…'}</option>
-                {(novoTipo === 'pj' ? HOLDINGS : FAMILIAS).map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
-              </select>
-              <button
-                type="button" onClick={() => setNovoInativo(v => !v)}
-                title="Cadastrar já como inativa (aparece no card, mas não entra nos cálculos)"
-                className={`px-3 py-2 rounded-lg border text-sm font-medium ${novoInativo ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-white border-gray-300 text-gray-500'}`}
-              >{novoInativo ? '☑ inativa' : 'inativa'}</button>
-              <button onClick={criarPessoa} disabled={busy} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60">＋ Adicionar</button>
-            </div>
           </div>
         )}
       </section>
