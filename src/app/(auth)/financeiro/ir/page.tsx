@@ -13,7 +13,7 @@ export default async function IRPage({ searchParams }: { searchParams: Promise<{
 
   const [fRes, pRes, dRes, oRes] = await Promise.all([
     sb.from('ir_fontes').select('id, nome, trilha, ordem').order('ordem').order('created_at'),
-    sb.from('ir_pessoas').select('id, nome, tipo, ordem').order('ordem').order('created_at'),
+    sb.from('ir_pessoas').select('id, nome, tipo, ordem, ativo').order('ordem').order('created_at'),
     sb.from('ir_distribuicoes').select('fonte_id, pessoa_id, valor').eq('ano', ano),
     sb.from('ir_pessoa_ano').select('pessoa_id, outros_rendimentos').eq('ano', ano),
   ])
@@ -23,7 +23,7 @@ export default async function IRPage({ searchParams }: { searchParams: Promise<{
     (!!pRes.error && /does not exist|schema cache|could not find the table/i.test(pRes.error.message))
 
   const fontes = (fRes.data ?? []) as { id: string; nome: string; trilha: string; ordem: number }[]
-  const pessoas = (pRes.data ?? []) as { id: string; nome: string; tipo: string; ordem: number }[]
+  const pessoas = (pRes.data ?? []) as { id: string; nome: string; tipo: string; ordem: number; ativo: boolean }[]
   const distrib = (dRes.data ?? []) as { fonte_id: string; pessoa_id: string; valor: number }[]
   const outros = (oRes.data ?? []) as { pessoa_id: string; outros_rendimentos: number }[]
 
