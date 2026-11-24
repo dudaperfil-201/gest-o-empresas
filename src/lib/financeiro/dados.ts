@@ -282,6 +282,13 @@ export const CARTEIRAS: Carteira[] = [
       ] },
     ],
   },
+  {
+    // Investimentos PESSOAIS do Eduardo que moram no app HASE, sincronizados pra cá
+    // (scripts/sync-hase-eduardo.mjs). Itaú e RNX NÃO entram aqui — já estão no Gestão;
+    // Banco do Brasil/Inter e cofres também ficam de fora (conta/dinheiro em espécie).
+    // Contas vazias no esqueleto: os ativos chegam do banco (financeiro_valores).
+    slug: 'eduardo-hase', nome: 'Eduardo — Pessoais (HASE)', tipo: 'brasil', contas: [],
+  },
 ]
 
 // Nº de meses com dado na carteira (o maior entre suas contas/investimentos).
