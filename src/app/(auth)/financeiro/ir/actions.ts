@@ -18,12 +18,13 @@ const msgTabela = (m: string) =>
     : m
 
 // ── Pessoas ──
-export async function addPessoa(nome: string, tipo: string, ativo = true): Promise<R> {
+export async function addPessoa(nome: string, tipo: string, ativo = true, grupo: string | null = null): Promise<R> {
   if (!(await pode())) return { ok: false, erro: 'Sem permissão.' }
   const n = (nome || '').trim()
   if (!n) return { ok: false, erro: 'Informe o nome.' }
   const sb = await createClient()
-  const { error } = await sb.from('ir_pessoas').insert({ nome: n, tipo: tipo === 'pj' ? 'pj' : 'pf', ativo })
+  const g = (grupo || '').trim() || null
+  const { error } = await sb.from('ir_pessoas').insert({ nome: n, tipo: tipo === 'pj' ? 'pj' : 'pf', ativo, grupo: g })
   if (error) return { ok: false, erro: msgTabela(error.message) }
   revalidatePath(P)
   return { ok: true }
@@ -34,6 +35,17 @@ export async function setPessoaAtiva(id: string, ativo: boolean): Promise<R> {
   if (!(await pode())) return { ok: false, erro: 'Sem permissão.' }
   const sb = await createClient()
   const { error } = await sb.from('ir_pessoas').update({ ativo }).eq('id', id)
+  if (error) return { ok: false, erro: msgTabela(error.message) }
+  revalidatePath(P)
+  return { ok: true }
+}
+
+// Trocar o grupo da pessoa (família se PF, holding se PJ). null = sem grupo.
+export async function setPessoaGrupo(id: string, grupo: string | null): Promise<R> {
+  if (!(await pode())) return { ok: false, erro: 'Sem permissão.' }
+  const sb = await createClient()
+  const g = (grupo || '').trim() || null
+  const { error } = await sb.from('ir_pessoas').update({ grupo: g }).eq('id', id)
   if (error) return { ok: false, erro: msgTabela(error.message) }
   revalidatePath(P)
   return { ok: true }

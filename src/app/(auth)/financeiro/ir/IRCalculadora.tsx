@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
-  addPessoa, atualizarPessoa, removerPessoa, setPessoaAtiva,
+  addPessoa, atualizarPessoa, removerPessoa, setPessoaAtiva, setPessoaGrupo,
   addFonte, atualizarFonte, removerFonte,
   setDistribuicao, setOutrosRendimentos,
 } from './actions'
@@ -15,7 +15,20 @@ import {
 } from '@/lib/ir2026'
 
 type Fonte = { id: string; nome: string; trilha: string; ordem: number }
-type Pessoa = { id: string; nome: string; tipo: string; ordem: number; ativo: boolean }
+type Pessoa = { id: string; nome: string; tipo: string; ordem: number; ativo: boolean; grupo: string | null }
+
+// Grupos do card "Pessoas do grupo": PF por família, PJ por holding.
+const FAMILIAS: { key: string; label: string }[] = [
+  { key: 'Eduardo', label: 'Família Eduardo' },
+  { key: 'Sérgio Filho', label: 'Família Sérgio Filho' },
+  { key: 'Pais', label: 'Família dos Pais' },
+]
+const HOLDINGS: { key: string; label: string }[] = [
+  { key: 'Black Fortune', label: 'Black Fortune' },
+  { key: 'OB Holding', label: 'OB Holding' },
+  { key: 'Diretas', label: 'Diretas à PF' },
+  { key: 'Offshore/Fundo', label: 'Offshore / Fundo' },
+]
 type Distrib = { fonte_id: string; pessoa_id: string; valor: number }
 type Outro = { pessoa_id: string; outros_rendimentos: number }
 
@@ -62,6 +75,7 @@ export default function IRCalculadora({
   const [erro, setErro] = useState('')
   const [pessoasAberto, setPessoasAberto] = useState(false) // card começa FECHADO
   const [novoInativo, setNovoInativo] = useState(false)      // nova pessoa já entra inativa (ex.: crianças)
+  const [novoGrupo, setNovoGrupo] = useState('')             // família (PF) ou holding (PJ) da nova pessoa
 
   const key = (f: string, p: string) => `${f}:${p}`
   const valor = (f: string, p: string) => toNum(dist[key(f, p)] ?? '')
@@ -85,9 +99,17 @@ export default function IRCalculadora({
     if (!novoNome.trim()) { setErro('Informe o nome.'); return }
     setBusy(true); setErro('')
     try {
-      const r = await addPessoa(novoNome, novoTipo, !novoInativo)
+      const r = await addPessoa(novoNome, novoTipo, !novoInativo, novoGrupo || null)
       if (!r.ok) { setErro(r.erro); return }
-      setNovoNome(''); setNovoTipo('pf'); setNovoInativo(false); router.refresh()
+      setNovoNome(''); setNovoTipo('pf'); setNovoInativo(false); setNovoGrupo(''); router.refresh()
+    } finally { setBusy(false) }
+  }
+  async function mudarGrupo(p: Pessoa, grupo: string) {
+    setBusy(true); setErro('')
+    try {
+      const r = await setPessoaGrupo(p.id, grupo || null)
+      if (!r.ok) { setErro(r.erro); return }
+      router.refresh()
     } finally { setBusy(false) }
   }
   async function alternarAtivo(p: Pessoa) {
@@ -143,10 +165,14 @@ export default function IRCalculadora({
   }
 
   // ── Cálculos ──
-  // Só as pessoas ATIVAS entram nos cálculos e nas tabelas. As inativas (ex.: crianças)
-  // aparecem no card "Pessoas do grupo", mas não contam no IR até serem ativadas.
-  const pessoasAtivas = pessoas.filter(p => p.ativo)
-  const resultados = pessoasAtivas.map(p => ({
+  // Pessoas físicas × jurídicas. As EMPRESAS (PJ) entram no card só p/ organização
+  // (por holding) — NÃO viram coluna na grade nem contam no imposto. A grade e os
+  // cálculos usam só as PFs ATIVAS; as PFs inativas (ex.: crianças) aparecem no card
+  // mas não contam até serem ativadas.
+  const pessoasPF = pessoas.filter(p => p.tipo !== 'pj')
+  const pessoasPJ = pessoas.filter(p => p.tipo === 'pj')
+  const pfAtivas = pessoasPF.filter(p => p.ativo)
+  const resultados = pfAtivas.map(p => ({
     pessoa: p,
     r: calcularPessoa(p.tipo as TipoPessoa, lancamentosDe(p.id), toNum(outroTxt[p.id] ?? '')),
   }))
@@ -175,7 +201,7 @@ export default function IRCalculadora({
               <th className="sticky left-0 bg-white z-10 px-2 py-2 font-semibold text-gray-500 border-b border-gray-200">
                 Fonte <span className="font-normal text-gray-400">({modo === 'mensal' ? 'R$/mês' : 'R$/ano'})</span>
               </th>
-              {pessoasAtivas.map(p => (
+              {pfAtivas.map(p => (
                 <th key={p.id} className="px-2 py-2 border-b border-gray-200 text-right">
                   <span className="font-semibold text-gray-700">{p.nome}</span>
                   <span className={`ml-1 text-[9px] font-bold ${p.tipo === 'pj' ? 'text-slate-400' : 'text-indigo-400'}`}>{p.tipo === 'pj' ? 'PJ' : 'PF'}</span>
@@ -202,7 +228,7 @@ export default function IRCalculadora({
                       <button onClick={() => excluirFonte(f)} disabled={busy} title="Remover fonte" className="w-4 h-4 rounded-full text-gray-300 hover:text-rose-600 hover:bg-rose-50 leading-none text-xs">×</button>
                     </div>
                   </td>
-                  {pessoasAtivas.map(p => {
+                  {pfAtivas.map(p => {
                     const v = valor(f.id, p.id)
                     const retemPF = modo === 'mensal' && p.tipo !== 'pj' && v > LIMITE_IRRF_MES
                     return (
@@ -227,6 +253,49 @@ export default function IRCalculadora({
       </div>
     )
   }
+
+  // Uma linha (em fila) de pessoa/empresa no card "Pessoas do grupo".
+  function linhaPessoa(p: Pessoa) {
+    const opcoes = p.tipo === 'pj' ? HOLDINGS : FAMILIAS
+    return (
+      <li key={p.id} className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 border ${p.ativo ? 'bg-white border-gray-200' : 'bg-gray-50 border-dashed border-gray-300'}`}>
+        <span className={`flex-1 text-sm font-medium truncate ${p.ativo ? 'text-gray-800' : 'text-gray-400'}`}>{p.nome}</span>
+        {!p.ativo && <span className="text-[9px] font-bold uppercase tracking-wide text-gray-400 bg-white border border-gray-200 rounded-full px-1.5 py-0.5">inativa</span>}
+        <button
+          onClick={() => alternarTipo(p)} disabled={busy}
+          title="Alternar PF / PJ (PJ é isenta dos 10%)"
+          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.tipo === 'pj' ? 'bg-slate-200 text-slate-600' : 'bg-indigo-100 text-indigo-700'}`}
+        >{p.tipo === 'pj' ? 'PJ' : 'PF'}</button>
+        <select
+          value={p.grupo ?? ''} disabled={busy}
+          onChange={e => mudarGrupo(p, e.target.value)}
+          title={p.tipo === 'pj' ? 'Holding' : 'Família'}
+          className="text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-md px-1.5 py-1 cursor-pointer max-w-[9rem]"
+        >
+          <option value="">— {p.tipo === 'pj' ? 'holding' : 'família'} —</option>
+          {opcoes.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+        </select>
+        <button
+          onClick={() => alternarAtivo(p)} disabled={busy}
+          title={p.ativo ? 'Pausar — tira dos cálculos e das tabelas' : 'Ativar — passa a entrar nos cálculos'}
+          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.ativo ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
+        >{p.ativo ? 'pausar' : 'ativar'}</button>
+        <button onClick={() => excluirPessoa(p)} disabled={busy} title="Remover" className="w-5 h-5 rounded-full text-gray-400 hover:text-rose-600 hover:bg-rose-50 leading-none shrink-0">×</button>
+      </li>
+    )
+  }
+  // Um bloco de grupo (família ou holding) com as linhas em fila. Vazio → não renderiza.
+  function blocoGrupo(titulo: string, lista: Pessoa[], cor: string) {
+    if (lista.length === 0) return null
+    return (
+      <div key={titulo}>
+        <div className={`text-[11px] font-bold uppercase tracking-wide mb-1 ${cor}`}>{titulo} <span className="font-normal text-gray-400 normal-case">({lista.length})</span></div>
+        <ul className="flex flex-col gap-1">{lista.map(linhaPessoa)}</ul>
+      </div>
+    )
+  }
+  const semFamilia = pessoasPF.filter(p => !FAMILIAS.some(f => f.key === (p.grupo ?? '')))
+  const semHolding = pessoasPJ.filter(p => !HOLDINGS.some(h => h.key === (p.grupo ?? '')))
 
   return (
     <div className="space-y-5">
@@ -285,49 +354,54 @@ export default function IRCalculadora({
           <h3 className="text-sm font-bold text-gray-700">👥 Pessoas do grupo</h3>
           <span className="flex items-center gap-2">
             <span className="text-[11px] text-gray-400">
-              {pessoasAtivas.length} ativa{pessoasAtivas.length === 1 ? '' : 's'}
-              {pessoas.length - pessoasAtivas.length > 0 && ` · ${pessoas.length - pessoasAtivas.length} inativa${pessoas.length - pessoasAtivas.length === 1 ? '' : 's'}`}
+              {pessoasPF.length} pessoa{pessoasPF.length === 1 ? '' : 's'} · {pessoasPJ.length} empresa{pessoasPJ.length === 1 ? '' : 's'}
             </span>
             <span className={`text-gray-400 text-xs transition-transform ${pessoasAberto ? 'rotate-180' : ''}`}>▾</span>
           </span>
         </button>
 
         {pessoasAberto && (
-          <div className="mt-3">
-            {pessoas.length > 0 ? (
-              <ul className="flex flex-wrap gap-2 mb-3">
-                {pessoas.map(p => (
-                  <li key={p.id} className={`inline-flex items-center gap-2 rounded-full pl-3 pr-1.5 py-1 border ${p.ativo ? 'bg-gray-50 border-gray-200' : 'bg-gray-100/70 border-dashed border-gray-300'}`}>
-                    <span className={`text-sm font-medium ${p.ativo ? 'text-gray-800' : 'text-gray-400'}`}>{p.nome}</span>
-                    {!p.ativo && <span className="text-[9px] font-bold uppercase tracking-wide text-gray-400 bg-white border border-gray-200 rounded-full px-1.5 py-0.5">inativa</span>}
-                    <button
-                      onClick={() => alternarTipo(p)} disabled={busy}
-                      title="Alternar PF / PJ (PJ é isenta dos 10%)"
-                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.tipo === 'pj' ? 'bg-slate-200 text-slate-600' : 'bg-indigo-100 text-indigo-700'}`}
-                    >{p.tipo === 'pj' ? 'PJ' : 'PF'}</button>
-                    <button
-                      onClick={() => alternarAtivo(p)} disabled={busy}
-                      title={p.ativo ? 'Pausar — tira dos cálculos e das tabelas' : 'Ativar — passa a entrar nos cálculos'}
-                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.ativo ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
-                    >{p.ativo ? 'pausar' : 'ativar'}</button>
-                    <button onClick={() => excluirPessoa(p)} disabled={busy} title="Remover" className="w-5 h-5 rounded-full text-gray-400 hover:text-rose-600 hover:bg-rose-50 leading-none">×</button>
-                  </li>
-                ))}
-              </ul>
+          <div className="mt-3 space-y-4">
+            {pessoas.length === 0 ? (
+              <p className="text-xs text-gray-400">Nenhuma pessoa ainda — adicione quem recebe os lucros.</p>
             ) : (
-              <p className="text-xs text-gray-400 mb-3">Nenhuma pessoa ainda — adicione quem recebe os lucros.</p>
+              <>
+                {/* Pessoas físicas — por família */}
+                <div className="space-y-3">
+                  <div className="text-xs font-bold text-indigo-700">👤 Pessoas físicas <span className="font-normal text-gray-400">· por família</span></div>
+                  {FAMILIAS.map(f => blocoGrupo(f.label, pessoasPF.filter(p => (p.grupo ?? '') === f.key), 'text-indigo-600'))}
+                  {blocoGrupo('Sem família', semFamilia, 'text-gray-400')}
+                </div>
+                {/* Empresas (PJ) — por holding */}
+                {pessoasPJ.length > 0 && (
+                  <div className="space-y-3 pt-3 border-t border-gray-100">
+                    <div className="text-xs font-bold text-slate-600">🏢 Empresas (PJ) <span className="font-normal text-gray-400">· por holding · fora da grade de distribuição</span></div>
+                    {HOLDINGS.map(h => blocoGrupo(h.label, pessoasPJ.filter(p => (p.grupo ?? '') === h.key), 'text-slate-500'))}
+                    {blocoGrupo('Sem holding', semHolding, 'text-gray-400')}
+                  </div>
+                )}
+              </>
             )}
-            <div className="flex gap-2 flex-wrap items-center">
+            {/* Adicionar pessoa/empresa */}
+            <div className="flex gap-2 flex-wrap items-center pt-2 border-t border-gray-100">
               <input
                 value={novoNome} onChange={e => setNovoNome(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') criarPessoa() }}
-                placeholder="Nome da pessoa / empresa sócia"
-                className="flex-1 min-w-[12rem] px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                placeholder="Nome da pessoa / empresa"
+                className="flex-1 min-w-[11rem] px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"
               />
               <div className="inline-flex rounded-lg border border-gray-300 overflow-hidden text-sm">
-                <button onClick={() => setNovoTipo('pf')} className={`px-3 py-2 ${novoTipo === 'pf' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'}`}>PF</button>
-                <button onClick={() => setNovoTipo('pj')} className={`px-3 py-2 ${novoTipo === 'pj' ? 'bg-slate-600 text-white' : 'bg-white text-gray-600'}`}>PJ</button>
+                <button onClick={() => { setNovoTipo('pf'); setNovoGrupo('') }} className={`px-3 py-2 ${novoTipo === 'pf' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'}`}>PF</button>
+                <button onClick={() => { setNovoTipo('pj'); setNovoGrupo('') }} className={`px-3 py-2 ${novoTipo === 'pj' ? 'bg-slate-600 text-white' : 'bg-white text-gray-600'}`}>PJ</button>
               </div>
+              <select
+                value={novoGrupo} onChange={e => setNovoGrupo(e.target.value)}
+                title={novoTipo === 'pj' ? 'Holding' : 'Família'}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 bg-white"
+              >
+                <option value="">{novoTipo === 'pj' ? 'Holding…' : 'Família…'}</option>
+                {(novoTipo === 'pj' ? HOLDINGS : FAMILIAS).map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+              </select>
               <button
                 type="button" onClick={() => setNovoInativo(v => !v)}
                 title="Cadastrar já como inativa (aparece no card, mas não entra nos cálculos)"
@@ -339,7 +413,7 @@ export default function IRCalculadora({
         )}
       </section>
 
-      {pessoasAtivas.length > 0 && (
+      {pfAtivas.length > 0 && (
         <>
           {/* Trilhas 1 e 2 — dividendos (mensal) */}
           <section className="bg-white border border-gray-200 rounded-2xl p-4">
