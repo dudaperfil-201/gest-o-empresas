@@ -76,6 +76,7 @@ export default function IRCalculadora({
   const [pessoasAberto, setPessoasAberto] = useState(false) // card começa FECHADO
   const [novoInativo, setNovoInativo] = useState(false)      // nova pessoa já entra inativa (ex.: crianças)
   const [novoGrupo, setNovoGrupo] = useState('')             // família (PF) ou holding (PJ) da nova pessoa
+  const [abaPessoas, setAbaPessoas] = useState<'pf' | 'pj'>('pf') // card mostra PF OU PJ (nunca os dois juntos)
 
   const key = (f: string, p: string) => `${f}:${p}`
   const valor = (f: string, p: string) => toNum(dist[key(f, p)] ?? '')
@@ -366,18 +367,33 @@ export default function IRCalculadora({
               <p className="text-xs text-gray-400">Nenhuma pessoa ainda — adicione quem recebe os lucros.</p>
             ) : (
               <>
-                {/* Pessoas físicas — por família */}
-                <div className="space-y-3">
-                  <div className="text-xs font-bold text-indigo-700">👤 Pessoas físicas <span className="font-normal text-gray-400">· por família</span></div>
-                  {FAMILIAS.map(f => blocoGrupo(f.label, pessoasPF.filter(p => (p.grupo ?? '') === f.key), 'text-indigo-600'))}
-                  {blocoGrupo('Sem família', semFamilia, 'text-gray-400')}
+                {/* Alternador PF | PJ — mostra um grupo de cada vez */}
+                <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+                  <button
+                    type="button" onClick={() => { setAbaPessoas('pf'); setNovoTipo('pf'); setNovoGrupo('') }}
+                    className={`px-4 py-1.5 font-semibold ${abaPessoas === 'pf' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                  >PF · Pessoas <span className={abaPessoas === 'pf' ? 'text-indigo-200' : 'text-gray-400'}>({pessoasPF.length})</span></button>
+                  <button
+                    type="button" onClick={() => { setAbaPessoas('pj'); setNovoTipo('pj'); setNovoGrupo('') }}
+                    className={`px-4 py-1.5 font-semibold border-l border-gray-200 ${abaPessoas === 'pj' ? 'bg-slate-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                  >PJ · Empresas <span className={abaPessoas === 'pj' ? 'text-slate-300' : 'text-gray-400'}>({pessoasPJ.length})</span></button>
                 </div>
+
+                {/* Pessoas físicas — por família */}
+                {abaPessoas === 'pf' && (
+                  <div className="space-y-3">
+                    {FAMILIAS.map(f => blocoGrupo(f.label, pessoasPF.filter(p => (p.grupo ?? '') === f.key), 'text-indigo-600'))}
+                    {blocoGrupo('Sem família', semFamilia, 'text-gray-400')}
+                    {pessoasPF.length === 0 && <p className="text-xs text-gray-400">Nenhuma pessoa física ainda.</p>}
+                  </div>
+                )}
                 {/* Empresas (PJ) — por holding */}
-                {pessoasPJ.length > 0 && (
-                  <div className="space-y-3 pt-3 border-t border-gray-100">
-                    <div className="text-xs font-bold text-slate-600">🏢 Empresas (PJ) <span className="font-normal text-gray-400">· por holding · fora da grade de distribuição</span></div>
+                {abaPessoas === 'pj' && (
+                  <div className="space-y-3">
+                    <div className="text-[11px] text-gray-400">Organização por holding · as empresas ficam fora da grade de distribuição.</div>
                     {HOLDINGS.map(h => blocoGrupo(h.label, pessoasPJ.filter(p => (p.grupo ?? '') === h.key), 'text-slate-500'))}
                     {blocoGrupo('Sem holding', semHolding, 'text-gray-400')}
+                    {pessoasPJ.length === 0 && <p className="text-xs text-gray-400">Nenhuma empresa ainda.</p>}
                   </div>
                 )}
               </>
