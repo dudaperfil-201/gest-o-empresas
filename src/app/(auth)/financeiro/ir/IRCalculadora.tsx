@@ -102,11 +102,15 @@ export default function IRCalculadora({
 
   const fontesDiv = fontes.filter(f => ehDividendo(f.trilha as Trilha))
   const fontesEsp = fontes.filter(f => ehEspecial(f.trilha as Trilha))
+  // Trilha 3 (La Jolla / FIM Golden Sky): sócios são SÓ Eduardo e Sérgio Filho.
+  const DONOS_T3 = ['Eduardo Coelho', 'Sérgio Coelho Filho']
+  const pfT3 = pfAtivas.filter(p => DONOS_T3.includes(p.nome))
 
   const inputCelula = 'w-full min-w-[6.5rem] text-right text-sm bg-transparent outline-none px-2 py-1.5 rounded border border-transparent hover:border-gray-200 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100'
 
   // Tabela de lançamentos para um conjunto de fontes. `modo` = 'mensal' | 'anual'.
-  function GradeFontes({ lista, modo }: { lista: Fonte[]; modo: 'mensal' | 'anual' }) {
+  // `colunas` = quais pessoas viram coluna (Trilha 3 usa só os sócios).
+  function GradeFontes({ lista, modo, colunas }: { lista: Fonte[]; modo: 'mensal' | 'anual'; colunas: Pessoa[] }) {
     if (lista.length === 0) return <p className="text-sm text-gray-400">Nenhuma fonte nesta trilha.</p>
     return (
       <div className="overflow-x-auto">
@@ -116,7 +120,7 @@ export default function IRCalculadora({
               <th className="sticky left-0 bg-white z-10 px-2 py-2 font-semibold text-gray-500 border-b border-gray-200">
                 Fonte <span className="font-normal text-gray-400">({modo === 'mensal' ? 'R$/mês' : 'R$/ano'})</span>
               </th>
-              {pfAtivas.map(p => (
+              {colunas.map(p => (
                 <th key={p.id} className="px-2 py-2 border-b border-gray-200 text-right">
                   <span className="font-semibold text-gray-700">{p.nome}</span>
                   <span className={`ml-1 text-[9px] font-bold ${p.tipo === 'pj' ? 'text-slate-400' : 'text-indigo-400'}`}>{p.tipo === 'pj' ? 'PJ' : 'PF'}</span>
@@ -131,7 +135,7 @@ export default function IRCalculadora({
                   <td className="sticky left-0 bg-white z-10 px-2 py-1.5 whitespace-nowrap">
                     <span className="font-medium text-gray-700">{f.nome}</span>
                   </td>
-                  {pfAtivas.map(p => {
+                  {colunas.map(p => {
                     const v = valor(f.id, p.id)
                     const retemPF = modo === 'mensal' && p.tipo !== 'pj' && v > LIMITE_IRRF_MES
                     return (
@@ -214,11 +218,6 @@ export default function IRCalculadora({
         </div>
       </div>
 
-      {/* Aviso */}
-      <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-        ⚠️ Ferramenta de <b>planejamento/estimativa</b>. Elos <b>PJ→PJ</b> (IMG, PAN, METVISA, E.M.E) são isentos. O <b>redutor</b> anti-bitributação e a interação da trilha 3 com o imposto mínimo entram numa próxima etapa.
-      </div>
-
       {erro && <p className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{erro}</p>}
 
       {semTabela && (
@@ -290,14 +289,14 @@ export default function IRCalculadora({
           <section className="bg-white border border-gray-200 rounded-2xl p-4">
             <h3 className="text-sm font-bold text-gray-700 mb-1">💸 Trilhas 1 e 2 · Dividendos <span className="font-normal text-gray-400">(quanto cada um recebe por mês)</span></h3>
             <p className="text-[11px] text-gray-400 mb-3">Acima de {brl(LIMITE_IRRF_MES)}/mês por fonte, a PF tem 10% retido na fonte. A renda anual alimenta o imposto mínimo (IRPFM).</p>
-            <GradeFontes lista={fontesDiv} modo="mensal" />
+            <GradeFontes lista={fontesDiv} modo="mensal" colunas={pfAtivas} />
           </section>
 
           {/* Trilha 3 — offshore e fundos (anual) */}
           <section className="bg-white border border-amber-200 rounded-2xl p-4">
             <h3 className="text-sm font-bold text-amber-800 mb-1">🌐 Trilha 3 · Offshore e fundos <span className="font-normal text-amber-500">(lucro atribuído no ano)</span></h3>
             <p className="text-[11px] text-amber-600 mb-3">Regime próprio (não é o dividendo 10%): offshore {pctFmt(OFFSHORE_ALIQ)} (Lei 14.754/2023) e fundo {pctFmt(FUNDO_ALIQ)}. Lance o valor <b>anual</b>.</p>
-            <GradeFontes lista={fontesEsp} modo="anual" />
+            <GradeFontes lista={fontesEsp} modo="anual" colunas={pfT3} />
           </section>
 
         </>
