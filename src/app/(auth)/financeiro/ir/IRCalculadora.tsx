@@ -4,12 +4,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
-  atualizarFonte, removerFonte,
   setDistribuicao, setOutrosRendimentos,
 } from './actions'
 import {
   calcularPessoa, brl, pctFmt, toNum, LIMITE_IRRF_MES,
-  TRILHA_INFO, ehDividendo, ehEspecial, OFFSHORE_ALIQ, FUNDO_ALIQ,
+  ehDividendo, ehEspecial, OFFSHORE_ALIQ, FUNDO_ALIQ,
   type TipoPessoa, type Trilha,
 } from '@/lib/ir2026'
 
@@ -34,14 +33,6 @@ type Outro = { pessoa_id: string; outros_rendimentos: number }
 const num = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const paraTexto = (n: number) => (n && n !== 0 ? num(n) : '')
 
-const CHIP: Record<Trilha, string> = {
-  holding: 'bg-indigo-100 text-indigo-700',
-  direta: 'bg-violet-100 text-violet-700',
-  offshore: 'bg-amber-100 text-amber-800',
-  fundo: 'bg-orange-100 text-orange-800',
-  intermediaria: 'bg-slate-100 text-slate-500',
-}
-const TRILHA_KEYS: Trilha[] = ['holding', 'direta', 'offshore', 'fundo', 'intermediaria']
 
 export default function IRCalculadora({
   ano, fontes, pessoas, distrib, outros, semTabela,
@@ -66,7 +57,6 @@ export default function IRCalculadora({
     return m
   })
 
-  const [busy, setBusy] = useState(false)
   const [erro, setErro] = useState('')
   const [pessoasAberto, setPessoasAberto] = useState(false) // card começa FECHADO
   const [abaPessoas, setAbaPessoas] = useState<'pf' | 'pj'>('pf') // card mostra PF OU PJ (nunca os dois juntos)
@@ -88,23 +78,6 @@ export default function IRCalculadora({
     setOutroTxt(m => ({ ...m, [pessoaId]: paraTexto(v) }))
     const r = await setOutrosRendimentos(ano, pessoaId, v)
     if (!r.ok) setErro(r.erro)
-  }
-  async function mudarTrilha(f: Fonte, trilha: Trilha) {
-    setBusy(true); setErro('')
-    try {
-      const r = await atualizarFonte(f.id, f.nome, trilha)
-      if (!r.ok) { setErro(r.erro); return }
-      router.refresh()
-    } finally { setBusy(false) }
-  }
-  async function excluirFonte(f: Fonte) {
-    if (!confirm(`Remover a fonte ${f.nome}? Apaga também os lançamentos dela.`)) return
-    setBusy(true); setErro('')
-    try {
-      const r = await removerFonte(f.id)
-      if (!r.ok) { setErro(r.erro); return }
-      router.refresh()
-    } finally { setBusy(false) }
   }
 
   // ── Cálculos ──
@@ -153,22 +126,10 @@ export default function IRCalculadora({
           </thead>
           <tbody>
             {lista.map(f => {
-              const tr = f.trilha as Trilha
               return (
                 <tr key={f.id} className="border-b border-gray-100 last:border-0">
                   <td className="sticky left-0 bg-white z-10 px-2 py-1.5 whitespace-nowrap">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-medium text-gray-700">{f.nome}</span>
-                      <select
-                        value={tr} disabled={busy}
-                        onChange={e => mudarTrilha(f, e.target.value as Trilha)}
-                        title="Trilha tributária"
-                        className={`text-[10px] font-bold rounded-full px-1.5 py-0.5 border-0 cursor-pointer ${CHIP[tr]}`}
-                      >
-                        {TRILHA_KEYS.map(k => <option key={k} value={k}>{TRILHA_INFO[k].curto}</option>)}
-                      </select>
-                      <button onClick={() => excluirFonte(f)} disabled={busy} title="Remover fonte" className="w-4 h-4 rounded-full text-gray-300 hover:text-rose-600 hover:bg-rose-50 leading-none text-xs">×</button>
-                    </div>
+                    <span className="font-medium text-gray-700">{f.nome}</span>
                   </td>
                   {pfAtivas.map(p => {
                     const v = valor(f.id, p.id)
