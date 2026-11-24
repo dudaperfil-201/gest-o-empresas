@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
-  addPessoa, atualizarPessoa, removerPessoa, setPessoaAtiva, setPessoaGrupo,
+  addPessoa,
   addFonte, atualizarFonte, removerFonte,
   setDistribuicao, setOutrosRendimentos,
 } from './actions'
@@ -103,39 +103,6 @@ export default function IRCalculadora({
       const r = await addPessoa(novoNome, novoTipo, !novoInativo, novoGrupo || null)
       if (!r.ok) { setErro(r.erro); return }
       setNovoNome(''); setNovoTipo('pf'); setNovoInativo(false); setNovoGrupo(''); router.refresh()
-    } finally { setBusy(false) }
-  }
-  async function mudarGrupo(p: Pessoa, grupo: string) {
-    setBusy(true); setErro('')
-    try {
-      const r = await setPessoaGrupo(p.id, grupo || null)
-      if (!r.ok) { setErro(r.erro); return }
-      router.refresh()
-    } finally { setBusy(false) }
-  }
-  async function alternarAtivo(p: Pessoa) {
-    setBusy(true); setErro('')
-    try {
-      const r = await setPessoaAtiva(p.id, !p.ativo)
-      if (!r.ok) { setErro(r.erro); return }
-      router.refresh()
-    } finally { setBusy(false) }
-  }
-  async function alternarTipo(p: Pessoa) {
-    setBusy(true); setErro('')
-    try {
-      const r = await atualizarPessoa(p.id, p.nome, p.tipo === 'pj' ? 'pf' : 'pj')
-      if (!r.ok) { setErro(r.erro); return }
-      router.refresh()
-    } finally { setBusy(false) }
-  }
-  async function excluirPessoa(p: Pessoa) {
-    if (!confirm(`Remover ${p.nome} do cálculo? Apaga também os lançamentos dele.`)) return
-    setBusy(true); setErro('')
-    try {
-      const r = await removerPessoa(p.id)
-      if (!r.ok) { setErro(r.erro); return }
-      router.refresh()
     } finally { setBusy(false) }
   }
   async function criarFonte() {
@@ -255,33 +222,13 @@ export default function IRCalculadora({
     )
   }
 
-  // Uma linha (em fila) de pessoa/empresa no card "Pessoas do grupo".
+  // Uma linha (em fila) de pessoa/empresa no card "Pessoas do grupo" — só o nome
+  // (dados já sacramentados; sem controles por linha). Inativa leva o selo "inativa".
   function linhaPessoa(p: Pessoa) {
-    const opcoes = p.tipo === 'pj' ? HOLDINGS : FAMILIAS
     return (
       <li key={p.id} className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 border ${p.ativo ? 'bg-white border-gray-200' : 'bg-gray-50 border-dashed border-gray-300'}`}>
-        <span className={`flex-1 text-sm font-medium truncate ${p.ativo ? 'text-gray-800' : 'text-gray-400'}`}>{p.nome}</span>
+        <span className={`flex-1 text-sm font-medium ${p.ativo ? 'text-gray-800' : 'text-gray-400'}`}>{p.nome}</span>
         {!p.ativo && <span className="text-[9px] font-bold uppercase tracking-wide text-gray-400 bg-white border border-gray-200 rounded-full px-1.5 py-0.5">inativa</span>}
-        <button
-          onClick={() => alternarTipo(p)} disabled={busy}
-          title="Alternar PF / PJ (PJ é isenta dos 10%)"
-          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.tipo === 'pj' ? 'bg-slate-200 text-slate-600' : 'bg-indigo-100 text-indigo-700'}`}
-        >{p.tipo === 'pj' ? 'PJ' : 'PF'}</button>
-        <select
-          value={p.grupo ?? ''} disabled={busy}
-          onChange={e => mudarGrupo(p, e.target.value)}
-          title={p.tipo === 'pj' ? 'Holding' : 'Família'}
-          className="text-[11px] text-gray-600 bg-gray-50 border border-gray-200 rounded-md px-1.5 py-1 cursor-pointer max-w-[9rem]"
-        >
-          <option value="">— {p.tipo === 'pj' ? 'holding' : 'família'} —</option>
-          {opcoes.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
-        </select>
-        <button
-          onClick={() => alternarAtivo(p)} disabled={busy}
-          title={p.ativo ? 'Pausar — tira dos cálculos e das tabelas' : 'Ativar — passa a entrar nos cálculos'}
-          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.ativo ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
-        >{p.ativo ? 'pausar' : 'ativar'}</button>
-        <button onClick={() => excluirPessoa(p)} disabled={busy} title="Remover" className="w-5 h-5 rounded-full text-gray-400 hover:text-rose-600 hover:bg-rose-50 leading-none shrink-0">×</button>
       </li>
     )
   }
